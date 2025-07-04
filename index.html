@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forum - Simple Discussion Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .hover-lift:hover {
+            transform: translateY(-2px);
+            transition: transform 0.3s ease;
+        }
+        /* Profile image styling */
+        .profile-img {
+            background-color: #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .profile-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .profile-initials {
+            font-weight: 600;
+            color: #374151;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg border-b">
+        <div class="max-w-4xl mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-lg">F</span>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-800">Forum</h1>
+                </div>
+                <div id="auth-section">
+                    <button id="login-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                        Sign in with Google
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 py-8">
+        <!-- Welcome Message -->
+        <div id="welcome-message" class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8 text-center">
+            <h2 class="text-2xl font-bold text-blue-800 mb-2">Welcome to Forum!</h2>
+            <p class="text-blue-600">Sign in with Google to start posting and commenting on discussions.</p>
+        </div>
+
+        <!-- Create Post Form -->
+        <div id="create-post-form" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Create a New Post</h2>
+            <form id="post-form">
+                <div class="mb-4">
+                    <input type="text" id="post-title" placeholder="Post title..." 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div class="mb-4">
+                    <textarea id="post-content" placeholder="What's on your mind?" rows="4"
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"></textarea>
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                    Create Post
+                </button>
+            </form>
+        </div>
+
+        <!-- Posts Container -->
+        <div id="posts-container" class="space-y-6">
+            <!-- Posts will be loaded here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="text-center py-16">
+            <div class="text-gray-400 text-6xl mb-4">📝</div>
+            <h3 class="text-xl font-semibold text-gray-600 mb-2">No posts yet</h3>
+            <p class="text-gray-500">Be the first to start a discussion!</p>
+        </div>
+    </main>
+
+    <!-- User Profile Modal -->
+    <div id="user-profile" class="hidden fixed top-4 right-4 bg-white rounded-lg shadow-lg p-4 border z-50">
+        <div class="flex items-center space-x-3 mb-3">
+            <div id="modal-profile-img" class="profile-img w-10 h-10 rounded-full bg-gray-300">
+                <!-- Profile image will be inserted here -->
+            </div>
+            <div>
+                <div id="user-name" class="font-medium text-gray-800"></div>
+                <div id="user-email" class="text-sm text-gray-500"></div>
+            </div>
+        </div>
+        <button id="logout-btn" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-medium transition-colors">
+            Sign Out
+        </button>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let posts = [];
+
+        // Create profile image element with fallback
+        function createProfileImage(photoUrl, name, size = "w-10 h-10") {
+            const container = document.createElement('div');
+            container.className = `profile-img ${size} rounded-full bg-gray-300`;
+            
+            if (photoUrl && photoUrl.trim() && photoUrl !== '/default-profile.png') {
+                const img = document.createElement('img');
+                img.className = 'w-full h-full object-cover rounded-full';
+                img.alt = name || 'Profile';
+                
+                // Handle image load errors
+                img.onerror = function() {
+                    console.log('Image failed to load:', photoUrl);
+                    // Replace with initials
+                    container.innerHTML = `<span class="profile-initials text-sm">${getInitials(name)}</span>`;
+                };
+                
+                img.onload = function() {
+                    console.log('Image loaded successfully:', photoUrl);
+                };
+                
+                // Set src
+                img.src = photoUrl;
+                container.appendChild(img);
+            } else {
+                // Show initials
+                container.innerHTML = `<span class="profile-initials text-sm">${getInitials(name)}</span>`;
+            }
+            
+            return container;
+        }
+
+        // Get initials from name
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        // Check authentication status
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/user', {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    currentUser = await response.json();
+                    console.log('User authenticated:', currentUser);
+                    console.log('User photo URL:', currentUser.photo);
+                    updateUI();
+                } else {
+                    console.log('User not authenticated');
+                    currentUser = null;
+                    updateUI();
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                currentUser = null;
+                updateUI();
+            }
+        }
+
+        // Update UI based on authentication status
+        function updateUI() {
+            const authSection = document.getElementById('auth-section');
+            const welcomeMessage = document.getElementById('welcome-message');
+            const createPostForm = document.getElementById('create-post-form');
+            const userProfile = document.getElementById('user-profile');
+
+            if (currentUser) {
+                // Create profile image for nav
+                const navProfileImg = createProfileImage(currentUser.photo, currentUser.name, "w-8 h-8");
+                
+                // Show user profile in nav
+                authSection.innerHTML = `
+                    <button onclick="toggleUserProfile()" class="flex items-center space-x-2 hover:bg-gray-100 p-2 rounded-lg transition-colors">
+                        <div id="nav-profile-container"></div>
+                        <span class="font-medium text-gray-700">${escapeHtml(currentUser.name)}</span>
+                    </button>
+                `;
+                
+                // Insert the profile image
+                document.getElementById('nav-profile-container').appendChild(navProfileImg);
+
+                // Update user profile modal
+                const modalProfileImg = createProfileImage(currentUser.photo, currentUser.name, "w-10 h-10");
+                const modalContainer = document.getElementById('modal-profile-img');
+                modalContainer.innerHTML = '';
+                modalContainer.appendChild(modalProfileImg.firstChild);
+
+                document.getElementById('user-name').textContent = currentUser.name;
+                document.getElementById('user-email').textContent = currentUser.email;
+
+                // Hide welcome message and show create post form
+                welcomeMessage.classList.add('hidden');
+                createPostForm.classList.remove('hidden');
+            } else {
+                // Show login button
+                authSection.innerHTML = `
+                    <button id="login-btn" onclick="login()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                        Sign in with Google
+                    </button>
+                `;
+
+                // Show welcome message and hide create post form
+                welcomeMessage.classList.remove('hidden');
+                createPostForm.classList.add('hidden');
+                userProfile.classList.add('hidden');
+            }
+        }
+
+        // Toggle user profile dropdown
+        function toggleUserProfile() {
+            const userProfile = document.getElementById('user-profile');
+            if (!currentUser) return;
+            userProfile.classList.toggle('hidden');
+        }
+
+        // Close user profile when clicking outside
+        document.addEventListener('click', (e) => {
+            const userProfile = document.getElementById('user-profile');
+            const authSection = document.getElementById('auth-section');
+            if (!authSection.contains(e.target) && !userProfile.contains(e.target)) {
+                userProfile.classList.add('hidden');
+            }
+        });
+
+        // Login function
+        function login() {
+            window.location.href = '/auth/google';
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                await fetch('/auth/logout', { method: 'POST' });
+                currentUser = null;
+                updateUI();
+                loadPosts();
+            } catch (error) {
+                console.error('Logout failed:', error);
+            }
+        }
+
+        // Load posts
+        async function loadPosts() {
+            try {
+                const response = await fetch('/api/posts');
+                posts = await response.json();
+                renderPosts();
+            } catch (error) {
+                console.error('Failed to load posts:', error);
+            }
+        }
+
+        // Render posts
+        function renderPosts() {
+            const container = document.getElementById('posts-container');
+            const emptyState = document.getElementById('empty-state');
+
+            if (posts.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            container.innerHTML = '';
+            
+            posts.forEach(post => {
+                const article = document.createElement('article');
+                article.className = 'bg-white rounded-lg shadow-md p-6 hover-lift fade-in';
+                
+                // Create post header with profile image
+                const postHeader = document.createElement('div');
+                postHeader.className = 'flex items-center space-x-3 mb-4';
+                
+                const postProfileImg = createProfileImage(post.authorPhoto, post.author, "w-10 h-10");
+                postHeader.appendChild(postProfileImg);
+                
+                const postHeaderInfo = document.createElement('div');
+                postHeaderInfo.innerHTML = `
+                    <div class="font-medium text-gray-800">${escapeHtml(post.author)}</div>
+                    <div class="text-sm text-gray-500">${formatDate(post.createdAt)}</div>
+                `;
+                postHeader.appendChild(postHeaderInfo);
+                
+                // Create post content
+                const postContent = document.createElement('div');
+                postContent.innerHTML = `
+                    <h2 class="text-xl font-bold text-gray-800 mb-3">${escapeHtml(post.title)}</h2>
+                    <p class="text-gray-700 mb-4 whitespace-pre-wrap">${escapeHtml(post.content)}</p>
+                `;
+                
+                // Create comments section
+                const commentsSection = document.createElement('div');
+                commentsSection.className = 'border-t pt-4';
+                
+                const commentsHeader = document.createElement('h3');
+                commentsHeader.className = 'font-semibold text-gray-800 mb-3';
+                commentsHeader.textContent = `Comments (${post.comments.length})`;
+                commentsSection.appendChild(commentsHeader);
+                
+                // Add comment form if user is authenticated
+                if (currentUser) {
+                    const commentForm = document.createElement('div');
+                    commentForm.className = 'mb-4';
+                    commentForm.innerHTML = `
+                        <textarea id="comment-${post.id}" placeholder="Add a comment..." rows="2"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"></textarea>
+                        <button onclick="addComment('${post.id}')" class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                            Add Comment
+                        </button>
+                    `;
+                    commentsSection.appendChild(commentForm);
+                }
+                
+                // Add comments
+                const commentsContainer = document.createElement('div');
+                commentsContainer.className = 'space-y-3';
+                
+                post.comments.forEach(comment => {
+                    const commentDiv = document.createElement('div');
+                    commentDiv.className = 'flex items-start space-x-3 bg-gray-50 p-3 rounded-lg';
+                    
+                    const commentProfileImg = createProfileImage(comment.authorPhoto, comment.author, "w-8 h-8");
+                    commentDiv.appendChild(commentProfileImg);
+                    
+                    const commentContent = document.createElement('div');
+                    commentContent.className = 'flex-1';
+                    commentContent.innerHTML = `
+                        <div class="flex items-center space-x-2 mb-1">
+                            <span class="font-medium text-gray-800">${escapeHtml(comment.author)}</span>
+                            <span class="text-sm text-gray-500">${formatDate(comment.createdAt)}</span>
+                        </div>
+                        <p class="text-gray-700 whitespace-pre-wrap">${escapeHtml(comment.content)}</p>
+                    `;
+                    commentDiv.appendChild(commentContent);
+                    
+                    commentsContainer.appendChild(commentDiv);
+                });
+                
+                commentsSection.appendChild(commentsContainer);
+                
+                // Assemble the article
+                article.appendChild(postHeader);
+                article.appendChild(postContent);
+                article.appendChild(commentsSection);
+                
+                container.appendChild(article);
+            });
+        }
+
+        // Create new post
+        async function createPost(title, content) {
+            try {
+                const response = await fetch('/api/posts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title, content })
+                });
+
+                if (response.ok) {
+                    const newPost = await response.json();
+                    posts.unshift({...newPost, comments: []});
+                    renderPosts();
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Failed to create post:', error);
+                return false;
+            }
+        }
+
+        // Add comment to post
+        async function addComment(postId) {
+            const textarea = document.getElementById(`comment-${postId}`);
+            const content = textarea.value.trim();
+
+            if (!content) return;
+
+            try {
+                const response = await fetch(`/api/posts/${postId}/comments`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content })
+                });
+
+                if (response.ok) {
+                    const newComment = await response.json();
+                    const post = posts.find(p => p.id === postId);
+                    if (post) {
+                        post.comments.push(newComment);
+                        renderPosts();
+                    }
+                    textarea.value = '';
+                }
+            } catch (error) {
+                console.error('Failed to add comment:', error);
+            }
+        }
+
+        // Utility functions
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event listeners
+        document.getElementById('post-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('post-title').value.trim();
+            const content = document.getElementById('post-content').value.trim();
+
+            if (!title || !content) {
+                alert('Please fill in both title and content');
+                return;
+            }
+
+            const success = await createPost(title, content);
+            if (success) {
+                document.getElementById('post-title').value = '';
+                document.getElementById('post-content').value = '';
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', logout);
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, initializing...');
+            checkAuth();
+            loadPosts();
+        });
+
+        // Handle OAuth redirect
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                console.log('Page became visible, checking auth...');
+                checkAuth();
+            }
+        });
+
+        window.addEventListener('focus', () => {
+            console.log('Window focused, checking auth...');
+            checkAuth();
+        });
+
+        // Initial check
+        checkAuth();
+        loadPosts();
+    </script>
+</body>
+</html>
