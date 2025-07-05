@@ -45,12 +45,61 @@
             position: absolute;
             left: -9999px;
         }
+        /* Responsive cropper container */
         .cropper-container {
-            max-width: 100%;
-            max-height: 400px;
+            max-width: 100% !important;
+            max-height: 60vh !important;
+            margin: 0 auto !important;
         }
+        
+        /* Ensure the image container is responsive */
+        .crop-image-container {
+            width: 100%;
+            max-height: 60vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        /* Make sure the image itself is responsive */
+        #crop-image {
+            max-width: 100%;
+            max-height: 60vh;
+            width: auto;
+            height: auto;
+            display: block;
+        }
+        
+        /* Override cropper.js styles for better responsiveness */
+        .cropper-container img {
+            max-width: 100% !important;
+            max-height: 60vh !important;
+        }
+        
+        .cropper-canvas {
+            max-width: 100% !important;
+            max-height: 60vh !important;
+        }
+        
         .modal-overlay {
             backdrop-filter: blur(4px);
+        }
+        
+        /* Ensure modal doesn't overflow on mobile */
+        @media (max-width: 768px) {
+            .crop-modal-content {
+                margin: 1rem;
+                max-height: 90vh;
+            }
+            
+            .cropper-container {
+                max-height: 50vh !important;
+            }
+            
+            #crop-image {
+                max-height: 50vh;
+            }
         }
     </style>
 </head>
@@ -139,28 +188,28 @@
     </div>
 
     <!-- Image Cropper Modal -->
-    <div id="crop-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-overlay flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold">Crop Profile Picture</h3>
-                <button id="crop-cancel" class="text-gray-500 hover:text-gray-700">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            <div class="mb-4">
-                <div class="max-w-full">
-                    <img id="crop-image" class="max-w-full h-auto" />
+    <div id="crop-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-overlay flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg crop-modal-content max-w-4xl w-full max-h-[95vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Crop Profile Picture</h3>
+                    <button id="crop-cancel" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
                 </div>
-            </div>
-            <div class="flex justify-end space-x-3">
-                <button id="crop-cancel-btn" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
-                    Cancel
-                </button>
-                <button id="crop-save" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
-                    Save Picture
-                </button>
+                <div class="crop-image-container mb-4">
+                    <img id="crop-image" class="block" />
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button id="crop-cancel-btn" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+                        Cancel
+                    </button>
+                    <button id="crop-save" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                        Save Picture
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -219,30 +268,62 @@
             return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
         }
 
-        // Initialize image cropper
+        // Initialize image cropper with responsive settings
         function initializeCropper(imageElement) {
             if (cropper) {
                 cropper.destroy();
             }
             
-            cropper = new Cropper(imageElement, {
-                aspectRatio: 1,
-                viewMode: 1,
-                dragMode: 'move',
-                autoCropArea: 1,
-                restore: false,
-                guides: false,
-                center: false,
-                highlight: false,
-                cropBoxMovable: false,
-                cropBoxResizable: false,
-                toggleDragModeOnDblclick: false,
-                minContainerWidth: 300,
-                minContainerHeight: 300,
-                ready: function() {
-                    // Cropper is ready
+            // Wait for image to load and get its dimensions
+            const img = new Image();
+            img.onload = function() {
+                const containerWidth = imageElement.parentElement.clientWidth;
+                const containerHeight = Math.min(window.innerHeight * 0.6, 500);
+                
+                // Calculate the best fit for the image
+                const imageRatio = this.naturalWidth / this.naturalHeight;
+                const containerRatio = containerWidth / containerHeight;
+                
+                let displayWidth, displayHeight;
+                
+                if (imageRatio > containerRatio) {
+                    // Image is wider than container ratio
+                    displayWidth = containerWidth;
+                    displayHeight = containerWidth / imageRatio;
+                } else {
+                    // Image is taller than container ratio
+                    displayHeight = containerHeight;
+                    displayWidth = containerHeight * imageRatio;
                 }
-            });
+                
+                // Set the image size
+                imageElement.style.width = displayWidth + 'px';
+                imageElement.style.height = displayHeight + 'px';
+                
+                // Initialize cropper
+                cropper = new Cropper(imageElement, {
+                    aspectRatio: 1,
+                    viewMode: 2,
+                    dragMode: 'move',
+                    autoCropArea: 0.8,
+                    restore: false,
+                    guides: true,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: false,
+                    responsive: true,
+                    checkOrientation: false,
+                    modal: true,
+                    background: true,
+                    ready: function() {
+                        console.log('Cropper initialized successfully');
+                    }
+                });
+            };
+            
+            img.src = imageElement.src;
         }
 
         // Handle profile picture file selection
@@ -273,7 +354,10 @@
                 
                 // Initialize cropper after image loads
                 cropImage.onload = function() {
-                    initializeCropper(cropImage);
+                    // Small delay to ensure modal is fully rendered
+                    setTimeout(() => {
+                        initializeCropper(cropImage);
+                    }, 100);
                 };
             };
             reader.readAsDataURL(file);
@@ -655,6 +739,12 @@
                     // Close crop modal
                     document.getElementById('crop-modal').classList.add('hidden');
                     
+                    // Destroy cropper
+                    if (cropper) {
+                        cropper.destroy();
+                        cropper = null;
+                    }
+                    
                     // Show success message
                     alert('Profile picture updated successfully!');
                 } else {
@@ -680,6 +770,13 @@
             if (cropper) {
                 cropper.destroy();
                 cropper = null;
+            }
+        });
+
+        // Handle window resize for responsive cropper
+        window.addEventListener('resize', () => {
+            if (cropper) {
+                cropper.resize();
             }
         });
 
