@@ -965,12 +965,56 @@
             try {
                 const response = await fetch(url, { method: 'POST' });
                 if (response.ok) {
-                    const result = await response.json();
-                    
-                    // Update UI - it's simpler to just re-render posts for now
-                    // This ensures all like counts and states are consistent
-                    // For a more optimized approach, you'd update only the specific element
-                    await loadPosts(); 
+                    const result = await response.json(); // Contains { likesCount, isLiked }
+
+                    // Update local 'posts' array data
+                    if (type === 'post') {
+                        const postIndex = posts.findIndex(p => p.id === id);
+                        if (postIndex !== -1) {
+                            posts[postIndex].likes = result.likesCount;
+                            posts[postIndex].isLiked = result.isLiked;
+                        }
+                    } else if (type === 'comment') {
+                        // Helper function to find and update comment in the local posts array
+                        function findAndUpdateComment(commentsArray, commentId, newLikesCount, newIsLiked) {
+                            for (let i = 0; i < commentsArray.length; i++) {
+                                let currentComment = commentsArray[i];
+                                if (currentComment.id === commentId) {
+                                    currentComment.likes = newLikesCount;
+                                    currentComment.isLiked = newIsLiked;
+                                    return true;
+                                }
+                                if (currentComment.replies && currentComment.replies.length > 0) {
+                                    if (findAndUpdateComment(currentComment.replies, commentId, newLikesCount, newIsLiked)) {
+                                        return true;
+                                    }
+                                }
+                            }
+                            return false;
+                        }
+                        for (let i = 0; i < posts.length; i++) {
+                            if (posts[i].comments && findAndUpdateComment(posts[i].comments, id, result.likesCount, result.isLiked)) {
+                                break; 
+                            }
+                        }
+                    }
+
+                    // Update DOM directly
+                    const likeCountSpan = document.getElementById(`${type}-like-count-${id}`);
+                    const likeButton = likeCountSpan ? likeCountSpan.parentElement : null;
+
+                    if (likeCountSpan) {
+                        likeCountSpan.textContent = type === 'post' ? `${result.likesCount} Likes` : `${result.likesCount}`;
+                    }
+
+                    if (likeButton) {
+                        if (result.isLiked) {
+                            likeButton.classList.add('like-button-active');
+                        } else {
+                            likeButton.classList.remove('like-button-active');
+                        }
+                    }
+                    // No longer calling await loadPosts(); 
 
                 } else {
                     const errorData = await response.json().catch(() => ({error: "Unknown error"}));
