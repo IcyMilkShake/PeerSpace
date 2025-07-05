@@ -507,7 +507,8 @@
         }
 
         /* Ensure post titles also wrap */
-        .text-xl.font-bold.text-gray-800.mb-3 { /* Targeting the post title h2, color themed by variable */
+        /* Updated selector to remove .text-gray-800 as it was removed from the h2 element */
+        article h2.text-xl.font-bold.mb-3 { 
             overflow-wrap: break-word;
             word-break: break-word;
             white-space: normal; /* Ensures it doesn't inherit pre-wrap or similar */
@@ -631,8 +632,8 @@
     <!-- User Profile Modal -->
     <div id="user-profile" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-2 border z-50 w-60" style="border-color: var(--border-color);"> <!-- Themed border -->
         <div class="flex items-center space-x-3 p-2 mb-2 border-b" style="border-bottom-color: var(--border-color);"> <!-- Themed border -->
-            <div id="modal-profile-img-container" class="profile-img w-10 h-10 rounded-full border-2" style="border-color: var(--border-color);"> <!-- Themed border for img container -->
-                <!-- Profile image will be dynamically inserted by updateUI -->
+            <div id="modal-profile-img-container"> 
+                <!-- Profile image component from createProfileImage will be inserted here. Styling (size, border, etc.) is handled by createProfileImage. -->
             </div>
             <div>
                 <div id="user-name" class="font-medium text-sm"></div> <!-- text-sm -->
@@ -702,29 +703,37 @@
         // let cropper = null; // Cropper is now handled in profile.html
 
         // Create profile image element with fallback
-        function createProfileImage(photoUrl, name, size = "w-10 h-10", textClass = "text-sm") {
+        // Added borderClass parameter for optional borders (e.g., for modal profile image)
+        function createProfileImage(photoUrl, name, size = "w-10 h-10", textClass = "text-sm", borderClass = "") {
             const container = document.createElement('div');
-            // bg-gray-300 is a fallback, actual color will be from theme var --input-bg
-            container.className = `profile-img ${size} rounded-full flex items-center justify-center overflow-hidden`;
+            // Ensured all necessary classes for layout and appearance are here.
+            container.className = `profile-img ${size} ${borderClass} rounded-full flex items-center justify-center overflow-hidden`;
             container.style.backgroundColor = 'var(--input-bg)'; // Apply theme variable
+            
+            // If a border class is provided (e.g., "border-2"), set its color using CSS variable.
+            if (borderClass && borderClass.includes('border')) { 
+                container.style.borderColor = 'var(--border-color)';
+            }
             
             if (photoUrl && photoUrl.trim() && photoUrl !== '/default-profile.png') {
                 const img = document.createElement('img');
-                img.className = 'w-full h-full object-cover rounded-full';
+                // Image fills container, object-fit ensures aspect ratio is maintained.
+                // rounded-full on img is not strictly necessary if parent container clips, but doesn't harm.
+                img.className = 'w-full h-full object-cover'; 
                 img.alt = name || 'Profile';
                 
                 img.onerror = function() {
-                    console.log('Image failed to load:', photoUrl);
+                    // console.log('Image failed to load, falling back to initials:', photoUrl);
+                    // Fallback to initials if image fails to load
                     container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
                 };
                 
-                img.onload = function() {
-                    // console.log('Image loaded successfully:', photoUrl);
-                };
+                // img.onload = function() { /* console.log('Image loaded successfully:', photoUrl); */ };
                 
                 img.src = photoUrl + '?t=' + Date.now(); // Cache busting
                 container.appendChild(img);
             } else {
+                // Display initials if no photoUrl or it's the default placeholder.
                 container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
             }
             
@@ -786,7 +795,8 @@
                 // Update user profile modal (dropdown)
                 const modalProfileImgContainer = document.getElementById('modal-profile-img-container');
                 modalProfileImgContainer.innerHTML = ''; // Clear previous
-                modalProfileImgContainer.appendChild(createProfileImage(currentUser.photo, currentUser.name, "w-10 h-10", "text-base")); // Slightly larger for modal
+                // Pass "border-2" class for the modal profile image
+                modalProfileImgContainer.appendChild(createProfileImage(currentUser.photo, currentUser.name, "w-10 h-10", "text-base", "border-2")); 
 
                 document.getElementById('user-name').textContent = currentUser.name;
                 document.getElementById('user-email').textContent = currentUser.email;
@@ -919,7 +929,8 @@
                 // Create post content
                 const postContentElement = document.createElement('div');
                 // For post titles, we generally don't want links, so allowLinks = false (or default)
-                const postTitleHtml = `<h2 class="text-xl font-bold text-gray-800 mb-3">${escapeHtml(post.title)}</h2>`;
+                // Removed text-gray-800 class; color is now handled by 'article h2 { color: var(--text-primary); }'
+                const postTitleHtml = `<h2 class="text-xl font-bold mb-3">${escapeHtml(post.title)}</h2>`;
                 // For post content, allow links
                 const postTextHtml = `<p class="text-gray-700 mb-4 whitespace-pre-wrap">${escapeHtml(post.content, true)}</p>`;
                 postContentElement.innerHTML = postTitleHtml + postTextHtml;
