@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Forum - Simple Discussion Platform</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
     <style>
         .fade-in {
             animation: fadeIn 0.5s ease-in;
@@ -33,6 +35,22 @@
         .profile-initials {
             font-weight: 600;
             color: #374151;
+        }
+        .file-upload {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .file-upload input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        .cropper-container {
+            max-width: 100%;
+            max-height: 400px;
+        }
+        .modal-overlay {
+            backdrop-filter: blur(4px);
         }
     </style>
 </head>
@@ -98,22 +116,70 @@
     <!-- User Profile Modal -->
     <div id="user-profile" class="hidden fixed top-4 right-4 bg-white rounded-lg shadow-lg p-4 border z-50">
         <div class="flex items-center space-x-3 mb-3">
-            <div id="modal-profile-img" class="profile-img w-10 h-10 rounded-full bg-gray-300">
+            <div id="modal-profile-img" class="profile-img w-12 h-12 rounded-full bg-gray-300 cursor-pointer relative border-2 border-gray-200 hover:border-blue-400 transition-colors">
                 <!-- Profile image will be inserted here -->
+                <div class="absolute inset-0 bg-black bg-opacity-50 rounded-full opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span class="text-white text-xs">Edit</span>
+                </div>
             </div>
             <div>
                 <div id="user-name" class="font-medium text-gray-800"></div>
                 <div id="user-email" class="text-sm text-gray-500"></div>
             </div>
         </div>
+        <div class="file-upload mb-3">
+            <input type="file" id="profile-picture-input" accept="image/*" />
+            <label for="profile-picture-input" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors cursor-pointer block text-center">
+                Change Profile Picture
+            </label>
+        </div>
         <button id="logout-btn" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-medium transition-colors">
             Sign Out
         </button>
     </div>
 
+    <!-- Image Cropper Modal -->
+    <div id="crop-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-overlay flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Crop Profile Picture</h3>
+                <button id="crop-cancel" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="mb-4">
+                <div class="max-w-full">
+                    <img id="crop-image" class="max-w-full h-auto" />
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button id="crop-cancel-btn" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+                    Cancel
+                </button>
+                <button id="crop-save" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                    Save Picture
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Progress Modal -->
+    <div id="upload-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-overlay flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <h3 class="text-lg font-semibold mb-4">Uploading Profile Picture</h3>
+            <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                <div id="upload-progress" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p class="text-sm text-gray-600 text-center">Please wait...</p>
+        </div>
+    </div>
+
     <script>
         let currentUser = null;
         let posts = [];
+        let cropper = null;
 
         // Create profile image element with fallback
         function createProfileImage(photoUrl, name, size = "w-10 h-10") {
@@ -136,8 +202,8 @@
                     console.log('Image loaded successfully:', photoUrl);
                 };
                 
-                // Set src
-                img.src = photoUrl;
+                // Set src with cache busting
+                img.src = photoUrl + '?t=' + Date.now();
                 container.appendChild(img);
             } else {
                 // Show initials
@@ -151,6 +217,122 @@
         function getInitials(name) {
             if (!name) return '?';
             return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        // Initialize image cropper
+        function initializeCropper(imageElement) {
+            if (cropper) {
+                cropper.destroy();
+            }
+            
+            cropper = new Cropper(imageElement, {
+                aspectRatio: 1,
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 1,
+                restore: false,
+                guides: false,
+                center: false,
+                highlight: false,
+                cropBoxMovable: false,
+                cropBoxResizable: false,
+                toggleDragModeOnDblclick: false,
+                minContainerWidth: 300,
+                minContainerHeight: 300,
+                ready: function() {
+                    // Cropper is ready
+                }
+            });
+        }
+
+        // Handle profile picture file selection
+        function handleProfilePictureSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Please select an image smaller than 5MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const cropImage = document.getElementById('crop-image');
+                cropImage.src = e.target.result;
+                
+                // Show crop modal
+                document.getElementById('crop-modal').classList.remove('hidden');
+                document.getElementById('user-profile').classList.add('hidden');
+                
+                // Initialize cropper after image loads
+                cropImage.onload = function() {
+                    initializeCropper(cropImage);
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Upload cropped profile picture
+        async function uploadCroppedImage() {
+            if (!cropper) return;
+
+            const canvas = cropper.getCroppedCanvas({
+                width: 300,
+                height: 300,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high'
+            });
+
+            return new Promise((resolve, reject) => {
+                canvas.toBlob(async (blob) => {
+                    try {
+                        const formData = new FormData();
+                        formData.append('profilePicture', blob, 'profile.png');
+                        
+                        const uploadModal = document.getElementById('upload-modal');
+                        const progressBar = document.getElementById('upload-progress');
+                        
+                        uploadModal.classList.remove('hidden');
+                        progressBar.style.width = '0%';
+                        
+                        const xhr = new XMLHttpRequest();
+                        
+                        xhr.upload.addEventListener('progress', (e) => {
+                            if (e.lengthComputable) {
+                                const percentComplete = (e.loaded / e.total) * 100;
+                                progressBar.style.width = percentComplete + '%';
+                            }
+                        });
+                        
+                        xhr.addEventListener('load', () => {
+                            uploadModal.classList.add('hidden');
+                            if (xhr.status === 200) {
+                                const response = JSON.parse(xhr.responseText);
+                                resolve(response);
+                            } else {
+                                reject(new Error('Upload failed'));
+                            }
+                        });
+                        
+                        xhr.addEventListener('error', () => {
+                            uploadModal.classList.add('hidden');
+                            reject(new Error('Upload failed'));
+                        });
+                        
+                        xhr.open('POST', '/api/user/profile-picture');
+                        xhr.send(formData);
+                    } catch (error) {
+                        reject(error);
+                    }
+                }, 'image/png', 0.9);
+            });
         }
 
         // Check authentication status
@@ -199,10 +381,15 @@
                 document.getElementById('nav-profile-container').appendChild(navProfileImg);
 
                 // Update user profile modal
-                const modalProfileImg = createProfileImage(currentUser.photo, currentUser.name, "w-10 h-10");
+                const modalProfileImg = createProfileImage(currentUser.photo, currentUser.name, "w-12 h-12");
                 const modalContainer = document.getElementById('modal-profile-img');
                 modalContainer.innerHTML = '';
                 modalContainer.appendChild(modalProfileImg.firstChild);
+                
+                // Add click event to modal profile image
+                modalContainer.addEventListener('click', () => {
+                    document.getElementById('profile-picture-input').click();
+                });
 
                 document.getElementById('user-name').textContent = currentUser.name;
                 document.getElementById('user-email').textContent = currentUser.email;
@@ -452,6 +639,49 @@
         });
 
         document.getElementById('logout-btn').addEventListener('click', logout);
+
+        // Profile picture upload event
+        document.getElementById('profile-picture-input').addEventListener('change', handleProfilePictureSelect);
+
+        // Crop modal events
+        document.getElementById('crop-save').addEventListener('click', async () => {
+            try {
+                const result = await uploadCroppedImage();
+                if (result.success) {
+                    // Update current user photo
+                    currentUser.photo = result.photo;
+                    updateUI();
+                    
+                    // Close crop modal
+                    document.getElementById('crop-modal').classList.add('hidden');
+                    
+                    // Show success message
+                    alert('Profile picture updated successfully!');
+                } else {
+                    alert('Failed to update profile picture');
+                }
+            } catch (error) {
+                console.error('Error updating profile picture:', error);
+                alert('Failed to update profile picture');
+            }
+        });
+
+        // Cancel crop events
+        document.getElementById('crop-cancel').addEventListener('click', () => {
+            document.getElementById('crop-modal').classList.add('hidden');
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        });
+
+        document.getElementById('crop-cancel-btn').addEventListener('click', () => {
+            document.getElementById('crop-modal').classList.add('hidden');
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        });
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {

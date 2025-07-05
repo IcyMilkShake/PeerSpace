@@ -4,11 +4,23 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const mongoose = require('mongoose');
 const MongoStore = require('connect-mongo');
+const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+const https = require('https');
+const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
+
+const { User, Post, Comment } = require('./schema');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads', 'profile_pics');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/PeerSpace', {
@@ -22,96 +34,44 @@ db.once('open', () => {
   console.log('Connected to MongoDB');
 });
 
-// User Schema
-const userSchema = new mongoose.Schema({
-  googleId: {
-    type: String,
-    required: true,
-    unique: true
+// Multer configuration for profile picture uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
   },
-  name: {
-    type: String,
-    required: true
-  },
-  email: {
-    type: String,
-    required: true
-  },
-  profilePicture: {
-    type: String,
-    default: null
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  lastLogin: {
-    type: Date,
-    default: Date.now
-  }
-}, { collection: 'User' });
-
-const User = mongoose.model('User', userSchema);
-
-// Post Schema
-const postSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true
-  },
-  content: {
-    type: String,
-    required: true
-  },
-  author: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
+  filename: function (req, file, cb) {
+    const uniqueId = uuidv4();
+    cb(null, `${uniqueId}.png`);
   }
 });
 
-const Post = mongoose.model('Post', postSchema);
-
-// Comment Schema
-const commentSchema = new mongoose.Schema({
-  content: {
-    type: String,
-    required: true
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
   },
-  author: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  post: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Post',
-    required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Not an image! Please upload only images.'), false);
+    }
   }
 });
-
-const Comment = mongoose.model('Comment', commentSchema);
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Session configuration with MongoDB store
 app.use(session({
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI,
+    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/PeerSpace',
     touchAfter: 24 * 3600
   }),
   cookie: { 
@@ -125,6 +85,24 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Helper function to download and save profile picture from Google
+async function downloadProfilePicture(url, filename) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(path.join(uploadsDir, filename));
+    
+    https.get(url, (response) => {
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close();
+        resolve(filename);
+      });
+    }).on('error', (err) => {
+      fs.unlink(path.join(uploadsDir, filename), () => {}); // Delete the file on error
+      reject(err);
+    });
+  });
+}
+
 // Google OAuth Strategy
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
@@ -134,22 +112,66 @@ passport.use(new GoogleStrategy({
   try {
     let user = await User.findOne({ googleId: profile.id });
 
-    const profilePicture = profile.photos && profile.photos[0] ? profile.photos[0].value : null;
-
+    const profilePictureUrl = profile.photos && profile.photos[0] ? profile.photos[0].value : null;
+    
     if (user) {
+      // Update last login
       user.lastLogin = new Date();
-      if (profilePicture && user.profilePicture !== profilePicture) {
-        user.profilePicture = profilePicture;
+      
+      // Only update profile picture if user doesn't have a custom one
+      // (i.e., if the current profile picture is from Google or is null)
+      const hasCustomProfilePic = user.profilePicture.path && 
+                                  user.profilePicture.path.startsWith('/uploads/profile_pics/');
+      
+      if (!hasCustomProfilePic && profilePictureUrl) {
+        try {
+          const filename = `google_${uuidv4()}.png`;
+          await downloadProfilePicture(profilePictureUrl, filename);
+          
+          // Delete old Google profile picture if it exists
+          if (user.profilePicture.path && user.profilePicture.path.includes('google_')) {
+            const oldFilePath = path.join(__dirname, user.profilePicture.path);
+            if (fs.existsSync(oldFilePath)) {
+              fs.unlinkSync(oldFilePath);
+            }
+          }
+          
+          user.profilePicture = {
+            path: `/uploads/profile_pics/${filename}`,
+            contentType: 'image/png'
+          };
+        } catch (error) {
+          console.error('Error downloading profile picture:', error);
+          // Keep existing profile picture on error
+        }
       }
+      
       await user.save();
       return done(null, user);
     } else {
+      // New user - download Google profile picture
+      let profilePicturePath = null;
+      
+      if (profilePictureUrl) {
+        try {
+          const filename = `google_${uuidv4()}.png`;
+          await downloadProfilePicture(profilePictureUrl, filename);
+          profilePicturePath = `/uploads/profile_pics/${filename}`;
+        } catch (error) {
+          console.error('Error downloading profile picture for new user:', error);
+        }
+      }
+      
       const newUser = new User({
         googleId: profile.id,
         name: profile.displayName,
         email: profile.emails && profile.emails[0] ? profile.emails[0].value : '',
-        profilePicture: profilePicture
+        profilePicture: {
+          path: profilePicturePath,
+          contentType: 'image/png'
+        }
       });
+      
       await newUser.save();
       return done(null, newUser);
     }
@@ -172,6 +194,7 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
+// Authentication middleware
 const isAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) {
     return next();
@@ -179,6 +202,7 @@ const isAuthenticated = (req, res, next) => {
   res.status(401).json({ error: 'Not authenticated' });
 };
 
+// Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -211,13 +235,72 @@ app.get('/api/user', (req, res) => {
       id: _id,
       name,
       email,
-      photo: profilePicture || '/default-profile.png'
+      photo: profilePicture.path || '/default-profile.png'
     });
   } else {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 });
 
+// Upload profile picture endpoint
+app.post('/api/user/profile-picture', isAuthenticated, upload.single('profilePicture'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Delete old profile picture if it exists and is stored locally
+    if (user.profilePicture.path && user.profilePicture.path.startsWith('/uploads/')) {
+      const oldFilePath = path.join(__dirname, user.profilePicture.path);
+      if (fs.existsSync(oldFilePath)) {
+        try {
+          fs.unlinkSync(oldFilePath);
+          console.log('Deleted old profile picture:', oldFilePath);
+        } catch (error) {
+          console.error('Error deleting old profile picture:', error);
+        }
+      }
+    }
+
+    // Update user with new profile picture
+    user.profilePicture = {
+      path: `/uploads/profile_pics/${req.file.filename}`,
+      contentType: req.file.mimetype
+    };
+    
+    await user.save();
+    
+    // Update the user object in the session
+    req.user.profilePicture = user.profilePicture;
+
+    console.log('Profile picture updated successfully:', user.profilePicture.path);
+
+    res.json({
+      success: true,
+      photo: user.profilePicture.path
+    });
+  } catch (error) {
+    console.error('Error uploading profile picture:', error);
+    
+    // Clean up uploaded file if there was an error
+    if (req.file && req.file.path) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (unlinkError) {
+        console.error('Error cleaning up uploaded file:', unlinkError);
+      }
+    }
+    
+    res.status(500).json({ error: 'Failed to upload profile picture' });
+  }
+});
+
+// Get posts with populated author data
 app.get('/api/posts', async (req, res) => {
   try {
     const posts = await Post.find()
@@ -235,13 +318,13 @@ app.get('/api/posts', async (req, res) => {
           title: post.title,
           content: post.content,
           author: post.author.name,
-          authorPhoto: post.author.profilePicture,
+          authorPhoto: post.author.profilePicture.path || '/default-profile.png',
           createdAt: post.createdAt.toISOString(),
           comments: comments.map(comment => ({
             id: comment._id,
             content: comment.content,
             author: comment.author.name,
-            authorPhoto: comment.author.profilePicture,
+            authorPhoto: comment.author.profilePicture.path || '/default-profile.png',
             createdAt: comment.createdAt.toISOString()
           }))
         };
@@ -255,6 +338,7 @@ app.get('/api/posts', async (req, res) => {
   }
 });
 
+// Create new post
 app.post('/api/posts', isAuthenticated, async (req, res) => {
   try {
     const { title, content } = req.body;
@@ -277,7 +361,7 @@ app.post('/api/posts', isAuthenticated, async (req, res) => {
       title: post.title,
       content: post.content,
       author: post.author.name,
-      authorPhoto: post.author.profilePicture,
+      authorPhoto: post.author.profilePicture.path || '/default-profile.png',
       createdAt: post.createdAt.toISOString(),
       comments: []
     };
@@ -289,6 +373,7 @@ app.post('/api/posts', isAuthenticated, async (req, res) => {
   }
 });
 
+// Add comment to post
 app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
   try {
     const { postId } = req.params;
@@ -316,7 +401,7 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
       id: comment._id,
       content: comment.content,
       author: comment.author.name,
-      authorPhoto: comment.author.profilePicture,
+      authorPhoto: comment.author.profilePicture.path || '/default-profile.png',
       createdAt: comment.createdAt.toISOString()
     };
 
@@ -327,8 +412,23 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
   }
 });
 
+// Error handling middleware
 app.use((error, req, res, next) => {
   console.error('Unhandled error:', error);
+  
+  // Handle multer errors
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
+    }
+    return res.status(400).json({ error: 'File upload error: ' + error.message });
+  }
+  
+  // Handle other errors
+  if (error.message === 'Not an image! Please upload only images.') {
+    return res.status(400).json({ error: 'Please upload only image files.' });
+  }
+  
   res.status(500).json({ error: 'Internal server error' });
 });
 
