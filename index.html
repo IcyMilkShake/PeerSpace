@@ -47,7 +47,7 @@
         }
         .cropper-container {
             max-width: 100%;
-            max-height: 400px;
+            /* max-height: 400px; */ /* Removed as per plan */
         }
         .modal-overlay {
             backdrop-filter: blur(4px);
@@ -223,77 +223,147 @@
         function initializeCropper(imageElement) {
             if (cropper) {
                 cropper.destroy();
+                cropper = null; // Ensure old instance is cleared
             }
             
             cropper = new Cropper(imageElement, {
                 aspectRatio: 1,
-                viewMode: 1,
+                viewMode: 2, // Changed from 1 to 2
                 dragMode: 'move',
                 autoCropArea: 1,
                 restore: false,
-                guides: false,
-                center: false,
+                modal: true, // Added from example
+                guides: true, // Changed from false
                 highlight: false,
-                cropBoxMovable: false,
-                cropBoxResizable: false,
+                cropBoxMovable: true, // Changed from false
+                cropBoxResizable: true, // Changed from false
                 toggleDragModeOnDblclick: false,
-                minContainerWidth: 300,
-                minContainerHeight: 300,
+                responsive: true, // Added from example
+                checkCrossOrigin: false, // Retained
+                // minContainerWidth and minContainerHeight removed as per plan, let Cropper.js manage this.
                 ready: function() {
                     // Cropper is ready
+                    console.log("Cropper is ready.");
                 }
             });
         }
 
-        // Handle profile picture file selection
-        function handleProfilePictureSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        // New file handling and pre-resizing logic (adapted from user's example)
+        function handleProfilePictureSelectWithResize(event) {
+            const fileInput = event.target;
+            const file = fileInput.files[0];
+            const cropImage = document.getElementById('crop-image');
+            const cropModal = document.getElementById('crop-modal');
 
-            // Validate file type
-            if (!file.type.startsWith('image/')) {
-                alert('Please select an image file');
-                return;
-            }
+            if (file) {
+                // Check file size (50MB as an example, can be adjusted)
+                if (file.size > 50 * 1024 * 1024) {
+                    alert('File is too large. Maximum size is 50MB');
+                    fileInput.value = ''; // Reset file input
+                    return;
+                }
 
-            // Validate file size (5MB max)
-            if (file.size > 5 * 1024 * 1024) {
-                alert('Please select an image smaller than 5MB');
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const cropImage = document.getElementById('crop-image');
-                cropImage.src = e.target.result;
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select an image file');
+                    fileInput.value = ''; // Reset file input
+                    return;
+                }
                 
-                // Show crop modal
-                document.getElementById('crop-modal').classList.remove('hidden');
                 document.getElementById('user-profile').classList.add('hidden');
-                
-                // Initialize cropper after image loads
-                cropImage.onload = function() {
-                    initializeCropper(cropImage);
+
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.onload = function () {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+
+                        const maxWidth = 1024; // Max width for pre-resize
+                        const maxHeight = 1024; // Max height for pre-resize
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height = Math.round(height * (maxWidth / width));
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width = Math.round(width * (maxHeight / height));
+                                height = maxHeight;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        canvas.toBlob(function (blob) {
+                            const resizedFile = new File([blob], file.name || 'profile-pic.png', { type: blob.type || 'image/png' });
+                            const resizedImageUrl = URL.createObjectURL(resizedFile);
+
+                            cropImage.src = resizedImageUrl; // Set pre-resized image to cropper target
+
+                            // Show crop modal only after image is ready for cropper
+                            cropModal.classList.remove('hidden');
+
+                            // Initialize cropper after image src is set and it's loaded
+                            // The original initializeCropper was called inside cropImage.onload
+                            // We ensure similar behavior here.
+                            // However, since src is an object URL, it should load very quickly.
+                            // For safety, let's keep the onload wrapper for cropper init.
+                            cropImage.onload = () => {
+                                initializeCropper(cropImage);
+                                URL.revokeObjectURL(cropImage.src); // Clean up object URL after image is loaded
+                            };
+                            cropImage.onerror = () => {
+                                alert('Could not load image for cropping.');
+                                cropModal.classList.add('hidden');
+                                fileInput.value = '';
+                                URL.revokeObjectURL(cropImage.src); // Clean up
+                            };
+
+                        }, file.type || 'image/png');
+                    };
+                    img.onerror = function() {
+                        alert('Failed to load the selected image for processing.');
+                        fileInput.value = '';
+                    };
+                    img.src = e.target.result; // Start loading the image for resizing
                 };
-            };
-            reader.readAsDataURL(file);
+                reader.onerror = function() {
+                    alert('Failed to read the file.');
+                    fileInput.value = '';
+                };
+                reader.readAsDataURL(file); // Read the file as a data URL
+            }
         }
 
-        // Upload cropped profile picture
+
+        // Upload cropped profile picture (retains existing XHR logic, but ensures it uses the 'cropper' instance)
         async function uploadCroppedImage() {
-            if (!cropper) return;
+            if (!cropper) {
+                console.error("Cropper not initialized during upload attempt.");
+                return Promise.reject(new Error("Cropper not available."));
+            }
 
             const canvas = cropper.getCroppedCanvas({
-                width: 300,
-                height: 300,
+                width: 300, // Desired final width
+                height: 300, // Desired final height
                 imageSmoothingEnabled: true,
                 imageSmoothingQuality: 'high'
             });
 
             return new Promise((resolve, reject) => {
                 canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        return reject(new Error('Canvas to Blob conversion failed.'));
+                    }
                     try {
                         const formData = new FormData();
+                        // Use 'profilePicture' to match server expectation if that's what it is
                         formData.append('profilePicture', blob, 'profile.png');
                         
                         const uploadModal = document.getElementById('upload-modal');
@@ -313,25 +383,35 @@
                         
                         xhr.addEventListener('load', () => {
                             uploadModal.classList.add('hidden');
+                            progressBar.style.width = '0%'; // Reset progress bar
                             if (xhr.status === 200) {
-                                const response = JSON.parse(xhr.responseText);
-                                resolve(response);
+                                try {
+                                    const response = JSON.parse(xhr.responseText);
+                                    resolve(response);
+                                } catch (parseError) {
+                                    console.error("Error parsing server response:", parseError, xhr.responseText);
+                                    reject(new Error('Failed to parse server response.'));
+                                }
                             } else {
-                                reject(new Error('Upload failed'));
+                                console.error("Upload failed with status:", xhr.status, xhr.responseText);
+                                reject(new Error(`Upload failed with status: ${xhr.status}`));
                             }
                         });
                         
                         xhr.addEventListener('error', () => {
                             uploadModal.classList.add('hidden');
-                            reject(new Error('Upload failed'));
+                            progressBar.style.width = '0%'; // Reset progress bar
+                            console.error("Upload network error.");
+                            reject(new Error('Upload failed due to a network error.'));
                         });
                         
-                        xhr.open('POST', '/api/user/profile-picture');
+                        xhr.open('POST', '/api/user/profile-picture'); // Existing endpoint
                         xhr.send(formData);
                     } catch (error) {
+                        console.error("Error preparing blob for upload:", error);
                         reject(error);
                     }
-                }, 'image/png', 0.9);
+                }, 'image/png', 0.9); // Quality setting for PNG (0.9 is often good)
             });
         }
 
@@ -640,48 +720,57 @@
 
         document.getElementById('logout-btn').addEventListener('click', logout);
 
-        // Profile picture upload event
-        document.getElementById('profile-picture-input').addEventListener('change', handleProfilePictureSelect);
+        // Profile picture upload event - USE THE NEW RESIZING HANDLER
+        document.getElementById('profile-picture-input').addEventListener('change', handleProfilePictureSelectWithResize);
 
         // Crop modal events
         document.getElementById('crop-save').addEventListener('click', async () => {
+            const fileInput = document.getElementById('profile-picture-input');
             try {
-                const result = await uploadCroppedImage();
+                const result = await uploadCroppedImage(); // This now uses the global 'cropper'
                 if (result.success) {
-                    // Update current user photo
-                    currentUser.photo = result.photo;
-                    updateUI();
+                    currentUser.photo = result.photo; // Update with the new photo URL from server
+                    updateUI(); // Refresh UI elements showing profile picture
                     
-                    // Close crop modal
                     document.getElementById('crop-modal').classList.add('hidden');
-                    
-                    // Show success message
+                    if (cropper) {
+                        cropper.destroy();
+                        cropper = null;
+                    }
+                    fileInput.value = ''; // Reset file input
                     alert('Profile picture updated successfully!');
                 } else {
-                    alert('Failed to update profile picture');
+                    alert(result.message || 'Failed to update profile picture. Please try again.');
                 }
             } catch (error) {
                 console.error('Error updating profile picture:', error);
-                alert('Failed to update profile picture');
+                alert('An error occurred while updating profile picture: ' + error.message);
+            } finally {
+                 // Ensure modal is hidden and cropper is cleaned up even if upload fails partially
+                document.getElementById('crop-modal').classList.add('hidden');
+                if (cropper) {
+                    cropper.destroy();
+                    cropper = null;
+                }
+                // Do not reset fileInput.value here if user might want to retry without reselecting
             }
         });
 
-        // Cancel crop events
-        document.getElementById('crop-cancel').addEventListener('click', () => {
-            document.getElementById('crop-modal').classList.add('hidden');
+        // Cancel crop events (unified handler)
+        function cancelAndCleanupCropper() {
+            const cropModal = document.getElementById('crop-modal');
+            const fileInput = document.getElementById('profile-picture-input');
+
+            cropModal.classList.add('hidden');
             if (cropper) {
                 cropper.destroy();
                 cropper = null;
             }
-        });
+            fileInput.value = ''; // Reset file input so the same file can be chosen again
+        }
 
-        document.getElementById('crop-cancel-btn').addEventListener('click', () => {
-            document.getElementById('crop-modal').classList.add('hidden');
-            if (cropper) {
-                cropper.destroy();
-                cropper = null;
-            }
-        });
+        document.getElementById('crop-cancel').addEventListener('click', cancelAndCleanupCropper);
+        document.getElementById('crop-cancel-btn').addEventListener('click', cancelAndCleanupCropper);
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
