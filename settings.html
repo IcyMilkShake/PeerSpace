@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Forum</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="theme-loader.js"></script> <!-- THEME LOADER -->
+    <style>
+        /* Theme variables are globally available via :root or .theme-* on html element */
+        /* Apply theme variables to settings page elements */
+        body {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Light Theme variable overrides for this page if needed (usually not) */
+        /* Dark Theme variable overrides for this page if needed (usually not) */
+        /* Midnight Theme variable overrides for this page if needed (usually not) */
+        
+        /* Navigation */
+        nav {
+            background-color: var(--card-bg);
+            border-bottom-color: var(--border-color);
+        }
+        nav h1 { /* Forum Title */
+            color: var(--text-primary);
+        }
+        nav a#back-to-forum-link { /* Back to forum when logged out */
+            color: var(--link-color);
+        }
+        nav a#back-to-forum-link:hover {
+            color: var(--link-hover-color);
+        }
+        .nav-profile-button-hover span { /* User name in nav */
+             color: var(--text-primary);
+        }
+        .nav-profile-button-hover:hover { /* Hover for user button in nav */
+            background-color: var(--bg-secondary) !important;
+        }
+
+        /* Main page title */
+        main > h1 {
+            color: var(--text-primary);
+        }
+        
+        /* Setting Card Styling */
+        .setting-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color); /* Explicitly add border */
+            /* color: var(--text-primary); Implicitly inherited */
+        }
+        .setting-card h2 { /* Section titles like "Appearance" */
+            color: var(--text-primary);
+        }
+        .setting-card p { /* Descriptive text under titles */
+            color: var(--text-secondary);
+        }
+        
+        /* Radio button theme selection */
+        .setting-card label[for^="theme-"] { /* Labels for theme radio buttons */
+            color: var(--text-primary);
+            border: 1px solid var(--input-border); /* Themed border for the clickable label */
+        }
+        .setting-card label[for^="theme-"]:hover {
+            background-color: var(--input-bg); /* Subtle hover for label */
+        }
+        .setting-card input[type="radio"]:checked + label[for^="theme-"] {
+            border-color: var(--link-color); /* Highlight border for selected theme */
+            background-color: var(--input-bg); /* Can be same as hover or slightly different */
+        }
+        .setting-card input[type="radio"] + label[for^="theme-"] .radio-dot { /* The custom dot */
+            background-color: var(--link-color); /* Dot color when selected */
+            border-color: var(--input-border); /* Border of the circle */
+        }
+        .setting-card input[type="radio"] + label[for^="theme-"] .w-5.h-5 { /* The circle itself */
+             border-color: var(--input-border);
+        }
+         .setting-card input[type="radio"]:checked + label[for^="theme-"] .w-5.h-5 {
+             border-color: var(--link-color);
+        }
+
+
+        /* Placeholder Toggle Switches */
+        .setting-card label[for$="-toggle"] { /* Labels like "Enable Email Notifications" */
+            color: var(--text-primary);
+        }
+        .setting-card .toggle-bg { /* The track of the toggle */
+            background-color: var(--input-bg); /* Default (off) state */
+            border: 1px solid var(--input-border);
+        }
+        .setting-card .toggle-checkbox:checked + .toggle-label.toggle-bg { /* Track when checked */
+            background-color: var(--button-bg);
+            border-color: var(--button-bg);
+        }
+        .setting-card .toggle-checkbox { /* The circle/knob of the toggle */
+            background-color: var(--card-bg); /* Usually white or light */
+            border-color: var(--input-border); /* Border of the knob */
+        }
+         .setting-card .toggle-checkbox:checked {
+            border-color: var(--button-bg); /* Knob border when checked - can be same as track or distinct */
+        }
+
+
+        /* Profile image styling for nav */
+        .profile-img {
+            background-color: var(--input-bg); 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .profile-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .profile-initials { /* For initials text */
+            font-weight: 600;
+            color: var(--text-secondary); /* Use secondary text for initials like in other pages */
+        }
+
+        /* User profile modal in nav (similar to index.html user-profile) */
+        #user-profile-modal-settings { /* The modal itself */
+            background-color: var(--profile-modal-bg);
+            border-color: var(--border-color);
+        }
+        #user-profile-modal-settings .flex.items-center { /* User info section */
+            border-bottom-color: var(--border-color);
+        }
+        #user-profile-modal-settings #modal-profile-img-container-settings { /* Profile pic in modal */
+            border-color: var(--border-color);
+        }
+        #user-profile-modal-settings #modal-user-name-settings {
+             color: var(--text-primary);
+        }
+        #user-profile-modal-settings #modal-user-email-settings {
+            color: var(--text-secondary);
+        }
+        /* Style for links/buttons in this modal, using profile-menu-item class */
+        #user-profile-modal-settings a.profile-menu-item, 
+        #user-profile-modal-settings button.profile-menu-item { 
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 0.5rem 0.75rem; 
+            border-radius: 0.375rem; 
+            color: var(--text-primary);
+            transition: background-color 0.2s;
+        }
+        #user-profile-modal-settings a.profile-menu-item:hover,
+        #user-profile-modal-settings button.profile-menu-item:hover {
+            background-color: var(--bg-secondary);
+        }
+        #logout-btn-settings.profile-menu-item { /* Specific logout button styling */
+            background-color: #ef4444 !important; 
+            color: white !important;
+        }
+        #logout-btn-settings.profile-menu-item:hover {
+            background-color: #dc2626 !important; 
+        }
+
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Navigation -->
+    <nav class="shadow-md border-b"> <!-- bg-white was not here, but ensuring it's not -->
+        <div class="max-w-4xl mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <a href="/" class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-lg">F</span>
+                    </div>
+                    <h1 class="text-2xl font-bold">Forum</h1>
+                </a>
+                <div id="auth-section-settings">
+                    <!-- Auth status will be rendered here by JS -->
+                     <a href="/" class="text-blue-600 hover:text-blue-700">Back to Forum</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- User Profile Modal (for logged-in user nav on this page) -->
+    <div id="user-profile-modal-settings" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-4 border z-50 w-64">
+        <div class="flex items-center space-x-3 mb-3 pb-2 border-b"> <!-- Added pb-2 and border-b for consistency -->
+            <div id="modal-profile-img-container-settings" class="profile-img w-10 h-10 rounded-full border-2">
+                <!-- Profile image will be inserted here by JS -->
+            </div>
+            <div>
+                <div id="modal-user-name-settings" class="font-medium text-sm"></div>
+                <div id="modal-user-email-settings" class="text-xs"></div>
+            </div>
+        </div>
+        <a id="view-my-profile-link-settings" href="#"> <!-- JS adds .profile-menu-item -->
+            View My Profile
+        </a>
+        <button id="logout-btn-settings"> <!-- JS adds .profile-menu-item -->
+            Sign Out
+        </button>
+    </div>
+
+    <!-- Main Settings Content -->
+    <main class="max-w-2xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8">Settings</h1>
+
+        <!-- Appearance Settings -->
+        <section id="appearance-settings" class="setting-card bg-white rounded-lg shadow-md p-6 mb-8 border">
+            <h2 class="text-xl font-semibold mb-4">Appearance</h2>
+            <p class="text-sm text-gray-600 mb-1">Choose your preferred theme.</p>
+            <div class="space-y-3">
+                <div>
+                    <input type="radio" id="theme-light" name="theme" value="light" class="sr-only">
+                    <label for="theme-light" class="flex items-center cursor-pointer p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <span class="w-5 h-5 border-2 border-gray-300 rounded-full mr-3 flex items-center justify-center">
+                            <span class="radio-dot w-2.5 h-2.5 bg-blue-500 rounded-full hidden"></span>
+                        </span>
+                        Light Mode
+                    </label>
+                </div>
+                <div>
+                    <input type="radio" id="theme-dark" name="theme" value="dark" class="sr-only">
+                    <label for="theme-dark" class="flex items-center cursor-pointer p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                         <span class="w-5 h-5 border-2 border-gray-300 rounded-full mr-3 flex items-center justify-center">
+                            <span class="radio-dot w-2.5 h-2.5 bg-blue-500 rounded-full hidden"></span>
+                        </span>
+                        Dark Mode
+                    </label>
+                </div>
+                <div>
+                    <input type="radio" id="theme-midnight" name="theme" value="midnight" class="sr-only">
+                    <label for="theme-midnight" class="flex items-center cursor-pointer p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                         <span class="w-5 h-5 border-2 border-gray-300 rounded-full mr-3 flex items-center justify-center">
+                            <span class="radio-dot w-2.5 h-2.5 bg-blue-500 rounded-full hidden"></span>
+                        </span>
+                        Midnight Mode
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <!-- Placeholder Settings -->
+        <section id="placeholder-settings" class="setting-card bg-white rounded-lg shadow-md p-6 border">
+            <h2 class="text-xl font-semibold mb-4">Future Settings (Placeholders)</h2>
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <label for="notification-toggle" class="text-gray-700">Enable Email Notifications</label>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="notification-toggle" id="notification-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <label for="notification-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer toggle-bg"></label>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <label for="privacy-toggle" class="text-gray-700">Make Profile Private</label>
+                     <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="privacy-toggle" id="privacy-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <label for="privacy-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer toggle-bg"></label>
+                    </div>
+                </div>
+                 <div class="flex justify-between items-center">
+                    <label for="another-toggle" class="text-gray-700">Another Future Setting</label>
+                     <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="another-toggle" id="another-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <label for="another-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer toggle-bg"></label>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // --- Theme Management ---
+        function applyTheme(theme) {
+            document.documentElement.className = 'theme-' + theme;
+            localStorage.setItem('forumTheme', theme);
+
+            // Update radio buttons
+            const radioButtons = document.querySelectorAll('input[name="theme"]');
+            radioButtons.forEach(radio => {
+                radio.checked = (radio.value === theme);
+                const dot = radio.nextElementSibling.querySelector('.radio-dot');
+                if (dot) {
+                    dot.classList.toggle('hidden', radio.value !== theme);
+                }
+                // Style the label itself
+                radio.nextElementSibling.classList.toggle('border-blue-500', radio.value === theme);
+                radio.nextElementSibling.classList.toggle('bg-blue-50', radio.value === theme);
+
+
+            });
+             // Update toggle switch styles based on theme
+            updateToggleStyles(theme);
+        }
+        
+        function updateToggleStyles(theme) {
+            const isDark = theme === 'dark' || theme === 'midnight';
+            document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
+                const label = checkbox.nextElementSibling; // The toggle-bg label
+                if (isDark) {
+                    label.style.backgroundColor = checkbox.checked ? 'var(--button-bg)' : 'var(--input-bg)'; // Use theme variables
+                    checkbox.style.borderColor = 'var(--input-border)';
+                    checkbox.style.backgroundColor = 'var(--text-primary)'; // Toggle circle color
+                } else { // Light theme
+                    label.style.backgroundColor = checkbox.checked ? '#3B82F6' : '#CBD5E0'; // Tailwind blue-500 and gray-400
+                    checkbox.style.borderColor = '#a0aec0'; // gray-500
+                    checkbox.style.backgroundColor = 'white';
+                }
+            });
+        }
+
+
+        function loadTheme() {
+            const preferredTheme = localStorage.getItem('forumTheme') || 'dark'; // Default to dark
+            applyTheme(preferredTheme);
+            return preferredTheme;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentTheme = loadTheme();
+
+            const themeRadios = document.querySelectorAll('input[name="theme"]');
+            themeRadios.forEach(radio => {
+                radio.addEventListener('change', (event) => {
+                    applyTheme(event.target.value);
+                });
+            });
+             // Initial and on-change toggle styling
+            document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', () => updateToggleStyles(localStorage.getItem('forumTheme') || 'dark'));
+            });
+            updateToggleStyles(currentTheme); // Initial call
+
+            // Placeholder toggles - just for looks, no actual functionality
+            document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (event) => {
+                    const label = event.target.nextElementSibling;
+                    if (event.target.checked) {
+                        label.style.backgroundColor = (localStorage.getItem('forumTheme') === 'dark' || localStorage.getItem('forumTheme') === 'midnight') ? 'var(--button-bg)' : '#3B82F6';
+                    } else {
+                        label.style.backgroundColor = (localStorage.getItem('forumTheme') === 'dark' || localStorage.getItem('forumTheme') === 'midnight') ? 'var(--input-bg)' : '#CBD5E0';
+                    }
+                });
+            });
+
+            checkAuthStatusForSettingsPage();
+        });
+
+        // --- Auth & Nav specific to settings.html (similar to profile.html) ---
+        let currentLoggedInUserConfig = null;
+
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        function createProfileImageElementForSettings(photoUrl, name, sizeClasses = "w-10 h-10", textClasses = "text-xl") {
+            const container = document.createElement('div');
+            container.className = `profile-img ${sizeClasses} rounded-full bg-gray-300 flex items-center justify-center overflow-hidden`;
+            
+            if (photoUrl && photoUrl.trim() && photoUrl !== '/default-profile.png') {
+                const img = document.createElement('img');
+                img.className = 'w-full h-full object-cover';
+                img.alt = name || 'Profile';
+                img.onerror = function() {
+                    container.innerHTML = `<span class="profile-initials ${textClasses} font-semibold" style="color: var(--text-primary);">${getInitials(name)}</span>`;
+                };
+                img.src = photoUrl + '?t=' + Date.now();
+                container.appendChild(img);
+            } else {
+                container.innerHTML = `<span class="profile-initials ${textClasses} font-semibold" style="color: var(--text-primary);">${getInitials(name)}</span>`;
+            }
+            return container;
+        }
+
+        async function checkAuthStatusForSettingsPage() {
+            try {
+                const response = await fetch('/api/user', { credentials: 'include' });
+                if (response.ok) {
+                    currentLoggedInUserConfig = await response.json();
+                } else {
+                    currentLoggedInUserConfig = null;
+                }
+            } catch (error) {
+                console.error('Auth check failed on settings page:', error);
+                currentLoggedInUserConfig = null;
+            }
+            updateSettingsPageNav();
+        }
+
+        function updateSettingsPageNav() {
+            const authSection = document.getElementById('auth-section-settings');
+            const userProfileModal = document.getElementById('user-profile-modal-settings');
+
+            if (currentLoggedInUserConfig) {
+                const navProfileImgContainer = createProfileImageElementForSettings(currentLoggedInUserConfig.photo, currentLoggedInUserConfig.name, "w-8 h-8", "text-sm");
+                
+                authSection.innerHTML = `
+                    <button onclick="toggleSettingsProfileModal()" class="nav-profile-button-hover flex items-center space-x-2 p-1 rounded-lg transition-colors">
+                        <div id="nav-profile-img-container-settings"></div>
+                        <span class="font-medium text-sm">${escapeHtml(currentLoggedInUserConfig.name)}</span>
+                    </button>
+                `;
+                document.getElementById('nav-profile-img-container-settings').appendChild(navProfileImgContainer);
+
+                const modalImgContainer = document.getElementById('modal-profile-img-container-settings');
+                modalImgContainer.innerHTML = ''; 
+                modalImgContainer.appendChild(createProfileImageElementForSettings(currentLoggedInUserConfig.photo, currentLoggedInUserConfig.name, "w-10 h-10", "text-lg"));
+                
+                document.getElementById('modal-user-name-settings').textContent = currentLoggedInUserConfig.name;
+                document.getElementById('modal-user-email-settings').textContent = currentLoggedInUserConfig.email;
+                
+                const viewProfileLink = document.getElementById('view-my-profile-link-settings');
+                viewProfileLink.href = `/profile.html?id=${currentLoggedInUserConfig.id}`;
+                viewProfileLink.classList.add('profile-menu-item'); // Add class for styling
+
+                const logoutBtn = document.getElementById('logout-btn-settings');
+                logoutBtn.classList.add('profile-menu-item'); // Add class for styling (red will override bg)
+                logoutBtn.removeEventListener('click', logoutFromSettingsPage); // Prevent multiple listeners
+                logoutBtn.addEventListener('click', logoutFromSettingsPage);
+
+            } else {
+                authSection.innerHTML = '<a href="/" id="back-to-forum-link" class="hover:underline">Back to Forum</a>'; // Added ID and themed hover
+                if(userProfileModal) userProfileModal.classList.add('hidden');
+            }
+        }
+        
+        function toggleSettingsProfileModal() {
+            const userProfileModal = document.getElementById('user-profile-modal-settings');
+            if (!currentLoggedInUserConfig || !userProfileModal) return;
+            userProfileModal.classList.toggle('hidden');
+        }
+
+        async function logoutFromSettingsPage() {
+            try {
+                await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+                currentLoggedInUserConfig = null;
+                updateSettingsPageNav();
+                window.location.href = '/'; 
+            } catch (error) {
+                console.error('Logout failed:', error);
+            }
+        }
+        
+        function escapeHtml(text) {
+            if (text === null || typeof text === 'undefined') return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.addEventListener('click', (e) => {
+            const userProfileModal = document.getElementById('user-profile-modal-settings');
+            const authSection = document.getElementById('auth-section-settings');
+            if (authSection && userProfileModal && !authSection.contains(e.target) && !userProfileModal.contains(e.target)) {
+                userProfileModal.classList.add('hidden');
+            }
+        });
+        
+        // Style for toggle switch
+        const style = document.createElement('style');
+        style.textContent = `
+            .toggle-checkbox:checked {
+                right: 0;
+                border-color: var(--button-bg); /* Use theme variable */
+            }
+            .toggle-checkbox:checked + .toggle-label {
+                background-color: var(--button-bg); /* Use theme variable */
+            }
+            .radio-dot {
+                display: none; /* Hide by default */
+            }
+            input[type="radio"]:checked + label .radio-dot {
+                display: block; /* Show when checked */
+            }
+            input[type="radio"] + label {
+                border-color: var(--input-border);
+            }
+             input[type="radio"]:checked + label {
+                border-color: var(--link-color) !important; /* Ensure this overrides */
+                background-color: var(--bg-secondary) !important; /* Lighter background for selection */
+            }
+            input[type="radio"] + label:hover {
+                background-color: var(--bg-secondary);
+            }
+        `;
+        document.head.appendChild(style);
+
+    </script>
+</body>
+</html>

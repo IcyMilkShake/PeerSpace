@@ -5,36 +5,291 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Profile - Forum</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="styles.css"> <!-- If you have additional global styles -->
+    <script src="theme-loader.js"></script> <!-- THEME LOADER -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
     <style>
-        /* Basic styling, can be expanded */
-        .profile-header {
-            background-color: #f9fafb; /* Tailwind gray-50 */
+        /* Theme variables are globally available via :root or .theme-* on html element */
+        /* Apply theme variables to profile page elements */
+        body {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
         }
+        nav { /* Main navigation bar */
+            background-color: var(--card-bg);
+            border-bottom-color: var(--border-color);
+        }
+        nav h1 { /* Forum title */
+            color: var(--text-primary);
+        }
+        nav a#back-to-forum-link { /* Specific ID for "Back to Forum" if needed, or general 'a' */
+            color: var(--link-color);
+        }
+        nav a#back-to-forum-link:hover {
+            color: var(--link-hover-color);
+        }
+        /* User profile button in nav */
+        .nav-profile-button-hover { /* Added for consistency with index.html */
+             /* Base styles are from Tailwind, color from span */
+        }
+        .nav-profile-button-hover span {
+             color: var(--text-primary);
+        }
+        .nav-profile-button-hover:hover {
+            background-color: var(--bg-secondary) !important;
+        }
+
+
+        #profile-content { /* Main profile card */
+            background-color: var(--card-bg);
+            /* border-color: var(--border-color); Tailwind 'shadow-lg' is used, border might be redundant */
+        }
+        .profile-header { /* Header within the profile card */
+            background-color: var(--bg-primary); 
+            border-bottom-color: var(--border-color);
+        }
+        #profile-name {
+            color: var(--text-primary);
+        }
+        #profile-joined-date {
+            color: var(--text-secondary);
+        }
+        #profile-description-view {
+            color: var(--text-primary); /* Changed from secondary for better readability */
+        }
+         #profile-description-edit::placeholder {
+            color: var(--text-secondary);
+        }
+        #profile-description-edit { /* Textarea for editing description */
+            background-color: var(--input-bg);
+            border-color: var(--input-border);
+            color: var(--text-primary);
+        }
+        #profile-description-edit:focus {
+            border-color: var(--input-focus-ring);
+            --tw-ring-color: var(--input-focus-ring); /* For Tailwind's focus ring utility */
+        }
+        
+        /* Buttons on profile page - general styling for primary and secondary */
+        .button-primary {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            padding: 0.5rem 1rem; /* px-4 py-2 */
+            border-radius: 0.375rem; /* rounded-lg */
+            font-weight: 500; /* font-medium */
+            transition: background-color 0.2s;
+            border: 1px solid transparent; /* Ensure consistent height with bordered buttons */
+        }
+        .button-primary:hover {
+            background-color: var(--button-hover-bg);
+        }
+        .button-secondary {
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem; /* px-4 py-2 */
+            border-radius: 0.375rem; /* rounded-lg */
+            font-weight: 500; /* font-medium */
+            border: 1px solid var(--border-color);
+            transition: background-color 0.2s;
+        }
+        .button-secondary:hover {
+            background-color: var(--bg-primary); /* Slightly darker than input-bg for hover */
+        }
+        /* Apply to specific buttons */
+        #edit-description-button, #save-description, #change-profile-picture-button {
+            /* These will get .button-primary class via JS or directly if static */
+        }
+        #cancel-edit-description {
+            /* This will get .button-secondary class */
+        }
+
+
+        /* Profile avatar styles */
         .profile-avatar {
             width: 128px;
             height: 128px;
             object-fit: cover;
-            border: 4px solid white;
+            border: 4px solid var(--card-bg); /* Border color matching card background for floating effect */
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background-color: var(--input-bg); /* Fallback for initials */
         }
-        .profile-avatar-placeholder {
-            width: 128px;
-            height: 128px;
-            background-color: #e5e7eb; /* Tailwind gray-200 */
+         .profile-avatar-placeholder .profile-initials { /* For initials */
+            font-size: 3rem;
+            color: var(--text-secondary);
+        }
+
+
+        #profile-loading p, #profile-error p {
+            color: var(--text-secondary);
+        }
+         #profile-error a { /* Go to homepage button on error */
+            background-color: var(--button-bg);
+            color: var(--button-text);
+        }
+        #profile-error a:hover {
+             background-color: var(--button-hover-bg);
+        }
+
+        /* User Profile Modal in nav (for logged-in user) */
+        #user-profile-modal {
+            background-color: var(--profile-modal-bg);
+            border-color: var(--border-color);
+        }
+        /* User Profile Modal in nav on profile.html */
+        #user-profile-modal { /* The modal itself */
+            background-color: var(--profile-modal-bg);
+            border-color: var(--border-color);
+            /* Tailwind classes: fixed top-16 right-4 rounded-lg shadow-lg p-4 border z-50 w-64 */
+        }
+        #user-profile-modal .flex.items-center { /* User info section */
+            border-bottom-color: var(--border-color);
+        }
+        #user-profile-modal #modal-profile-img-container { /* Profile pic in modal */
+            border-color: var(--border-color);
+        }
+        #user-profile-modal #modal-user-name-settings, /* IDs seem to be from settings.html, correct to profile if different */
+        #user-profile-modal #modal-user-name {
+             color: var(--text-primary);
+        }
+        #user-profile-modal #modal-user-email-settings,
+        #user-profile-modal #modal-user-email {
+            color: var(--text-secondary);
+        }
+        #user-profile-modal a.profile-menu-item, 
+        #user-profile-modal button.profile-menu-item { /* Style for links/buttons in this modal */
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 0.5rem 0.75rem; /* Match user-profile from index.html: py-2 px-3 */
+            border-radius: 0.375rem; /* rounded-md */
+            color: var(--text-primary);
+            transition: background-color 0.2s;
+        }
+        #user-profile-modal a.profile-menu-item:hover,
+        #user-profile-modal button.profile-menu-item:hover {
+            background-color: var(--bg-secondary);
+        }
+        #logout-btn-profile { 
+            /* This specific ID should also get profile-menu-item class if it's a button in the list */
+            /* For distinct red color: */
+            background-color: #ef4444 !important; /* Tailwind red-500 */
+            color: white !important;
+        }
+        #logout-btn-profile:hover {
+            background-color: #dc2626 !important; /* Tailwind red-600 */
+        }
+
+        .profile-img { /* General profile image container styling */
+            background-color: var(--input-bg); /* Fallback for initials */
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 3rem;
-            color: #4b5563; /* Tailwind gray-600 */
-            border: 4px solid white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+        .profile-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .profile-initials { /* For initials text */
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* Copied Cropper and Modal Styles from index.html (and themed) */
+        .file-upload { /* Used for the change profile picture button if styled as a label */
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .file-upload input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        .crop-image-container {
+            width: 100%;
+            height: 60vh; /* As in index.html */
+            max-height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-primary); /* Themed */
+            border: 2px dashed var(--border-color); /* Themed */
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        #crop-image {
+            max-width: 100%;
+            max-height: 100%;
+            display: block;
+        }
+        .modal-overlay { /* Common for all modals: crop, upload, confirm */
+            backdrop-filter: blur(4px);
+            background-color: var(--modal-overlay-bg); /* Themed */
+        }
+        
+        /* Crop Modal Content */
+        #crop-modal .bg-white { /* This was specific, now use var */
+             background-color: var(--card-bg);
+        }
+        #crop-modal h3 {
+            color: var(--text-primary);
+        }
+        #crop-modal .text-gray-500, #crop-modal .text-gray-600 { /* Close button, cancel text */
+            color: var(--text-secondary);
+        }
+        #crop-modal .text-gray-500:hover, #crop-modal .text-gray-600:hover {
+            color: var(--text-primary);
+        }
+        #crop-save { /* Save button in crop modal */
+            background-color: var(--button-bg);
+            color: var(--button-text);
+        }
+        #crop-save:hover {
+            background-color: var(--button-hover-bg);
+        }
+        #crop-cancel-btn { /* Cancel button text in crop modal */
+             color: var(--text-secondary);
+        }
+        #crop-cancel-btn:hover {
+            color: var(--text-primary);
+        }
+
+        /* Upload Progress Modal */
+        #upload-modal .bg-white { /* Specific to default, now use var */
+            background-color: var(--card-bg);
+        }
+        #upload-modal h3, #upload-modal p {
+            color: var(--text-primary);
+        }
+        #upload-modal .bg-gray-200 { /* Progress bar background */
+            background-color: var(--input-bg);
+        }
+        #upload-modal .bg-blue-600 { /* Progress bar fill */
+            background-color: var(--button-bg);
+        }
+        
+        @media (max-width: 768px) {
+            .crop-modal-content { /* This class is on the div inside #crop-modal */
+                margin: 1rem;
+                max-height: 90vh;
+            }
+            .crop-image-container {
+                height: 50vh;
+                max-height: 400px;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="min-h-screen"> 
+    <!-- Notification Container (similar to index.html) -->
+    <div id="notification-container" class="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm sm:max-w-md p-4 space-y-3 z-[100]">
+        <!-- Notifications will be dynamically added here -->
+    </div>
+
     <!-- Navigation -->
-    <nav class="bg-white shadow-md border-b">
+    <nav class="shadow-md border-b"> <!-- bg-white was not here, but ensuring it's not -->
         <div class="max-w-4xl mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
                 <a href="/" class="flex items-center space-x-2">
@@ -77,34 +332,46 @@
                 <!-- Edit Description Form (hidden by default) -->
                 <div id="edit-description-form" class="hidden mt-4">
                     <textarea id="profile-description-edit" rows="4" 
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
-                              placeholder="Tell us about yourself..."></textarea>
+                              class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 resize-y"
+                              placeholder="Tell us about yourself..."></textarea> <!-- Theme variables for border, bg, color, focus are applied via CSS -->
                     <div class="mt-3 flex justify-end space-x-2">
-                        <button id="cancel-edit-description" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg">
+                        <button id="cancel-edit-description" class="button-secondary text-sm"> <!-- Applied button-secondary -->
                             Cancel
                         </button>
-                        <button id="save-description" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
+                        <button id="save-description" class="button-primary text-sm"> <!-- Applied button-primary -->
                             Save Description
                         </button>
                     </div>
                 </div>
 
-                <button id="edit-description-button" class="hidden mt-4 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">
+                <button id="edit-description-button" class="button-primary hidden mt-4 text-sm"> <!-- Applied button-primary -->
                     Edit Description
                 </button>
+
+                <!-- Change Profile Picture Button - Shown only if it's the current user's profile -->
+                <div id="change-picture-section" class="hidden mt-6 pt-6 border-t"> <!-- Theme variable for border-t -->
+                    <h3 class="text-xl font-semibold mb-3">Profile Picture</h3> <!-- Theme variable for color -->
+                    <div class="file-upload">
+                        <input type="file" id="profile-picture-input-profile-page" accept="image/*" class="hidden"/>
+                        <label for="profile-picture-input-profile-page" id="change-profile-picture-button" class="button-primary cursor-pointer inline-block text-sm"> <!-- Applied button-primary -->
+                            Change Profile Picture
+                        </label>
+                    </div>
+                </div>
+
             </div>
         </div>
 
         <div id="profile-error" class="hidden text-center py-12">
-            <p class="text-red-500">Could not load profile. The user may not exist or there was an error.</p>
-            <a href="/" class="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">Go to Homepage</a>
+            <p>Could not load profile. The user may not exist or there was an error.</p> <!-- Theme variable for color -->
+            <a href="/" id="go-home-error-btn" class="button-primary mt-4 inline-block">Go to Homepage</a> <!-- Applied button-primary -->
         </div>
     </main>
 
-    <!-- User Profile Modal (similar to index.html, for logged-in user nav) -->
-    <div id="user-profile-modal" class="hidden fixed top-4 right-4 bg-white rounded-lg shadow-lg p-4 border z-50 w-64">
+    <!-- User Profile Modal (for logged-in user nav on this page) -->
+    <div id="user-profile-modal" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-4 border z-50 w-64"> <!-- Adjusted top -->
         <div class="flex items-center space-x-3 mb-3">
-            <div id="modal-profile-img-container" class="profile-img w-10 h-10 rounded-full bg-gray-300 cursor-pointer relative border-2 border-gray-200">
+            <div id="modal-profile-img-container" class="profile-img w-10 h-10 rounded-full border-2">
                 <!-- Profile image will be inserted here by JS -->
             </div>
             <div>
@@ -113,18 +380,57 @@
             </div>
         </div>
         <!-- Link to own profile -->
-        <a id="view-my-profile-link" href="#" class="block w-full text-left py-2 px-3 hover:bg-gray-100 rounded-md text-sm text-gray-700 mb-1">
+                <a id="view-my-profile-link" href="#" class="profile-menu-item mb-1"> <!-- Added profile-menu-item -->
             View My Profile
         </a>
-        <button id="logout-btn-profile" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg font-medium text-sm transition-colors">
+                <button id="logout-btn-profile" class="profile-menu-item"> <!-- Added profile-menu-item, specific red style will override parts -->
             Sign Out
         </button>
     </div>
 
+    <!-- Image Cropper Modal (Copied from index.html) -->
+    <div id="crop-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[60] p-4"> <!-- Ensure z-index is higher than nav modal if needed -->
+        <div class="bg-white rounded-lg crop-modal-content max-w-4xl w-full max-h-[95vh] overflow-hidden">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">Crop Profile Picture</h3>
+                    <button id="crop-cancel" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="crop-image-container mb-4">
+                    <img id="crop-image" />
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button id="crop-cancel-btn" class="px-4 py-2 hover:text-gray-800 transition-colors">
+                        Cancel
+                    </button>
+                    <button id="crop-save" class="px-6 py-2 rounded-lg font-medium transition-colors">
+                        Save Picture
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Progress Modal (Copied from index.html) -->
+    <div id="upload-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[70]">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <h3 class="text-lg font-semibold mb-4">Uploading Profile Picture</h3>
+            <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+                <div id="upload-progress" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p class="text-sm text-gray-600 text-center">Please wait...</p>
+        </div>
+    </div>
+
+
     <script>
-        // JavaScript for profile page will go here in the next step
-        // For now, basic auth check and nav setup
         let currentLoggedInUser = null;
+        let profileUserId = null; // To store the ID of the profile being viewed
+        let cropper = null; // For profile picture cropping
 
         // Get initials from name
         function getInitials(name) {
@@ -132,25 +438,106 @@
             return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
         }
         
-        // Create profile image element with fallback
+        // Create profile image element with fallback - adjusted for theme
         function createProfileImageElement(photoUrl, name, sizeClasses = "w-10 h-10", textClasses = "text-xl") {
             const container = document.createElement('div');
-            container.className = `profile-img ${sizeClasses} rounded-full bg-gray-300 flex items-center justify-center overflow-hidden`;
+            // bg-gray-300 is a fallback, actual color will be from theme var --input-bg
+            container.className = `profile-img ${sizeClasses} rounded-full flex items-center justify-center overflow-hidden`;
+            container.style.backgroundColor = 'var(--input-bg)'; // Apply theme variable for background of initials
             
             if (photoUrl && photoUrl.trim() && photoUrl !== '/default-profile.png') {
                 const img = document.createElement('img');
-                img.className = 'w-full h-full object-cover';
+                img.className = 'w-full h-full object-cover'; // Ensure image covers the round container
                 img.alt = name || 'Profile';
-                img.onerror = function() {
-                    container.innerHTML = `<span class="profile-initials ${textClasses} font-semibold text-gray-600">${getInitials(name)}</span>`;
+                img.onerror = function() { // Fallback to initials if image fails
+                    container.innerHTML = `<span class="profile-initials ${textClasses} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
                 };
                 img.src = photoUrl + '?t=' + Date.now(); // Cache busting
                 container.appendChild(img);
-            } else {
-                container.innerHTML = `<span class="profile-initials ${textClasses} font-semibold text-gray-600">${getInitials(name)}</span>`;
+            } else { // Initials for no photo or default photo
+                container.innerHTML = `<span class="profile-initials ${textClasses} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
             }
             return container;
         }
+
+        // --- CropperJS Functions (Copied and adapted from index.html) ---
+        function initializeCropper(imageElement) {
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            cropper = new Cropper(imageElement, {
+                aspectRatio: 1, viewMode: 1, dragMode: 'move', autoCropArea: 0.8,
+                restore: false, guides: true, center: true, highlight: false,
+                cropBoxMovable: true, cropBoxResizable: true, toggleDragModeOnDblclick: false,
+                responsive: true, checkOrientation: false, modal: true, background: true,
+                minContainerWidth: 200, minContainerHeight: 200,
+            });
+        }
+
+        function handleProfilePictureSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            event.target.value = ''; // Reset file input
+
+            if (!file.type.startsWith('image/')) {
+                showNotification('Please select an image file', 'warning'); return;
+            }
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                showNotification('Image too large (max 5MB)', 'warning'); return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const cropImage = document.getElementById('crop-image');
+                if (cropper) cropper.destroy();
+                cropImage.src = e.target.result;
+                document.getElementById('crop-modal').classList.remove('hidden');
+                // User profile modal in nav might be open, ensure it's hidden
+                const navUserModal = document.getElementById('user-profile-modal');
+                if(navUserModal) navUserModal.classList.add('hidden');
+
+                cropImage.onload = () => setTimeout(() => initializeCropper(cropImage), 100);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function uploadCroppedImage() {
+            if (!cropper) { showNotification('Cropper not initialized.', 'error'); return; }
+            const canvas = cropper.getCroppedCanvas({ width: 300, height: 300, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
+            if (!canvas) { showNotification('Failed to crop image.', 'error'); return; }
+
+            return new Promise((resolve, reject) => {
+                canvas.toBlob(async (blob) => {
+                    if (!blob) { reject(new Error('Blob creation failed')); return; }
+                    const formData = new FormData();
+                    formData.append('profilePicture', blob, 'profile.png');
+                    
+                    const uploadModal = document.getElementById('upload-modal');
+                    const progressBar = document.getElementById('upload-progress');
+                    uploadModal.classList.remove('hidden');
+                    progressBar.style.width = '0%';
+
+                    const xhr = new XMLHttpRequest();
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) progressBar.style.width = (e.loaded / e.total) * 100 + '%';
+                    };
+                    xhr.onload = () => {
+                        uploadModal.classList.add('hidden');
+                        if (xhr.status === 200) resolve(JSON.parse(xhr.responseText));
+                        else reject(new Error(`Upload failed: ${xhr.statusText}`));
+                    };
+                    xhr.onerror = () => {
+                        uploadModal.classList.add('hidden');
+                        reject(new Error('Upload network error'));
+                    };
+                    xhr.open('POST', '/api/user/profile-picture');
+                    // Assuming isAuthenticated middleware on server handles auth via session cookie
+                    xhr.send(formData);
+                }, 'image/png', 0.9);
+            });
+        }
+        // --- End CropperJS Functions ---
 
 
         async function checkAuthStatusForProfilePage() {
@@ -158,19 +545,17 @@
                 const response = await fetch('/api/user', { credentials: 'include' });
                 if (response.ok) {
                     currentLoggedInUser = await response.json();
-                    updateProfilePageNav();
                 } else {
                     currentLoggedInUser = null;
-                    updateProfilePageNav();
                 }
             } catch (error) {
                 console.error('Auth check failed on profile page:', error);
                 currentLoggedInUser = null;
-                updateProfilePageNav();
             }
-            // This function will be expanded in the next step to fetch and display the profile data
-            // For now, it just sets up the navigation for the logged-in user
+            updateProfilePageNav(); // Call this regardless to update nav based on login status
+            // loadProfileData() will be called after this in DOMContentLoaded
         }
+
 
         function updateProfilePageNav() {
             const authSection = document.getElementById('auth-section-profile');
@@ -180,9 +565,9 @@
                 const navProfileImgContainer = createProfileImageElement(currentLoggedInUser.photo, currentLoggedInUser.name, "w-8 h-8", "text-sm");
                 
                 authSection.innerHTML = `
-                    <button onclick="toggleProfileModal()" class="flex items-center space-x-2 hover:bg-gray-100 p-1 rounded-lg transition-colors">
+                    <button onclick="toggleProfileModal()" class="nav-profile-button-hover flex items-center space-x-2 p-1 rounded-lg transition-colors">
                         <div id="nav-profile-img-container-profile"></div>
-                        <span class="font-medium text-gray-700 text-sm">${escapeHtml(currentLoggedInUser.name)}</span>
+                        <span class="font-medium text-sm">${escapeHtml(currentLoggedInUser.name)}</span>
                     </button>
                 `;
                 document.getElementById('nav-profile-img-container-profile').appendChild(navProfileImgContainer);
@@ -237,10 +622,6 @@
                 userProfileModal.classList.add('hidden');
             }
         });
-        
-        // Initial calls
-        let profileUserId = null;
-
         function getUserIdFromUrl() {
             const params = new URLSearchParams(window.location.search);
             return params.get('id');
@@ -309,8 +690,14 @@
                     document.getElementById('edit-description-form').classList.remove('hidden');
                     descriptionEditInput.focus();
                 };
+
+                // Show change profile picture section
+                document.getElementById('change-picture-section').classList.remove('hidden');
+                document.getElementById('profile-picture-input-profile-page').addEventListener('change', handleProfilePictureSelect);
+
             } else {
                 editButton.classList.add('hidden');
+                document.getElementById('change-picture-section').classList.add('hidden');
             }
         }
 
@@ -376,10 +763,99 @@
         document.getElementById('save-description').addEventListener('click', saveDescription);
         document.getElementById('cancel-edit-description').addEventListener('click', cancelEditDescription);
 
+        // Event Listeners for Cropper Modal
+        document.getElementById('crop-save').addEventListener('click', async () => {
+            try {
+                const result = await uploadCroppedImage(); // This now uses the XHR upload
+                if (result && result.success) {
+                    if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
+                        currentLoggedInUser.photo = result.photo; // Update local cache for logged-in user
+                    }
+                    // Re-render the main profile avatar on this page
+                    const avatarContainer = document.getElementById('profile-avatar-container');
+                    avatarContainer.innerHTML = ''; // Clear previous
+                    const newAvatar = createProfileImageElement(result.photo, document.getElementById('profile-name').textContent, "profile-avatar", "text-5xl");
+                    avatarContainer.appendChild(newAvatar);
+                    
+                    // Also update the avatar in the nav modal if it's the current user's profile
+                    if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
+                         updateProfilePageNav(); // This will refresh the nav modal with new pic
+                    }
+
+                    document.getElementById('crop-modal').classList.add('hidden');
+                    if (cropper) { cropper.destroy(); cropper = null; }
+                    showNotification('Profile picture updated successfully!', 'success');
+                } else {
+                    showNotification(result.error || 'Failed to update profile picture.', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating profile picture:', error);
+                showNotification(`Failed to update profile picture: ${error.message}`, 'error');
+                document.getElementById('crop-modal').classList.add('hidden');
+                if (cropper) { cropper.destroy(); cropper = null; }
+            }
+        });
+
+        function closeCropModal() {
+            document.getElementById('crop-modal').classList.add('hidden');
+            if (cropper) { cropper.destroy(); cropper = null; }
+        }
+        document.getElementById('crop-cancel').addEventListener('click', closeCropModal);
+        document.getElementById('crop-cancel-btn').addEventListener('click', closeCropModal);
+        window.addEventListener('resize', () => { if (cropper) cropper.resize(); });
+
+
+        // --- Notification System (Full version from index.html) ---
+        const notificationContainerProfile = document.getElementById('notification-container');
+
+        function showNotification(message, type = 'info', duration = 3000) {
+            if (!notificationContainerProfile) { // Check if container exists on this page
+                console.warn("Notification container not found on profile.html. Falling back to alert.");
+                alert(`${type.toUpperCase()}: ${message}`);
+                return;
+            }
+
+            const notificationId = `notif-profile-${Date.now()}`;
+            const notification = document.createElement('div');
+            notification.id = notificationId;
+            // Basic classes, assuming Tailwind is available or similar global styles for notifications
+            notification.className = `notification notification-${type}`; // Relies on global styles for .notification, .notification-type
+            
+            const messageSpan = document.createElement('span');
+            messageSpan.textContent = message;
+            notification.appendChild(messageSpan);
+
+            const closeButton = document.createElement('button');
+            closeButton.className = 'notification-close-btn'; // Relies on global styles
+            closeButton.innerHTML = '&times;';
+            closeButton.onclick = () => {
+                notification.classList.remove('notification-visible'); // Relies on global styles
+                setTimeout(() => notification.remove(), 300); 
+            };
+            notification.appendChild(closeButton);
+
+            notificationContainerProfile.appendChild(notification);
+
+            setTimeout(() => {
+                notification.classList.add('notification-visible'); // Relies on global styles
+            }, 50); 
+
+            if (duration > 0) {
+                setTimeout(() => {
+                    if (document.getElementById(notificationId)) {
+                        notification.classList.remove('notification-visible');
+                        setTimeout(() => notification.remove(), 300);
+                    }
+                }, duration);
+            }
+        }
+        // --- End Notification System ---
+
         // Modified Initial calls
         document.addEventListener('DOMContentLoaded', async () => {
-            await checkAuthStatusForProfilePage(); // Ensure logged-in user status is known first
-            await loadProfileData(); // Then load the profile of the user whose page this is
+            // theme-loader.js already applies theme by the time DOMContentLoaded fires
+            await checkAuthStatusForProfilePage(); 
+            await loadProfileData(); 
         });
 
     </script>

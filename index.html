@@ -7,7 +7,372 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+    <script src="theme-loader.js"></script> <!-- THEME LOADER -->
     <style>
+        /* --- Theme Variables --- */
+        /* Light Theme (will be default if no theme is set or if 'light' is chosen) */
+        .theme-light {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9fafb; /* gray-50 */
+            --text-primary: #1f2937; /* gray-800 */
+            --text-secondary: #6b7280; /* gray-500 */
+            --border-color: #e5e7eb; /* gray-200 */
+            --link-color: #2563eb; /* blue-600 */
+            --link-hover-color: #1d4ed8; /* blue-700 */
+            --button-bg: #3b82f6; /* blue-500 */
+            --button-text: #ffffff;
+            --button-hover-bg: #2563eb; /* blue-600 */
+            --card-bg: #ffffff;
+            --input-bg: #ffffff;
+            --input-border: #d1d5db; /* gray-300 */
+            --input-focus-ring: #3b82f6; /* blue-500 */
+            --modal-overlay-bg: rgba(0, 0, 0, 0.5);
+            --profile-modal-bg: var(--card-bg);
+            --notification-success-bg: #10B981;
+            --notification-error-bg: #EF4444;
+            --notification-info-bg: #3B82F6;
+            --notification-warning-bg: #F59E0B;
+            --notification-text-color: #ffffff;
+            --code-bg: #f3f4f6; /* gray-100 */
+            --code-text: #374151; /* gray-700 */
+            --blockquote-border: #d1d5db; /* gray-300 */
+            --blockquote-text: #4b5563; /* gray-600 */
+        }
+
+        /* Dark Theme - Refined Palette */
+        .theme-dark {
+            --bg-primary: #1e293b;       /* Tailwind slate-800 */
+            --bg-secondary: #0f172a;     /* Tailwind slate-900 */
+            --text-primary: #f1f5f9;     /* Tailwind slate-100 */
+            --text-secondary: #94a3b8;   /* Tailwind slate-400 */
+            --border-color: #334155;     /* Tailwind slate-700 */
+            --link-color: #38bdf8;       /* Tailwind sky-400 */
+            --link-hover-color: #7dd3fc; /* Tailwind sky-300 */
+            --button-bg: #38bdf8;       /* Tailwind sky-400 */
+            --button-text: #0f172a;     /* Tailwind slate-900 (for contrast on light blue button) */
+            --button-hover-bg: #0ea5e9; /* Tailwind sky-500 */
+            --card-bg: #1e293b;         /* Tailwind slate-800 (same as primary bg for flatter look or #283648 for slight diff) */
+            --input-bg: #334155;       /* Tailwind slate-700 */
+            --input-border: #475569;   /* Tailwind slate-600 */
+            --input-focus-ring: #38bdf8; /* Tailwind sky-400 */
+            --modal-overlay-bg: rgba(15, 23, 42, 0.7); /* slate-900 with opacity */
+            --profile-modal-bg: #283648; /* Slightly lighter than primary card for depth */
+            --notification-success-bg: #16a34a; /* Tailwind green-600 */
+            --notification-error-bg: #dc2626;   /* Tailwind red-600 */
+            --notification-info-bg: #2563eb;    /* Tailwind blue-600 */
+            --notification-warning-bg: #f59e0b; /* Tailwind amber-500 */
+            --notification-text-color: #f1f5f9; /* Tailwind slate-100 */
+            --code-bg: #334155;         /* Tailwind slate-700 */
+            --code-text: #e2e8f0;       /* Tailwind slate-200 */
+            --blockquote-border: #475569; /* Tailwind slate-600 */
+            --blockquote-text: #94a3b8;   /* Tailwind slate-400 */
+        }
+
+        /* Midnight Theme - Refined Palette (Deeper Dark) */
+        .theme-midnight {
+            --bg-primary: #0f172a;       /* Tailwind slate-900 */
+            --bg-secondary: #020617;     /* Tailwind slate-950 (very dark) */
+            --text-primary: #cbd5e1;     /* Tailwind slate-300 */
+            --text-secondary: #64748b;   /* Tailwind slate-500 */
+            --border-color: #1e293b;     /* Tailwind slate-800 */
+            --link-color: #38bdf8;       /* Tailwind sky-400 */
+            --link-hover-color: #7dd3fc; /* Tailwind sky-300 */
+            --button-bg: #38bdf8;       /* Tailwind sky-400 */
+            --button-text: #020617;     /* Tailwind slate-950 (for contrast) */
+            --button-hover-bg: #0ea5e9; /* Tailwind sky-500 */
+            --card-bg: #0f172a;         /* Tailwind slate-900 */
+            --input-bg: #1e293b;       /* Tailwind slate-800 */
+            --input-border: #334155;   /* Tailwind slate-700 */
+            --input-focus-ring: #38bdf8; /* Tailwind sky-400 */
+            --modal-overlay-bg: rgba(2, 6, 23, 0.8); /* slate-950 with opacity */
+            --profile-modal-bg: #1e293b; /* Tailwind slate-800 */
+            --notification-success-bg: #15803d; /* Tailwind green-700 */
+            --notification-error-bg: #b91c1c;   /* Tailwind red-700 */
+            --notification-info-bg: #1d4ed8;    /* Tailwind blue-700 */
+            --notification-warning-bg: #d97706; /* Tailwind amber-600 */
+            --notification-text-color: #e2e8f0; /* Tailwind slate-200 */
+            --code-bg: #1e293b;         /* Tailwind slate-800 */
+            --code-text: #cbd5e1;       /* Tailwind slate-300 */
+            --blockquote-border: #334155; /* Tailwind slate-700 */
+            --blockquote-text: #94a3b8;   /* Tailwind slate-400 */
+        }
+
+        /* --- Apply Theme Variables --- */
+        body {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        nav {
+            background-color: var(--card-bg);
+            border-bottom-color: var(--border-color);
+        }
+        nav h1, nav #login-btn, nav #auth-section button span {
+            color: var(--text-primary);
+        }
+        nav #login-btn { /* For when user is logged out */
+             background-color: var(--button-bg);
+             color: var(--button-text);
+        }
+        nav #login-btn:hover {
+            background-color: var(--button-hover-bg);
+        }
+        
+        /* Welcome message */
+        #welcome-message {
+            background-color: var(--card-bg); /* Use card-bg for consistency */
+            border-color: var(--border-color);
+            color: var(--text-primary); /* Title color */
+        }
+        #welcome-message h2 {
+             color: var(--text-primary);
+        }
+        #welcome-message p {
+            color: var(--text-secondary); /* Subtext color */
+        }
+        
+        /* Create Post Form */
+        #create-post-form {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+        }
+        #create-post-form h2, #create-post-form label {
+            color: var(--text-primary);
+        }
+        #create-post-form input[type="text"], #create-post-form textarea {
+            background-color: var(--input-bg);
+            border-color: var(--input-border);
+            color: var(--text-primary);
+        }
+        #create-post-form input[type="text"]:focus, #create-post-form textarea:focus {
+            border-color: var(--input-focus-ring);
+            --tw-ring-color: var(--input-focus-ring); /* For Tailwind focus ring */
+        }
+        #create-post-form button[type="submit"] {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+        }
+        #create-post-form button[type="submit"]:hover {
+            background-color: var(--button-hover-bg);
+        }
+
+        /* Posts */
+        article.bg-white { /* Assuming articles use bg-white which will be var(--card-bg) */
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+        }
+        article h2, article .font-medium.text-gray-800 { /* Post title and author name */
+            color: var(--text-primary);
+        }
+        article .text-gray-700, article .text-gray-700 p { /* Post content */
+            color: var(--text-primary); /* Use primary text for content for better readability */
+        }
+        article .text-sm.text-gray-500 { /* Timestamps, comment counts */
+            color: var(--text-secondary);
+        }
+        article .border-t, article .border-b {
+            border-color: var(--border-color);
+        }
+        
+        /* Comments */
+        .comment-wrapper .bg-gray-50 { /* Comment background */
+            background-color: var(--bg-secondary); /* Slightly different from card for nesting */
+        }
+        .comment-wrapper .font-medium.text-gray-800 { /* Comment author */
+            color: var(--text-primary);
+        }
+        .comment-wrapper .text-gray-700 { /* Comment text */
+            color: var(--text-primary);
+        }
+        .comment-actions button, .comment-actions .text-xs.text-gray-500 {
+            color: var(--text-secondary);
+        }
+        .comment-actions button:hover {
+            color: var(--link-color);
+        }
+        .like-button-active {
+            color: var(--link-color) !important; /* Ensure it overrides */
+        }
+        
+        /* Comment/Reply Forms */
+        textarea[id^="comment-textarea-"], textarea[id^="reply-textarea-"] {
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border); /* Ensure explicit border width */
+            color: var(--text-primary);
+            border-radius: 0.375rem; /* rounded-lg, ensure it's here if not in class */
+        }
+        textarea[id^="comment-textarea-"]:focus, textarea[id^="reply-textarea-"]:focus {
+            border-color: var(--input-focus-ring);
+            /* If using Tailwind focus rings alongside, set variable */
+            --tw-ring-color: var(--input-focus-ring); 
+            outline: none; /* Remove default outline if using custom border/ring */
+            box-shadow: 0 0 0 2px var(--input-focus-ring); /* Example custom focus ring */
+        }
+        .reply-form p.text-gray-500 { /* "Replying to:" text */
+            color: var(--text-secondary);
+        }
+        .reply-form a { /* Link to user being replied to */
+            color: var(--link-color);
+        }
+        .reply-form a:hover {
+            color: var(--link-hover-color);
+        }
+
+        /* Comment/Reply Buttons Styling */
+        .button-submit-comment, .button-submit-reply {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+        }
+        .button-submit-comment:hover, .button-submit-reply:hover {
+            background-color: var(--button-hover-bg);
+        }
+        .button-cancel-reply { /* Cancel button in reply form */
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color); /* Add a border for better visibility */
+        }
+        .button-cancel-reply:hover {
+            background-color: var(--bg-primary); 
+        }
+
+        /* Empty State */
+        #empty-state h3 {
+            color: var(--text-primary);
+        }
+        #empty-state p {
+            color: var(--text-secondary);
+        }
+        #empty-state .text-gray-400 { /* Icon color */
+            color: var(--text-secondary);
+        }
+
+        /* User Profile Modal (Dropdown) */
+        #user-profile {
+            background-color: var(--profile-modal-bg);
+            border-color: var(--border-color);
+        }
+        #user-profile #user-name, #user-profile .font-medium {
+            color: var(--text-primary);
+        }
+        #user-profile #user-email, #user-profile .text-sm {
+            color: var(--text-secondary);
+        }
+        #user-profile button, #user-profile a { /* General buttons/links in modal */
+            color: var(--text-primary);
+            /* background-color: var(--button-bg); */ /* Let specific styles handle this */
+            /* color: var(--button-text); */
+        }
+         #user-profile a.hover\:bg-gray-100:hover {
+            background-color: var(--bg-secondary) !important; /* Ensure this overrides default hover */
+        }
+        #user-profile #logout-btn {
+            background-color: #EF4444; /* Keep logout distinct red */
+            color: white;
+        }
+        #user-profile #logout-btn:hover {
+            background-color: #dc2626; /* red-600 */
+        }
+        
+        /* Confirmation Modal */
+        #confirmation-modal-overlay {
+            background-color: var(--modal-overlay-bg);
+        }
+        #confirmation-modal {
+            background-color: var(--card-bg);
+        }
+        #confirmation-modal h3, #confirmation-modal p {
+            color: var(--text-primary);
+        }
+        #confirmation-modal-cancel-btn {
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+        }
+        #confirmation-modal-cancel-btn:hover {
+             background-color: var(--bg-primary);
+        }
+        #confirmation-modal-confirm-btn { /* Keep confirm distinct (usually red for delete) */
+            background-color: #EF4444; 
+            color: white;
+        }
+         #confirmation-modal-confirm-btn:hover {
+            background-color: #dc2626;
+        }
+        
+        /* Cropper Modal */
+        #crop-modal {
+            background-color: var(--modal-overlay-bg);
+        }
+        .crop-modal-content {
+            background-color: var(--card-bg);
+        }
+        .crop-modal-content h3 {
+            color: var(--text-primary);
+        }
+        .crop-modal-content .text-gray-500:hover, .crop-modal-content .text-gray-600:hover {
+            color: var(--text-primary);
+        }
+        .crop-image-container {
+             background-color: var(--bg-primary);
+             border-color: var(--border-color);
+        }
+        #crop-cancel-btn { /* Cancel button in crop modal */
+            color: var(--text-secondary);
+        }
+        #crop-cancel-btn:hover {
+            color: var(--text-primary);
+        }
+        #crop-save { /* Save button in crop modal */
+            background-color: var(--button-bg);
+            color: var(--button-text);
+        }
+        #crop-save:hover {
+            background-color: var(--button-hover-bg);
+        }
+
+        /* Upload Progress Modal */
+        #upload-modal {
+            background-color: var(--modal-overlay-bg);
+        }
+        #upload-modal .bg-white {
+            background-color: var(--card-bg);
+        }
+        #upload-modal h3, #upload-modal p {
+            color: var(--text-primary);
+        }
+        #upload-modal .bg-gray-200 { /* Progress bar background */
+            background-color: var(--input-bg);
+        }
+        #upload-modal .bg-blue-600 { /* Progress bar fill */
+            background-color: var(--button-bg);
+        }
+        
+        /* Notification Styling */
+        .notification {
+            color: var(--notification-text-color); /* Default for all notification types */
+        }
+        .notification-success { background-color: var(--notification-success-bg); }
+        .notification-error { background-color: var(--notification-error-bg); }
+        .notification-info { background-color: var(--notification-info-bg); }
+        .notification-warning { background-color: var(--notification-warning-bg); }
+        .notification-close-btn { color: var(--notification-text-color); }
+
+        /* Links in posts/comments */
+        .text-gray-700 a { /* This targets generated links in content */
+            color: var(--link-color);
+        }
+        .text-gray-700 a:hover {
+            color: var(--link-hover-color);
+        }
+        
+        /* Profile image initials theming */
+        .profile-img { /* Ensure this uses a theme variable if needed, or transparent */
+             background-color: var(--input-bg); /* A neutral background for initials */
+        }
+        .profile-initials {
+             color: var(--text-secondary); /* Initials color */
+        }
+
+
         .fade-in {
             animation: fadeIn 0.5s ease-in;
         }
@@ -84,17 +449,11 @@
             }
         }
 
-        /* Comment and Reply Styling */
-        .comment-wrapper { /* Used for indentation */
-            /* margin-left is dynamically set by JS */
-        }
+        /* Comment and Reply Styling (already themed via variables) */
         .comment-actions button {
             transition: color 0.2s ease-in-out;
         }
-        .like-button-active {
-            color: #3b82f6; /* Tailwind blue-500 */
-            font-weight: 600;
-        }
+        /* .like-button-active is themed by variables */
         .reply-form textarea {
             font-size: 0.875rem; /* text-sm */
             border-radius: 0.375rem; /* rounded-md */
@@ -104,12 +463,12 @@
             padding: 0.25rem 0.75rem; /* Adjust padding for smaller buttons */
         }
 
-        /* Notification Styling */
+        /* Notification Styling (already themed via variables) */
         .notification {
             padding: 1rem; /* p-4 */
             border-radius: 0.375rem; /* rounded-md */
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
-            color: white;
+            /* color: white; themed by --notification-text-color */
             opacity: 0;
             transform: translateY(-20px);
             transition: opacity 0.3s ease-out, transform 0.3s ease-out;
@@ -121,22 +480,11 @@
             opacity: 1;
             transform: translateY(0);
         }
-        .notification-success {
-            background-color: #10B981; /* Tailwind green-500 */
-        }
-        .notification-error {
-            background-color: #EF4444; /* Tailwind red-500 */
-        }
-        .notification-info {
-            background-color: #3B82F6; /* Tailwind blue-500 */
-        }
-        .notification-warning {
-            background-color: #F59E0B; /* Tailwind yellow-500 */
-        }
+        /* background-colors are themed by variables */
         .notification-close-btn {
             background: none;
             border: none;
-            color: white;
+            /* color: white; themed by --notification-text-color */
             font-size: 1.25rem; /* text-xl */
             line-height: 1;
             opacity: 0.7;
@@ -147,14 +495,8 @@
             opacity: 1;
         }
 
-        /* Styling for links within posts and comments */
-        .text-gray-700 a {
-            color: #2563eb; /* Tailwind's blue-600 */
-            text-decoration: underline;
-        }
-        .text-gray-700 a:hover {
-            color: #1d4ed8; /* Tailwind's blue-700 */
-        }
+        /* Styling for links within posts and comments (already themed by variables) */
+        /* .text-gray-700 a is themed by variables */
 
         /* Ensure long words break and wrap, and newlines are still respected */
         .whitespace-pre-wrap {
@@ -165,26 +507,60 @@
         }
 
         /* Ensure post titles also wrap */
-        .text-xl.font-bold.text-gray-800.mb-3 { /* Targeting the post title h2 */
+        .text-xl.font-bold.text-gray-800.mb-3 { /* Targeting the post title h2, color themed by variable */
             overflow-wrap: break-word;
             word-break: break-word;
             white-space: normal; /* Ensures it doesn't inherit pre-wrap or similar */
         }
+
+        /* User Profile Modal new item styling */
+        #user-profile a.profile-menu-item, #user-profile button.profile-menu-item { /* Apply to buttons too */
+            display: block;
+            width: 100%; /* Make button full width */
+            text-align: left; /* Align button text left */
+            padding: 0.5rem 1rem; /* py-2 px-4 */
+            border-radius: 0.375rem; /* rounded-md */
+            transition: background-color 0.2s;
+            color: var(--text-primary); /* Use themed text color */
+        }
+        #user-profile a.profile-menu-item:hover, #user-profile button.profile-menu-item:hover {
+            background-color: var(--bg-secondary); /* Use themed hover background */
+        }
+        
+        /* Specific hover for nav profile button */
+        .nav-profile-button-hover:hover {
+            background-color: var(--bg-secondary) !important; /* Use important if needed to override other hover styles if any */
+        }
+
+        /* Like button styling refinement */
+        .like-button { /* Base style for like buttons (post and comment) */
+            color: var(--text-secondary); /* Default color for non-liked state */
+            transition: color 0.2s ease-in-out;
+        }
+        .like-button:hover {
+            color: var(--link-color); /* Hover color */
+        }
+        .like-button.like-button-active { /* Active (liked) state */
+            color: var(--link-color) !important; /* Already defined, ensure it overrides */
+            font-weight: 600; /* Keep or adjust as needed */
+        }
+
+
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="min-h-screen"> 
     <!-- Notification Container -->
     <div id="notification-container" class="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm sm:max-w-md p-4 space-y-3 z-[100]">
         <!-- Notifications will be dynamically added here -->
     </div>
 
     <!-- Confirmation Modal Structure (hidden by default) -->
-    <div id="confirmation-modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-overlay flex items-center justify-center z-[90] p-4">
-        <div id="confirmation-modal" class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full">
-            <h3 id="confirmation-modal-title" class="text-lg font-semibold text-gray-800 mb-4">Confirmation</h3>
-            <p id="confirmation-modal-message" class="text-sm text-gray-600 mb-6">Are you sure?</p>
+    <div id="confirmation-modal-overlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[90] p-4">
+        <div id="confirmation-modal" class="rounded-lg shadow-xl p-6 max-w-sm w-full"> <!-- bg-white removed -->
+            <h3 id="confirmation-modal-title" class="text-lg font-semibold mb-4">Confirmation</h3>
+            <p id="confirmation-modal-message" class="text-sm mb-6">Are you sure?</p>
             <div class="flex justify-end space-x-3">
-                <button id="confirmation-modal-cancel-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors">
+                <button id="confirmation-modal-cancel-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors"> <!-- bg-gray-200 removed -->
                     Cancel
                 </button>
                 <button id="confirmation-modal-confirm-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
@@ -195,7 +571,7 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="bg-white shadow-lg border-b">
+    <nav class="shadow-lg border-b"> <!-- bg-white removed -->
         <div class="max-w-4xl mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
                 <div class="flex items-center space-x-2">
@@ -253,31 +629,36 @@
     </main>
 
     <!-- User Profile Modal -->
-    <div id="user-profile" class="hidden fixed top-4 right-4 bg-white rounded-lg shadow-lg p-4 border z-50">
-        <div class="flex items-center space-x-3 mb-3">
-            <div id="modal-profile-img" class="profile-img w-12 h-12 rounded-full bg-gray-300 cursor-pointer relative border-2 border-gray-200 hover:border-blue-400 transition-colors">
-                <!-- Profile image will be inserted here -->
-                <div class="absolute inset-0 bg-black bg-opacity-50 rounded-full opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span class="text-white text-xs">Edit</span>
-                </div>
+    <div id="user-profile" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-2 border z-50 w-60" style="border-color: var(--border-color);"> <!-- Themed border -->
+        <div class="flex items-center space-x-3 p-2 mb-2 border-b" style="border-bottom-color: var(--border-color);"> <!-- Themed border -->
+            <div id="modal-profile-img-container" class="profile-img w-10 h-10 rounded-full border-2" style="border-color: var(--border-color);"> <!-- Themed border for img container -->
+                <!-- Profile image will be dynamically inserted by updateUI -->
             </div>
             <div>
-                <div id="user-name" class="font-medium text-gray-800"></div>
-                <div id="user-email" class="text-sm text-gray-500"></div>
+                <div id="user-name" class="font-medium text-sm"></div> <!-- text-sm -->
+                <div id="user-email" class="text-xs text-gray-500"></div> <!-- text-xs -->
             </div>
         </div>
-        <div class="file-upload mb-3">
-            <input type="file" id="profile-picture-input" accept="image/*" />
-            <label for="profile-picture-input" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors cursor-pointer block text-center">
-                Change Profile Picture
-            </label>
-        </div>
-        <button id="logout-btn" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-medium transition-colors">
-            Sign Out
-        </button>
+        <nav class="space-y-1"> <!-- Links container -->
+            <a href="#" id="profile-menu-profile" class="profile-menu-item">
+                <svg class="w-5 h-5 mr-2 inline" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                Profile
+            </a>
+            <a href="settings.html" id="profile-menu-settings" class="profile-menu-item">
+                <svg class="w-5 h-5 mr-2 inline" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Settings
+            </a>
+            <hr class="my-1" style="border-top-color: var(--border-color);"> <!-- Themed border color -->
+            <button id="logout-btn" class="w-full text-left profile-menu-item">
+                 <svg class="w-5 h-5 mr-2 inline" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                Sign Out
+            </button>
+        </nav>
     </div>
 
-    <!-- Image Cropper Modal -->
+    <!-- Image Cropper Modal - This will be moved to profile.html -->
+    <!-- For now, we comment it out from index.html to avoid issues if JS is not fully removed yet -->
+    <!--
     <div id="crop-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-overlay flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg crop-modal-content max-w-4xl w-full max-h-[95vh] overflow-hidden">
             <div class="p-6">
@@ -318,35 +699,33 @@
     <script>
         let currentUser = null;
         let posts = [];
-        let cropper = null;
+        // let cropper = null; // Cropper is now handled in profile.html
 
         // Create profile image element with fallback
-        function createProfileImage(photoUrl, name, size = "w-10 h-10") {
+        function createProfileImage(photoUrl, name, size = "w-10 h-10", textClass = "text-sm") {
             const container = document.createElement('div');
-            container.className = `profile-img ${size} rounded-full bg-gray-300`;
+            // bg-gray-300 is a fallback, actual color will be from theme var --input-bg
+            container.className = `profile-img ${size} rounded-full flex items-center justify-center overflow-hidden`;
+            container.style.backgroundColor = 'var(--input-bg)'; // Apply theme variable
             
             if (photoUrl && photoUrl.trim() && photoUrl !== '/default-profile.png') {
                 const img = document.createElement('img');
                 img.className = 'w-full h-full object-cover rounded-full';
                 img.alt = name || 'Profile';
                 
-                // Handle image load errors
                 img.onerror = function() {
                     console.log('Image failed to load:', photoUrl);
-                    // Replace with initials
-                    container.innerHTML = `<span class="profile-initials text-sm">${getInitials(name)}</span>`;
+                    container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
                 };
                 
                 img.onload = function() {
-                    console.log('Image loaded successfully:', photoUrl);
+                    // console.log('Image loaded successfully:', photoUrl);
                 };
                 
-                // Set src with cache busting
-                img.src = photoUrl + '?t=' + Date.now();
+                img.src = photoUrl + '?t=' + Date.now(); // Cache busting
                 container.appendChild(img);
             } else {
-                // Show initials
-                container.innerHTML = `<span class="profile-initials text-sm">${getInitials(name)}</span>`;
+                container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
             }
             
             return container;
@@ -358,159 +737,8 @@
             return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
         }
 
-        // Initialize image cropper with clean, simple setup
-        function initializeCropper(imageElement) {
-            if (cropper) {
-                cropper.destroy();
-                cropper = null;
-            }
-            
-            // Clean setup - let CropperJS handle sizing naturally
-            cropper = new Cropper(imageElement, {
-                aspectRatio: 1,
-                viewMode: 1,
-                dragMode: 'move',
-                autoCropArea: 0.8,
-                restore: false,
-                guides: true,
-                center: true,
-                highlight: false,
-                cropBoxMovable: true,
-                cropBoxResizable: true,
-                toggleDragModeOnDblclick: false,
-                responsive: true,
-                checkOrientation: false,
-                modal: true,
-                background: true,
-                minContainerWidth: 200,
-                minContainerHeight: 200,
-                ready: function() {
-                    console.log('Cropper initialized successfully');
-                },
-                crop: function(event) {
-                    // Optional: log crop data for debugging
-                    // console.log('Crop event:', event.detail);
-                }
-            });
-        }
-
-        // Handle profile picture file selection
-        function handleProfilePictureSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            // Reset file input
-            event.target.value = '';
-
-            // Validate file type
-            if (!file.type.startsWith('image/')) {
-                showNotification('Please select an image file', 'warning');
-                return;
-            }
-
-            // Validate file size (5MB max)
-            if (file.size > 5 * 1024 * 1024) {
-                showNotification('Please select an image smaller than 5MB', 'warning');
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const cropImage = document.getElementById('crop-image');
-                
-                // Clean previous setup
-                if (cropper) {
-                    cropper.destroy();
-                    cropper = null;
-                }
-                
-                // Set image source
-                cropImage.src = e.target.result;
-                
-                // Show crop modal
-                document.getElementById('crop-modal').classList.remove('hidden');
-                document.getElementById('user-profile').classList.add('hidden');
-                
-                // Initialize cropper after image loads
-                cropImage.onload = function() {
-                    // Small delay to ensure DOM is ready
-                    setTimeout(() => {
-                        initializeCropper(cropImage);
-                    }, 100);
-                };
-            };
-            
-            reader.readAsDataURL(file);
-        }
-
-        // Upload cropped profile picture
-        async function uploadCroppedImage() {
-            if (!cropper) {
-                showNotification('No image selected for cropping', 'warning');
-                return;
-            }
-
-            const canvas = cropper.getCroppedCanvas({
-                width: 300,
-                height: 300,
-                imageSmoothingEnabled: true,
-                imageSmoothingQuality: 'high'
-            });
-
-            if (!canvas) {
-                showNotification('Failed to crop image. Please try again.', 'error');
-                return;
-            }
-
-            return new Promise((resolve, reject) => {
-                canvas.toBlob(async (blob) => {
-                    if (!blob) {
-                        reject(new Error('Failed to create image blob'));
-                        return;
-                    }
-
-                    try {
-                        const formData = new FormData();
-                        formData.append('profilePicture', blob, 'profile.png');
-                        
-                        const uploadModal = document.getElementById('upload-modal');
-                        const progressBar = document.getElementById('upload-progress');
-                        
-                        uploadModal.classList.remove('hidden');
-                        progressBar.style.width = '0%';
-                        
-                        const xhr = new XMLHttpRequest();
-                        
-                        xhr.upload.addEventListener('progress', (e) => {
-                            if (e.lengthComputable) {
-                                const percentComplete = (e.loaded / e.total) * 100;
-                                progressBar.style.width = percentComplete + '%';
-                            }
-                        });
-                        
-                        xhr.addEventListener('load', () => {
-                            uploadModal.classList.add('hidden');
-                            if (xhr.status === 200) {
-                                const response = JSON.parse(xhr.responseText);
-                                resolve(response);
-                            } else {
-                                reject(new Error(`Upload failed with status ${xhr.status}`));
-                            }
-                        });
-                        
-                        xhr.addEventListener('error', () => {
-                            uploadModal.classList.add('hidden');
-                            reject(new Error('Upload failed'));
-                        });
-                        
-                        xhr.open('POST', '/api/user/profile-picture');
-                        xhr.send(formData);
-                    } catch (error) {
-                        reject(error);
-                    }
-                }, 'image/png', 0.9);
-            });
-        }
+        // Cropper related functions (initializeCropper, handleProfilePictureSelect, uploadCroppedImage)
+        // have been MOVED to profile.html where they are now used.
 
         // Check authentication status
         async function checkAuth() {
@@ -544,32 +772,38 @@
 
             if (currentUser) {
                 // Create profile image for nav
-                const navProfileImg = createProfileImage(currentUser.photo, currentUser.name, "w-8 h-8");
+                const navProfileImg = createProfileImage(currentUser.photo, currentUser.name, "w-8 h-8", "text-xs"); // Smaller text for nav
                 
                 // Show user profile in nav
                 authSection.innerHTML = `
-                    <button onclick="toggleUserProfile()" class="flex items-center space-x-2 hover:bg-gray-100 p-2 rounded-lg transition-colors">
+                    <button onclick="toggleUserProfile()" class="nav-profile-button-hover flex items-center space-x-2 p-1 rounded-lg transition-colors">
                         <div id="nav-profile-container"></div>
-                        <span class="font-medium text-gray-700">${escapeHtml(currentUser.name)}</span>
+                        <span class="font-medium text-sm">${escapeHtml(currentUser.name)}</span> <!-- text-sm -->
                     </button>
                 `;
-                
-                // Insert the profile image
                 document.getElementById('nav-profile-container').appendChild(navProfileImg);
 
-                // Update user profile modal
-                const modalProfileImg = createProfileImage(currentUser.photo, currentUser.name, "w-12 h-12");
-                const modalContainer = document.getElementById('modal-profile-img');
-                modalContainer.innerHTML = '';
-                modalContainer.appendChild(modalProfileImg.firstChild);
-                
-                // Add click event to modal profile image
-                modalContainer.addEventListener('click', () => {
-                    document.getElementById('profile-picture-input').click();
-                });
+                // Update user profile modal (dropdown)
+                const modalProfileImgContainer = document.getElementById('modal-profile-img-container');
+                modalProfileImgContainer.innerHTML = ''; // Clear previous
+                modalProfileImgContainer.appendChild(createProfileImage(currentUser.photo, currentUser.name, "w-10 h-10", "text-base")); // Slightly larger for modal
 
                 document.getElementById('user-name').textContent = currentUser.name;
                 document.getElementById('user-email').textContent = currentUser.email;
+                
+                // Set profile link dynamically
+                const profileMenuLink = document.getElementById('profile-menu-profile');
+                if (profileMenuLink) {
+                    profileMenuLink.href = `profile.html?id=${currentUser.id}`;
+                }
+                
+                // Link to settings page (already set in HTML, but good to be aware)
+                // document.getElementById('profile-menu-settings').href = 'settings.html';
+
+                // Add event listener for logout button in the modal
+                document.getElementById('logout-btn').removeEventListener('click', logout); // Remove if already exists
+                document.getElementById('logout-btn').addEventListener('click', logout);
+
 
                 // Hide welcome message and show create post form
                 welcomeMessage.classList.add('hidden');
@@ -705,8 +939,8 @@
                     commentFormContainer.className = 'mb-4';
                     commentFormContainer.innerHTML = `
                         <textarea id="comment-textarea-${post.id}" placeholder="Add a comment..." rows="2"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"></textarea>
-                        <button onclick="addCommentOrReply('${post.id}')" class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                                  class="w-full px-3 py-2 rounded-lg resize-none focus:outline-none focus:ring-2"></textarea>
+                        <button onclick="addCommentOrReply('${post.id}')" class="button-submit-comment mt-2 px-4 py-2 rounded-lg font-medium transition-colors">
                             Add Comment
                         </button>
                     `;
@@ -729,8 +963,7 @@
                 postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 border-b pb-2';
                 
                 const likeButtonPost = document.createElement('button');
-                // Applied like-button-active class for liked state
-                likeButtonPost.className = `flex items-center space-x-1 hover:text-blue-600 ${post.isLiked ? 'like-button-active' : ''}`;
+                likeButtonPost.className = `like-button flex items-center space-x-1 ${post.isLiked ? 'like-button-active' : ''}`; // Added like-button base class
                 likeButtonPost.innerHTML = `
                     <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
                         <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
@@ -794,7 +1027,7 @@
                 commentActionsDiv.className = 'comment-actions flex items-center space-x-3 text-xs text-gray-500 mt-2';
 
                 const likeButtonComment = document.createElement('button');
-                likeButtonComment.className = `flex items-center space-x-1 hover:text-blue-600 ${comment.isLiked ? 'like-button-active' : ''}`;
+                likeButtonComment.className = `like-button flex items-center space-x-1 ${comment.isLiked ? 'like-button-active' : ''}`; // Added like-button base class
                 likeButtonComment.innerHTML = `
                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
                     <span id="comment-like-count-${comment.id}">${comment.likes || 0}</span>
@@ -875,12 +1108,13 @@
                         </a>
                     </p>
                     <textarea id="reply-textarea-${commentId}" placeholder="Write a reply..." rows="2"
-                              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"></textarea>
+                              class="w-full px-3 py-2 text-sm rounded-lg resize-none focus:outline-none focus:ring-1"></textarea> 
+                              <!-- Removed: border, border-gray-300, focus:ring-blue-500. CSS rules will handle. -->
                     <div class="flex justify-end space-x-2 mt-1">
                         <button onclick="document.getElementById('${containerId}').classList.add('hidden');" 
-                                class="px-3 py-1 text-xs text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md">Cancel</button>
+                                class="button-cancel-reply px-3 py-1 text-xs rounded-md">Cancel</button>
                         <button onclick="addCommentOrReply('${postId}', '${commentId}')" 
-                                class="px-3 py-1 text-xs text-white bg-blue-500 hover:bg-blue-600 rounded-md">Reply</button>
+                                class="button-submit-reply px-3 py-1 text-xs rounded-md">Reply</button>
                     </div>
                 `;
                 container.classList.remove('hidden');
@@ -1141,64 +1375,17 @@
                 document.getElementById('post-content').value = '';
                 showNotification("Post created successfully!", "success");
             }
-            // Error handling for createPost is inside the createPost function itself if it returns false
-            // or throws an error, which should be caught by a generic try-catch if not handled internally.
-            // For now, createPost itself doesn't show notifications on failure, it just returns false.
-            // This might be an area for future improvement if more specific error feedback is needed here.
         });
 
-        document.getElementById('logout-btn').addEventListener('click', logout);
+        // Note: The logout button event listener is now added dynamically in updateUI if currentUser exists.
+        // document.getElementById('logout-btn').addEventListener('click', logout); // This would be for a static button
 
-        // Profile picture upload event
-        document.getElementById('profile-picture-input').addEventListener('change', handleProfilePictureSelect);
-
-        // Crop modal events
-        document.getElementById('crop-save').addEventListener('click', async () => {
-            try {
-                const result = await uploadCroppedImage();
-                if (result && result.success) {
-                    // Update current user photo
-                    currentUser.photo = result.photo;
-                    updateUI();
-                    
-                    // Close crop modal
-                    document.getElementById('crop-modal').classList.add('hidden');
-                    
-                    // Destroy cropper
-                    if (cropper) {
-                        cropper.destroy();
-                        cropper = null;
-                    }
-                    
-                    // Show success message
-                    showNotification('Profile picture updated successfully!', 'success');
-                } else {
-                    showNotification(result.error || 'Failed to update profile picture.', 'error');
-                }
-            } catch (error) {
-                console.error('Error updating profile picture:', error);
-                showNotification('Failed to update profile picture: ' + error.message, 'error');
-            }
-        });
-
-        // Cancel crop events
-        function closeCropModal() {
-            document.getElementById('crop-modal').classList.add('hidden');
-            if (cropper) {
-                cropper.destroy();
-                cropper = null;
-            }
-        }
-
-        document.getElementById('crop-cancel').addEventListener('click', closeCropModal);
-        document.getElementById('crop-cancel-btn').addEventListener('click', closeCropModal);
-
-        // Handle window resize for responsive cropper
-        window.addEventListener('resize', () => {
-            if (cropper) {
-                cropper.resize();
-            }
-        });
+        // Profile picture upload event and Cropper related event listeners are MOVED to profile.html
+        // document.getElementById('profile-picture-input').addEventListener('change', handleProfilePictureSelect);
+        // document.getElementById('crop-save').addEventListener('click', ...);
+        // document.getElementById('crop-cancel').addEventListener('click', ...);
+        // document.getElementById('crop-cancel-btn').addEventListener('click', ...);
+        // window.addEventListener('resize', ...); // For cropper
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
