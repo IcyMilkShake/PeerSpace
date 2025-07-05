@@ -147,6 +147,29 @@
             opacity: 1;
         }
 
+        /* Styling for links within posts and comments */
+        .text-gray-700 a {
+            color: #2563eb; /* Tailwind's blue-600 */
+            text-decoration: underline;
+        }
+        .text-gray-700 a:hover {
+            color: #1d4ed8; /* Tailwind's blue-700 */
+        }
+
+        /* Ensure long words break and wrap, and newlines are still respected */
+        .whitespace-pre-wrap {
+            white-space: pre-wrap; /* Respects newlines and spaces */
+            overflow-wrap: break-word; /* Breaks long words to prevent overflow */
+            word-wrap: break-word; /* Legacy alias for overflow-wrap */
+            word-break: break-word; /* Ensures words break if they are too long */
+        }
+
+        /* Ensure post titles also wrap */
+        .text-xl.font-bold.text-gray-800.mb-3 { /* Targeting the post title h2 */
+            overflow-wrap: break-word;
+            word-break: break-word;
+            white-space: normal; /* Ensures it doesn't inherit pre-wrap or similar */
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -660,11 +683,12 @@
                 }
                 
                 // Create post content
-                const postContent = document.createElement('div');
-                postContent.innerHTML = `
-                    <h2 class="text-xl font-bold text-gray-800 mb-3">${escapeHtml(post.title)}</h2>
-                    <p class="text-gray-700 mb-4 whitespace-pre-wrap">${escapeHtml(post.content)}</p>
-                `;
+                const postContentElement = document.createElement('div');
+                // For post titles, we generally don't want links, so allowLinks = false (or default)
+                const postTitleHtml = `<h2 class="text-xl font-bold text-gray-800 mb-3">${escapeHtml(post.title)}</h2>`;
+                // For post content, allow links
+                const postTextHtml = `<p class="text-gray-700 mb-4 whitespace-pre-wrap">${escapeHtml(post.content, true)}</p>`;
+                postContentElement.innerHTML = postTitleHtml + postTextHtml;
                 
                 // Create comments section
                 const commentsSection = document.createElement('div');
@@ -698,14 +722,15 @@
                 
                 // Assemble the article
                 article.appendChild(postHeader);
+                article.appendChild(postContentElement); // Use the new variable name
                 
                 // Post Actions (Like button)
                 const postActionsDiv = document.createElement('div');
                 postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 border-b pb-2';
                 
                 const likeButtonPost = document.createElement('button');
-            // Applied like-button-active class for liked state
-            likeButtonPost.className = `flex items-center space-x-1 hover:text-blue-600 ${post.isLiked ? 'like-button-active' : ''}`;
+                // Applied like-button-active class for liked state
+                likeButtonPost.className = `flex items-center space-x-1 hover:text-blue-600 ${post.isLiked ? 'like-button-active' : ''}`;
                 likeButtonPost.innerHTML = `
                     <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
                         <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
@@ -715,7 +740,6 @@
                 likeButtonPost.onclick = () => toggleLike('post', post.id);
                 postActionsDiv.appendChild(likeButtonPost);
                 
-                article.appendChild(postContent);
                 article.appendChild(postActionsDiv);
                 article.appendChild(commentsSection);
                 
@@ -761,7 +785,8 @@
 
                 const commentText = document.createElement('p');
                 commentText.className = "text-gray-700 whitespace-pre-wrap";
-                commentText.textContent = escapeHtml(comment.content);
+                // For comment content, allow links
+                commentText.innerHTML = escapeHtml(comment.content, true);
                 commentBody.appendChild(commentText);
 
                 // Comment Actions (Like, Reply)
@@ -1069,10 +1094,34 @@
             return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        function escapeHtml(text, allowLinks = false) {
+            let escapedText = text.replace(/[&<>"']/g, function (match) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[match];
+            });
+
+            if (allowLinks) {
+                // Convert URLs to clickable links
+                // Regex to find URLs (simplified version, can be improved for more complex cases)
+                const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+                escapedText = escapedText.replace(urlRegex, function(url) {
+                    let fullUrl = url;
+                    if (!url.match(/^[a-zA-Z]+:\/\//)) {
+                        fullUrl = 'http://' + url;
+                    }
+                    // Ensure the href attribute is also properly escaped for security in case of malformed URLs
+                    const safeHref = fullUrl.replace(/[&<>"']/g, function (match) {
+                        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
+                    });
+                    return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+                });
+            }
+            return escapedText;
         }
 
         // Event listeners
