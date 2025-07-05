@@ -45,60 +45,42 @@
             position: absolute;
             left: -9999px;
         }
-        /* Responsive cropper container */
-        .cropper-container {
-            max-width: 100% !important;
-            max-height: 60vh !important;
-            margin: 0 auto !important;
-        }
         
-        /* Ensure the image container is responsive */
+        /* Cropper container - simplified and clean */
         .crop-image-container {
             width: 100%;
-            max-height: 60vh;
+            height: 60vh;
+            max-height: 500px;
             display: flex;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
+            background-color: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
             overflow: hidden;
         }
         
-        /* Make sure the image itself is responsive */
+        /* Let CropperJS handle the image sizing naturally */
         #crop-image {
             max-width: 100%;
-            max-height: 60vh;
-            width: auto;
-            height: auto;
+            max-height: 100%;
             display: block;
-        }
-        
-        /* Override cropper.js styles for better responsiveness */
-        .cropper-container img {
-            max-width: 100% !important;
-            max-height: 60vh !important;
-        }
-        
-        .cropper-canvas {
-            max-width: 100% !important;
-            max-height: 60vh !important;
         }
         
         .modal-overlay {
             backdrop-filter: blur(4px);
         }
         
-        /* Ensure modal doesn't overflow on mobile */
+        /* Mobile responsive adjustments */
         @media (max-width: 768px) {
             .crop-modal-content {
                 margin: 1rem;
                 max-height: 90vh;
             }
             
-            .cropper-container {
-                max-height: 50vh !important;
-            }
-            
-            #crop-image {
-                max-height: 50vh;
+            .crop-image-container {
+                height: 50vh;
+                max-height: 400px;
             }
         }
     </style>
@@ -189,7 +171,7 @@
 
     <!-- Image Cropper Modal -->
     <div id="crop-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-overlay flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg crop-modal-content max-w-4xl w-full max-h-[95vh] overflow-y-auto">
+        <div class="bg-white rounded-lg crop-modal-content max-w-4xl w-full max-h-[95vh] overflow-hidden">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold">Crop Profile Picture</h3>
@@ -200,7 +182,7 @@
                     </button>
                 </div>
                 <div class="crop-image-container mb-4">
-                    <img id="crop-image" class="block" />
+                    <img id="crop-image" />
                 </div>
                 <div class="flex justify-end space-x-3">
                     <button id="crop-cancel-btn" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
@@ -268,68 +250,49 @@
             return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
         }
 
-        // Initialize image cropper with responsive settings
+        // Initialize image cropper with clean, simple setup
         function initializeCropper(imageElement) {
             if (cropper) {
                 cropper.destroy();
+                cropper = null;
             }
             
-            // Wait for image to load and get its dimensions
-            const img = new Image();
-            img.onload = function() {
-                const containerWidth = imageElement.parentElement.clientWidth;
-                const containerHeight = Math.min(window.innerHeight * 0.6, 500);
-                
-                // Calculate the best fit for the image
-                const imageRatio = this.naturalWidth / this.naturalHeight;
-                const containerRatio = containerWidth / containerHeight;
-                
-                let displayWidth, displayHeight;
-                
-                if (imageRatio > containerRatio) {
-                    // Image is wider than container ratio
-                    displayWidth = containerWidth;
-                    displayHeight = containerWidth / imageRatio;
-                } else {
-                    // Image is taller than container ratio
-                    displayHeight = containerHeight;
-                    displayWidth = containerHeight * imageRatio;
+            // Clean setup - let CropperJS handle sizing naturally
+            cropper = new Cropper(imageElement, {
+                aspectRatio: 1,
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 0.8,
+                restore: false,
+                guides: true,
+                center: true,
+                highlight: false,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                toggleDragModeOnDblclick: false,
+                responsive: true,
+                checkOrientation: false,
+                modal: true,
+                background: true,
+                minContainerWidth: 200,
+                minContainerHeight: 200,
+                ready: function() {
+                    console.log('Cropper initialized successfully');
+                },
+                crop: function(event) {
+                    // Optional: log crop data for debugging
+                    // console.log('Crop event:', event.detail);
                 }
-                
-                // Set the image size
-                imageElement.style.width = displayWidth + 'px';
-                imageElement.style.height = displayHeight + 'px';
-                
-                // Initialize cropper
-                cropper = new Cropper(imageElement, {
-                    aspectRatio: 1,
-                    viewMode: 2,
-                    dragMode: 'move',
-                    autoCropArea: 0.8,
-                    restore: false,
-                    guides: true,
-                    center: true,
-                    highlight: false,
-                    cropBoxMovable: true,
-                    cropBoxResizable: true,
-                    toggleDragModeOnDblclick: false,
-                    responsive: true,
-                    checkOrientation: false,
-                    modal: true,
-                    background: true,
-                    ready: function() {
-                        console.log('Cropper initialized successfully');
-                    }
-                });
-            };
-            
-            img.src = imageElement.src;
+            });
         }
 
         // Handle profile picture file selection
         function handleProfilePictureSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
+
+            // Reset file input
+            event.target.value = '';
 
             // Validate file type
             if (!file.type.startsWith('image/')) {
@@ -346,6 +309,14 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 const cropImage = document.getElementById('crop-image');
+                
+                // Clean previous setup
+                if (cropper) {
+                    cropper.destroy();
+                    cropper = null;
+                }
+                
+                // Set image source
                 cropImage.src = e.target.result;
                 
                 // Show crop modal
@@ -354,18 +325,22 @@
                 
                 // Initialize cropper after image loads
                 cropImage.onload = function() {
-                    // Small delay to ensure modal is fully rendered
+                    // Small delay to ensure DOM is ready
                     setTimeout(() => {
                         initializeCropper(cropImage);
                     }, 100);
                 };
             };
+            
             reader.readAsDataURL(file);
         }
 
         // Upload cropped profile picture
         async function uploadCroppedImage() {
-            if (!cropper) return;
+            if (!cropper) {
+                alert('No image selected for cropping');
+                return;
+            }
 
             const canvas = cropper.getCroppedCanvas({
                 width: 300,
@@ -374,8 +349,18 @@
                 imageSmoothingQuality: 'high'
             });
 
+            if (!canvas) {
+                alert('Failed to crop image');
+                return;
+            }
+
             return new Promise((resolve, reject) => {
                 canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        reject(new Error('Failed to create image blob'));
+                        return;
+                    }
+
                     try {
                         const formData = new FormData();
                         formData.append('profilePicture', blob, 'profile.png');
@@ -401,7 +386,7 @@
                                 const response = JSON.parse(xhr.responseText);
                                 resolve(response);
                             } else {
-                                reject(new Error('Upload failed'));
+                                reject(new Error(`Upload failed with status ${xhr.status}`));
                             }
                         });
                         
@@ -731,7 +716,7 @@
         document.getElementById('crop-save').addEventListener('click', async () => {
             try {
                 const result = await uploadCroppedImage();
-                if (result.success) {
+                if (result && result.success) {
                     // Update current user photo
                     currentUser.photo = result.photo;
                     updateUI();
@@ -752,26 +737,21 @@
                 }
             } catch (error) {
                 console.error('Error updating profile picture:', error);
-                alert('Failed to update profile picture');
+                alert('Failed to update profile picture: ' + error.message);
             }
         });
 
         // Cancel crop events
-        document.getElementById('crop-cancel').addEventListener('click', () => {
+        function closeCropModal() {
             document.getElementById('crop-modal').classList.add('hidden');
             if (cropper) {
                 cropper.destroy();
                 cropper = null;
             }
-        });
+        }
 
-        document.getElementById('crop-cancel-btn').addEventListener('click', () => {
-            document.getElementById('crop-modal').classList.add('hidden');
-            if (cropper) {
-                cropper.destroy();
-                cropper = null;
-            }
-        });
+        document.getElementById('crop-cancel').addEventListener('click', closeCropModal);
+        document.getElementById('crop-cancel-btn').addEventListener('click', closeCropModal);
 
         // Handle window resize for responsive cropper
         window.addEventListener('resize', () => {
