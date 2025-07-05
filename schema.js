@@ -55,6 +55,10 @@ const postSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  likes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   createdAt: {
     type: Date,
     default: Date.now
@@ -77,6 +81,15 @@ const commentSchema = new mongoose.Schema({
     ref: 'Post',
     required: true
   },
+  parentComment: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Comment',
+    default: null // Optional: for top-level comments or if not a reply
+  },
+  likes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   createdAt: {
     type: Date,
     default: Date.now

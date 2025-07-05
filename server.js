@@ -365,11 +365,53 @@ app.get('/api/posts', async (req, res) => {
       .populate('author', 'name profilePicture')
       .sort({ createdAt: -1 });
 
-    const postsWithComments = await Promise.all(
+    const currentUserId = req.user ? req.user._id : null;
+
+    const postsWithDetails = await Promise.all(
       posts.map(async (post) => {
-        const comments = await Comment.find({ post: post._id })
-          .populate('author', '_id name profilePicture') // Ensure _id is populated
+        // Fetch all comments for the post
+        const allCommentsRaw = await Comment.find({ post: post._id })
+          .populate('author', '_id name profilePicture')
           .sort({ createdAt: 1 });
+
+        // Function to recursively build comment tree
+        const buildCommentTree = (parentId) => {
+          return allCommentsRaw
+            .filter(comment => String(comment.parentComment) === String(parentId)) // Compare as strings
+            .map(comment => ({
+              id: comment._id,
+              content: comment.content,
+              author: {
+                id: comment.author._id,
+                name: comment.author.name,
+                photo: comment.author.profilePicture.path || '/default-profile.png'
+              },
+              likes: comment.likes.length,
+              isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
+              createdAt: comment.createdAt.toISOString(),
+              parentComment: comment.parentComment,
+              replies: buildCommentTree(comment._id) // Recursively get replies
+            }));
+        };
+        
+        // Get top-level comments (those without a parentComment or parentComment is null)
+        const topLevelComments = allCommentsRaw
+            .filter(comment => !comment.parentComment)
+            .map(comment => ({
+                id: comment._id,
+                content: comment.content,
+                author: {
+                    id: comment.author._id,
+                    name: comment.author.name,
+                    photo: comment.author.profilePicture.path || '/default-profile.png'
+                },
+                likes: comment.likes.length,
+                isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
+                createdAt: comment.createdAt.toISOString(),
+                parentComment: null,
+                replies: buildCommentTree(comment._id)
+            }));
+
 
         return {
           id: post._id,
@@ -380,22 +422,15 @@ app.get('/api/posts', async (req, res) => {
             name: post.author.name,
             photo: post.author.profilePicture.path || '/default-profile.png'
           },
+          likes: post.likes.length,
+          isLiked: currentUserId ? post.likes.includes(currentUserId) : false,
           createdAt: post.createdAt.toISOString(),
-          comments: comments.map(comment => ({
-            id: comment._id,
-            content: comment.content,
-            author: {
-              id: comment.author._id,
-              name: comment.author.name,
-              photo: comment.author.profilePicture.path || '/default-profile.png'
-            },
-            createdAt: comment.createdAt.toISOString()
-          }))
+          comments: topLevelComments
         };
       })
     );
 
-    res.json(postsWithComments);
+    res.json(postsWithDetails);
   } catch (error) {
     console.error('Error fetching posts:', error);
     res.status(500).json({ error: 'Failed to fetch posts' });
@@ -481,6 +516,155 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
     res.status(500).json({ error: 'Failed to create comment' });
   }
 });
+
+// Reply to a comment
+app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const { content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({ error: 'Content is required for a reply.' });
+    }
+
+    const parentComment = await Comment.findById(commentId);
+    if (!parentComment) {
+      return res.status(404).json({ error: 'Parent comment not found.' });
+    }
+
+    const reply = new Comment({
+      content,
+      author: req.user._id,
+      post: parentComment.post, // Associate reply with the same post
+      parentComment: commentId
+    });
+
+    await reply.save();
+    await reply.populate('author', 'name profilePicture');
+
+    const responseReply = {
+      id: reply._id,
+      content: reply.content,
+      author: {
+        id: reply.author._id,
+        name: reply.author.name,
+        photo: reply.author.profilePicture.path || '/default-profile.png'
+      },
+      post: reply.post,
+      parentComment: reply.parentComment,
+      likes: [],
+      createdAt: reply.createdAt.toISOString()
+    };
+
+    res.status(201).json(responseReply);
+  } catch (error) {
+    console.error('Error creating reply:', error);
+    res.status(500).json({ error: 'Failed to create reply.' });
+  }
+});
+
+// Like/Unlike a post
+app.post('/api/posts/:postId/like', isAuthenticated, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user._id;
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found.' });
+    }
+
+    const likedIndex = post.likes.indexOf(userId);
+    if (likedIndex > -1) {
+      // User has liked, so unlike
+      post.likes.splice(likedIndex, 1);
+    } else {
+      // User has not liked, so like
+      post.likes.push(userId);
+    }
+
+    await post.save();
+    
+    // We don't need to return the full post object with populated author and comments here.
+    // Just the like status and count.
+    res.json({ 
+      likesCount: post.likes.length,
+      isLiked: post.likes.includes(userId) 
+    });
+
+  } catch (error) {
+    console.error('Error liking/unliking post:', error);
+    res.status(500).json({ error: 'Failed to update post like status.' });
+  }
+});
+
+// Like/Unlike a comment
+app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user._id;
+
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found.' });
+    }
+
+    const likedIndex = comment.likes.indexOf(userId);
+    if (likedIndex > -1) {
+      comment.likes.splice(likedIndex, 1);
+    } else {
+      comment.likes.push(userId);
+    }
+
+    await comment.save();
+    
+    res.json({
+      likesCount: comment.likes.length,
+      isLiked: comment.likes.includes(userId)
+    });
+
+  } catch (error) {
+    console.error('Error liking/unliking comment:', error);
+    res.status(500).json({ error: 'Failed to update comment like status.' });
+  }
+});
+
+// Delete a post and its associated comments/replies
+app.delete('/api/posts/:postId', isAuthenticated, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user._id;
+
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found.' });
+    }
+
+    // Check if the current user is the author of the post
+    if (post.author.toString() !== userId.toString()) {
+      return res.status(403).json({ error: 'User not authorized to delete this post.' });
+    }
+
+    // Delete all comments and replies associated with the post
+    // Mongoose doesn't have automatic cascading delete for this scenario with `parentComment` self-references.
+    // We first delete all comments (which includes replies as they are also comments) linked to the post.
+    await Comment.deleteMany({ post: postId });
+
+    // Then delete the post itself
+    await Post.findByIdAndDelete(postId);
+
+    res.json({ success: true, message: 'Post and associated comments deleted successfully.' });
+
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    if (error.kind === 'ObjectId') {
+        return res.status(400).json({ error: 'Invalid Post ID format.' });
+    }
+    res.status(500).json({ error: 'Failed to delete post.' });
+  }
+});
+
 
 // Error handling middleware
 app.use((error, req, res, next) => {

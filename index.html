@@ -83,9 +83,94 @@
                 max-height: 400px;
             }
         }
+
+        /* Comment and Reply Styling */
+        .comment-wrapper { /* Used for indentation */
+            /* margin-left is dynamically set by JS */
+        }
+        .comment-actions button {
+            transition: color 0.2s ease-in-out;
+        }
+        .like-button-active {
+            color: #3b82f6; /* Tailwind blue-500 */
+            font-weight: 600;
+        }
+        .reply-form textarea {
+            font-size: 0.875rem; /* text-sm */
+            border-radius: 0.375rem; /* rounded-md */
+        }
+        .reply-form button {
+            font-size: 0.75rem; /* text-xs */
+            padding: 0.25rem 0.75rem; /* Adjust padding for smaller buttons */
+        }
+
+        /* Notification Styling */
+        .notification {
+            padding: 1rem; /* p-4 */
+            border-radius: 0.375rem; /* rounded-md */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+            color: white;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .notification-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .notification-success {
+            background-color: #10B981; /* Tailwind green-500 */
+        }
+        .notification-error {
+            background-color: #EF4444; /* Tailwind red-500 */
+        }
+        .notification-info {
+            background-color: #3B82F6; /* Tailwind blue-500 */
+        }
+        .notification-warning {
+            background-color: #F59E0B; /* Tailwind yellow-500 */
+        }
+        .notification-close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.25rem; /* text-xl */
+            line-height: 1;
+            opacity: 0.7;
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+        .notification-close-btn:hover {
+            opacity: 1;
+        }
+
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+    <!-- Notification Container -->
+    <div id="notification-container" class="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm sm:max-w-md p-4 space-y-3 z-[100]">
+        <!-- Notifications will be dynamically added here -->
+    </div>
+
+    <!-- Confirmation Modal Structure (hidden by default) -->
+    <div id="confirmation-modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-overlay flex items-center justify-center z-[90] p-4">
+        <div id="confirmation-modal" class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full">
+            <h3 id="confirmation-modal-title" class="text-lg font-semibold text-gray-800 mb-4">Confirmation</h3>
+            <p id="confirmation-modal-message" class="text-sm text-gray-600 mb-6">Are you sure?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="confirmation-modal-cancel-btn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button id="confirmation-modal-confirm-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Navigation -->
     <nav class="bg-white shadow-lg border-b">
         <div class="max-w-4xl mx-auto px-4 py-4">
@@ -296,13 +381,13 @@
 
             // Validate file type
             if (!file.type.startsWith('image/')) {
-                alert('Please select an image file');
+                showNotification('Please select an image file', 'warning');
                 return;
             }
 
             // Validate file size (5MB max)
             if (file.size > 5 * 1024 * 1024) {
-                alert('Please select an image smaller than 5MB');
+                showNotification('Please select an image smaller than 5MB', 'warning');
                 return;
             }
 
@@ -338,7 +423,7 @@
         // Upload cropped profile picture
         async function uploadCroppedImage() {
             if (!cropper) {
-                alert('No image selected for cropping');
+                showNotification('No image selected for cropping', 'warning');
                 return;
             }
 
@@ -350,7 +435,7 @@
             });
 
             if (!canvas) {
-                alert('Failed to crop image');
+                showNotification('Failed to crop image. Please try again.', 'error');
                 return;
             }
 
@@ -549,7 +634,7 @@
 
                 const authorProfileLink = document.createElement('a');
                 authorProfileLink.href = `/profile.html?id=${post.author.id}`;
-                authorProfileLink.className = "flex items-center space-x-3 group"; // Added group for potential hover effects
+                authorProfileLink.className = "flex items-center space-x-3 group flex-grow"; 
 
                 const postProfileImg = createProfileImage(post.author.photo, post.author.name, "w-10 h-10");
                 authorProfileLink.appendChild(postProfileImg);
@@ -561,6 +646,18 @@
                 `;
                 authorProfileLink.appendChild(postHeaderInfo);
                 postHeader.appendChild(authorProfileLink);
+
+                // Add Delete Button if current user is the author
+                if (currentUser && currentUser.id === post.author.id) {
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'ml-auto text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-100 transition-colors';
+                    deleteButton.innerHTML = `
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    `;
+                    deleteButton.title = "Delete Post";
+                    deleteButton.onclick = () => confirmDeletePost(post.id);
+                    postHeader.appendChild(deleteButton);
+                }
                 
                 // Create post content
                 const postContent = document.createElement('div');
@@ -575,77 +672,197 @@
                 
                 const commentsHeader = document.createElement('h3');
                 commentsHeader.className = 'font-semibold text-gray-800 mb-3';
-                commentsHeader.textContent = `Comments (${post.comments.length})`;
+                commentsHeader.textContent = `Comments (${post.comments.length})`; // This will need adjustment for replies
                 commentsSection.appendChild(commentsHeader);
-                
-                // Add comment form if user is authenticated
+
+                // Add top-level comment form if user is authenticated
                 if (currentUser) {
-                    const commentForm = document.createElement('div');
-                    commentForm.className = 'mb-4';
-                    commentForm.innerHTML = `
-                        <textarea id="comment-${post.id}" placeholder="Add a comment..." rows="2"
+                    const commentFormContainer = document.createElement('div');
+                    commentFormContainer.className = 'mb-4';
+                    commentFormContainer.innerHTML = `
+                        <textarea id="comment-textarea-${post.id}" placeholder="Add a comment..." rows="2"
                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"></textarea>
-                        <button onclick="addComment('${post.id}')" class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                        <button onclick="addCommentOrReply('${post.id}')" class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
                             Add Comment
                         </button>
                     `;
-                    commentsSection.appendChild(commentForm);
+                    commentsSection.appendChild(commentFormContainer);
                 }
                 
-                // Add comments
+                // Render comments and their replies
                 const commentsContainer = document.createElement('div');
                 commentsContainer.className = 'space-y-3';
-                
-                post.comments.forEach(comment => {
-                    const commentDiv = document.createElement('div');
-                    commentDiv.className = 'flex items-start space-x-3 bg-gray-50 p-3 rounded-lg';
-
-                    const commentAuthorProfileLink = document.createElement('a');
-                    commentAuthorProfileLink.href = `/profile.html?id=${comment.author.id}`;
-                    commentAuthorProfileLink.className = "shrink-0 group"; // Added group for potential hover effects
-
-                    const commentProfileImg = createProfileImage(comment.author.photo, comment.author.name, "w-8 h-8");
-                    commentAuthorProfileLink.appendChild(commentProfileImg);
-                    commentDiv.appendChild(commentAuthorProfileLink);
-                    
-                    const commentBody = document.createElement('div');
-                    commentBody.className = 'flex-1';
-                    
-                    const commentAuthorNameLink = document.createElement('a');
-                    commentAuthorNameLink.href = `/profile.html?id=${comment.author.id}`;
-                    commentAuthorNameLink.className = "font-medium text-gray-800 hover:underline";
-                    commentAuthorNameLink.textContent = escapeHtml(comment.author.name);
-
-                    const commentHeader = document.createElement('div');
-                    commentHeader.className = 'flex items-center space-x-2 mb-1';
-                    commentHeader.appendChild(commentAuthorNameLink);
-                    
-                    const commentTimestamp = document.createElement('span');
-                    commentTimestamp.className = "text-sm text-gray-500";
-                    commentTimestamp.textContent = formatDate(comment.createdAt);
-                    commentHeader.appendChild(commentTimestamp);
-
-                    commentBody.appendChild(commentHeader);
-
-                    const commentText = document.createElement('p');
-                    commentText.className = "text-gray-700 whitespace-pre-wrap";
-                    commentText.textContent = escapeHtml(comment.content); // Text content for p tags
-                    commentBody.appendChild(commentText);
-                    
-                    commentDiv.appendChild(commentBody);
-                    commentsContainer.appendChild(commentDiv);
-                });
+                renderCommentTree(post.comments, commentsContainer, post.id, 0); // Initial depth 0
                 
                 commentsSection.appendChild(commentsContainer);
                 
                 // Assemble the article
                 article.appendChild(postHeader);
+                
+                // Post Actions (Like button)
+                const postActionsDiv = document.createElement('div');
+                postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 border-b pb-2';
+                
+                const likeButtonPost = document.createElement('button');
+            // Applied like-button-active class for liked state
+            likeButtonPost.className = `flex items-center space-x-1 hover:text-blue-600 ${post.isLiked ? 'like-button-active' : ''}`;
+                likeButtonPost.innerHTML = `
+                    <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                <span id="post-like-count-${post.id}">${post.likes || 0} Likes</span>
+                `;
+                likeButtonPost.onclick = () => toggleLike('post', post.id);
+                postActionsDiv.appendChild(likeButtonPost);
+                
                 article.appendChild(postContent);
+                article.appendChild(postActionsDiv);
                 article.appendChild(commentsSection);
                 
                 container.appendChild(article);
             });
         }
+
+        // Recursive function to render comments and their replies
+        function renderCommentTree(comments, parentElement, postId, depth) {
+            comments.forEach(comment => {
+                const commentWrapper = document.createElement('div');
+                // Use a class for wrapper and apply margin based on depth
+                commentWrapper.className = `comment-wrapper mt-3 pl-${depth * 2}`; // Tailwind pl classes for indentation, e.g., pl-0, pl-2, pl-4 ...
+
+                const commentDiv = document.createElement('div');
+                commentDiv.className = 'flex items-start space-x-3 bg-gray-50 p-3 rounded-lg shadow-sm'; // Added shadow-sm for a bit of depth
+
+                const commentAuthorProfileLink = document.createElement('a');
+                commentAuthorProfileLink.href = `/profile.html?id=${comment.author.id}`;
+                commentAuthorProfileLink.className = "shrink-0 group";
+
+                const commentProfileImg = createProfileImage(comment.author.photo, comment.author.name, "w-8 h-8");
+                commentAuthorProfileLink.appendChild(commentProfileImg);
+                commentDiv.appendChild(commentAuthorProfileLink);
+                
+                const commentBody = document.createElement('div');
+                commentBody.className = 'flex-1';
+                
+                const commentAuthorNameLink = document.createElement('a');
+                commentAuthorNameLink.href = `/profile.html?id=${comment.author.id}`;
+                commentAuthorNameLink.className = "font-medium text-gray-800 hover:underline";
+                commentAuthorNameLink.textContent = escapeHtml(comment.author.name);
+
+                const commentHeader = document.createElement('div');
+                commentHeader.className = 'flex items-center space-x-2 mb-1';
+                commentHeader.appendChild(commentAuthorNameLink);
+                
+                const commentTimestamp = document.createElement('span');
+                commentTimestamp.className = "text-sm text-gray-500";
+                commentTimestamp.textContent = formatDate(comment.createdAt);
+                commentHeader.appendChild(commentTimestamp);
+                commentBody.appendChild(commentHeader);
+
+                const commentText = document.createElement('p');
+                commentText.className = "text-gray-700 whitespace-pre-wrap";
+                commentText.textContent = escapeHtml(comment.content);
+                commentBody.appendChild(commentText);
+
+                // Comment Actions (Like, Reply)
+                const commentActionsDiv = document.createElement('div');
+                commentActionsDiv.className = 'comment-actions flex items-center space-x-3 text-xs text-gray-500 mt-2';
+
+                const likeButtonComment = document.createElement('button');
+                likeButtonComment.className = `flex items-center space-x-1 hover:text-blue-600 ${comment.isLiked ? 'like-button-active' : ''}`;
+                likeButtonComment.innerHTML = `
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                    <span id="comment-like-count-${comment.id}">${comment.likes || 0}</span>
+                `;
+                likeButtonComment.onclick = () => toggleLike('comment', comment.id);
+                commentActionsDiv.appendChild(likeButtonComment);
+
+                if (currentUser) {
+                    const replyButton = document.createElement('button');
+                    replyButton.className = 'hover:text-blue-600 font-medium';
+                    replyButton.textContent = 'Reply';
+                    replyButton.onclick = () => toggleReplyForm(comment.id, postId);
+                    commentActionsDiv.appendChild(replyButton);
+                }
+                commentBody.appendChild(commentActionsDiv);
+                
+                // Hidden Reply Form Container
+                const replyFormContainerId = `reply-form-container-${comment.id}`;
+                const replyFormContainer = document.createElement('div');
+                replyFormContainer.id = replyFormContainerId;
+                replyFormContainer.className = 'reply-form hidden mt-2'; // Added reply-form class for styling
+                // Form will be injected here by toggleReplyForm
+                commentBody.appendChild(replyFormContainer);
+                
+                commentDiv.appendChild(commentBody);
+                commentWrapper.appendChild(commentDiv);
+
+                // Recursively render replies
+                if (comment.replies && comment.replies.length > 0) {
+                    renderCommentTree(comment.replies, commentWrapper, postId, depth + 1);
+                }
+                
+                parentElement.appendChild(commentWrapper);
+            });
+        }
+
+        function toggleReplyForm(commentId, postId) {
+            const containerId = `reply-form-container-${commentId}`;
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const existingForm = container.querySelector('textarea');
+            if (existingForm) {
+                container.classList.toggle('hidden');
+                if (!container.classList.contains('hidden')) {
+                    container.querySelector('textarea').focus();
+                }
+            } else {
+                // Find the comment data to get author details
+                let commentData = null;
+                const post = posts.find(p => p.id === postId);
+                if (post) {
+                    // Helper function to find a comment in a tree
+                    function findCommentById(comments, id) {
+                        for (const c of comments) {
+                            if (c.id === id) return c;
+                            if (c.replies && c.replies.length > 0) {
+                                const foundInReply = findCommentById(c.replies, id);
+                                if (foundInReply) return foundInReply;
+                            }
+                        }
+                        return null;
+                    }
+                    commentData = findCommentById(post.comments, commentId);
+                }
+
+                if (!commentData) {
+                    console.error("Could not find comment data for ID:", commentId);
+                    return; 
+                }
+
+                // Create and inject the form
+                container.innerHTML = `
+                    <p class="text-xs text-gray-500 mb-1">
+                        Replying to: 
+                        <a href="/profile.html?id=${commentData.author.id}" class="text-blue-600 hover:underline font-medium">
+                            ${escapeHtml(commentData.author.name)}
+                        </a>
+                    </p>
+                    <textarea id="reply-textarea-${commentId}" placeholder="Write a reply..." rows="2"
+                              class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"></textarea>
+                    <div class="flex justify-end space-x-2 mt-1">
+                        <button onclick="document.getElementById('${containerId}').classList.add('hidden');" 
+                                class="px-3 py-1 text-xs text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md">Cancel</button>
+                        <button onclick="addCommentOrReply('${postId}', '${commentId}')" 
+                                class="px-3 py-1 text-xs text-white bg-blue-500 hover:bg-blue-600 rounded-md">Reply</button>
+                    </div>
+                `;
+                container.classList.remove('hidden');
+                container.querySelector('textarea').focus();
+            }
+        }
+
 
         // Create new post
         async function createPost(title, content) {
@@ -660,47 +877,148 @@
 
                 if (response.ok) {
                     const newPost = await response.json();
-                    posts.unshift({...newPost, comments: []});
-                    renderPosts();
-                    return true;
+                    posts.unshift({...newPost, comments: []}); // Potential issue: newPost here doesn't have likes count
+                    renderPosts(); // This will initially show 'undefined Likes' if not handled by `|| 0`
+                    return true; // Success is handled by the caller
+                } else {
+                    const errorData = await response.json().catch(() => ({error: "Server error"}));
+                    showNotification(`Failed to create post: ${errorData.error}`, 'error');
+                    return false;
                 }
-                return false;
             } catch (error) {
                 console.error('Failed to create post:', error);
+                showNotification('An error occurred while creating the post.', 'error');
                 return false;
             }
         }
 
-        // Add comment to post
-        async function addComment(postId) {
-            const textarea = document.getElementById(`comment-${postId}`);
+        // Add comment or reply
+        async function addCommentOrReply(postId, parentCommentId = null) {
+            const textareaId = parentCommentId ? `reply-textarea-${parentCommentId}` : `comment-textarea-${postId}`;
+            const textarea = document.getElementById(textareaId);
+            if (!textarea) {
+                console.error("Textarea not found:", textareaId);
+                return;
+            }
             const content = textarea.value.trim();
 
             if (!content) return;
 
             try {
-                const response = await fetch(`/api/posts/${postId}/comments`, {
+                let url, body;
+                if (parentCommentId) {
+                    // It's a reply
+                    url = `/api/comments/${parentCommentId}/replies`;
+                    body = JSON.stringify({ content });
+                } else {
+                    // It's a top-level comment
+                    url = `/api/posts/${postId}/comments`;
+                    body = JSON.stringify({ content });
+                }
+
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ content })
+                    body: body
                 });
 
                 if (response.ok) {
-                    const newComment = await response.json();
-                    const post = posts.find(p => p.id === postId);
-                    if (post) {
-                        post.comments.push(newComment);
-                        renderPosts();
+                    // Instead of trying to manually insert, just reload all posts for simplicity
+                    // This ensures the entire comment tree with likes etc. is correctly updated
+                    await loadPosts(); 
+                    textarea.value = ''; // Clear textarea
+                    if (parentCommentId) {
+                        // Hide the reply form after successful submission
+                        const replyFormContainer = document.getElementById(`reply-form-container-${parentCommentId}`);
+                        if (replyFormContainer) {
+                            replyFormContainer.classList.add('hidden');
+                            replyFormContainer.innerHTML = ''; // Clear the form
+                        }
                     }
-                    textarea.value = '';
+                } else {
+                    const errorData = await response.json();
+                    showNotification(`Failed to add ${parentCommentId ? 'reply' : 'comment'}: ${errorData.error || 'Server error'}`, 'error');
                 }
             } catch (error) {
-                console.error('Failed to add comment:', error);
+                console.error(`Failed to add ${parentCommentId ? 'reply' : 'comment'}:`, error);
+                showNotification(`An error occurred while adding ${parentCommentId ? 'reply' : 'comment'}. Please try again.`, 'error');
             }
         }
 
+        async function toggleLike(type, id) {
+            if (!currentUser) {
+                showNotification("Please sign in to like content.", "warning");
+                return;
+            }
+
+            let url;
+            if (type === 'post') {
+                url = `/api/posts/${id}/like`;
+            } else if (type === 'comment') {
+                url = `/api/comments/${id}/like`;
+            } else {
+                return;
+            }
+
+            try {
+                const response = await fetch(url, { method: 'POST' });
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // Update UI - it's simpler to just re-render posts for now
+                    // This ensures all like counts and states are consistent
+                    // For a more optimized approach, you'd update only the specific element
+                    await loadPosts(); 
+
+                } else {
+                    const errorData = await response.json().catch(() => ({error: "Unknown error"}));
+                    showNotification(`Failed to update like for ${type}: ${errorData.error}`, 'error');
+                }
+            } catch (error) {
+                console.error(`Error toggling like for ${type} ${id}:`, error);
+                showNotification(`Error updating like for ${type}. Please try again.`, 'error');
+            }
+        }
+
+        async function confirmDeletePost(postId) {
+            if (!currentUser) return; // Should not happen if button is only shown to owner
+
+            const postToDelete = posts.find(p => p.id === postId);
+            if (!postToDelete || postToDelete.author.id !== currentUser.id) {
+                showNotification("You are not authorized to delete this post or the post was not found.", "error");
+                return;
+            }
+
+            showConfirmationDialog(
+                "Are you sure you want to delete this post? This will also delete all associated comments and replies.",
+                async () => { // onConfirm
+                    try {
+                        const response = await fetch(`/api/posts/${postId}`, {
+                            method: 'DELETE',
+                        });
+
+                        if (response.ok) {
+                            await loadPosts();
+                            showNotification("Post deleted successfully.", "success");
+                        } else {
+                            const errorData = await response.json().catch(() => ({error: "Server error"}));
+                            showNotification(`Failed to delete post: ${errorData.error}`, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error deleting post:', error);
+                        showNotification('An error occurred while trying to delete the post.', 'error');
+                    }
+                },
+                () => { // onCancel
+                    showNotification("Delete operation cancelled.", "info", 2000);
+                },
+                "Delete Post", // Title for the modal
+                "Delete",      // Confirm button text
+                "Cancel"       // Cancel button text
+            );
+        }
         // Utility functions
         function formatDate(dateString) {
             const date = new Date(dateString);
@@ -720,7 +1038,7 @@
             const content = document.getElementById('post-content').value.trim();
 
             if (!title || !content) {
-                alert('Please fill in both title and content');
+                showNotification('Please fill in both title and content for the post.', 'warning');
                 return;
             }
 
@@ -728,7 +1046,12 @@
             if (success) {
                 document.getElementById('post-title').value = '';
                 document.getElementById('post-content').value = '';
+                showNotification("Post created successfully!", "success");
             }
+            // Error handling for createPost is inside the createPost function itself if it returns false
+            // or throws an error, which should be caught by a generic try-catch if not handled internally.
+            // For now, createPost itself doesn't show notifications on failure, it just returns false.
+            // This might be an area for future improvement if more specific error feedback is needed here.
         });
 
         document.getElementById('logout-btn').addEventListener('click', logout);
@@ -755,13 +1078,13 @@
                     }
                     
                     // Show success message
-                    alert('Profile picture updated successfully!');
+                    showNotification('Profile picture updated successfully!', 'success');
                 } else {
-                    alert('Failed to update profile picture');
+                    showNotification(result.error || 'Failed to update profile picture.', 'error');
                 }
             } catch (error) {
                 console.error('Error updating profile picture:', error);
-                alert('Failed to update profile picture: ' + error.message);
+                showNotification('Failed to update profile picture: ' + error.message, 'error');
             }
         });
 
@@ -803,6 +1126,116 @@
             console.log('Window focused, checking auth...');
             checkAuth();
         });
+
+        // --- Notification System ---
+        const notificationContainer = document.getElementById('notification-container');
+
+        function showNotification(message, type = 'info', duration = 3000) {
+            if (!notificationContainer) return;
+
+            const notificationId = `notif-${Date.now()}`;
+            const notification = document.createElement('div');
+            notification.id = notificationId;
+            notification.className = `notification notification-${type}`;
+            
+            const messageSpan = document.createElement('span');
+            messageSpan.textContent = message;
+            notification.appendChild(messageSpan);
+
+            const closeButton = document.createElement('button');
+            closeButton.className = 'notification-close-btn';
+            closeButton.innerHTML = '&times;';
+            closeButton.onclick = () => {
+                notification.classList.remove('notification-visible');
+                setTimeout(() => notification.remove(), 300); // Allow fade out
+            };
+            notification.appendChild(closeButton);
+
+            notificationContainer.appendChild(notification);
+
+            // Trigger fade-in and slide-in
+            setTimeout(() => {
+                notification.classList.add('notification-visible');
+            }, 50); // Small delay to ensure transition occurs
+
+            // Auto-dismiss
+            if (duration > 0) {
+                setTimeout(() => {
+                    // Check if notification still exists (wasn't manually closed)
+                    if (document.getElementById(notificationId)) {
+                        notification.classList.remove('notification-visible');
+                        setTimeout(() => notification.remove(), 300);
+                    }
+                }, duration);
+            }
+        }
+
+        // --- Confirmation Modal System ---
+        const confirmationModalOverlay = document.getElementById('confirmation-modal-overlay');
+        const confirmationModalElement = document.getElementById('confirmation-modal');
+        const confirmationModalMessage = document.getElementById('confirmation-modal-message');
+        const confirmationModalTitle = document.getElementById('confirmation-modal-title');
+        const confirmBtn = document.getElementById('confirmation-modal-confirm-btn');
+        const cancelBtn = document.getElementById('confirmation-modal-cancel-btn');
+
+        let currentOnConfirm = null;
+        let currentOnCancel = null;
+
+        function showConfirmationDialog(message, onConfirmCallback, onCancelCallback, title = "Confirm Action", confirmText = "Confirm", cancelText = "Cancel") {
+            if (!confirmationModalOverlay || !confirmationModalMessage || !confirmBtn || !cancelBtn || !confirmationModalTitle) {
+                console.error("Confirmation modal elements not found.");
+                // Fallback to native confirm if modal elements are missing
+                if (confirm(message)) {
+                    if (onConfirmCallback) onConfirmCallback();
+                } else {
+                    if (onCancelCallback) onCancelCallback();
+                }
+                return;
+            }
+
+            confirmationModalMessage.textContent = message;
+            confirmationModalTitle.textContent = title;
+            confirmBtn.textContent = confirmText;
+            cancelBtn.textContent = cancelText;
+
+            currentOnConfirm = onConfirmCallback;
+            currentOnCancel = onCancelCallback;
+
+            confirmationModalOverlay.classList.remove('hidden');
+            // Add class for animation if desired, e.g., confirmationModalElement.classList.add('modal-open-animation');
+        }
+
+        function closeConfirmationDialog() {
+            confirmationModalOverlay.classList.add('hidden');
+            // Add class for animation if desired, e.g., confirmationModalElement.classList.remove('modal-open-animation');
+            currentOnConfirm = null;
+            currentOnCancel = null;
+        }
+
+        confirmBtn.addEventListener('click', () => {
+            if (currentOnConfirm) {
+                currentOnConfirm();
+            }
+            closeConfirmationDialog();
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            if (currentOnCancel) {
+                currentOnCancel();
+            }
+            closeConfirmationDialog();
+        });
+        
+        // Close modal if overlay is clicked (optional)
+        confirmationModalOverlay.addEventListener('click', (event) => {
+            if (event.target === confirmationModalOverlay) {
+                 if (currentOnCancel) { // Treat overlay click as cancel
+                    currentOnCancel();
+                }
+                closeConfirmationDialog();
+            }
+        });
+
 
         // Initial check
         checkAuth();
