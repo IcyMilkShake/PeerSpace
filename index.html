@@ -546,16 +546,21 @@
                 // Create post header with profile image
                 const postHeader = document.createElement('div');
                 postHeader.className = 'flex items-center space-x-3 mb-4';
-                
-                const postProfileImg = createProfileImage(post.authorPhoto, post.author, "w-10 h-10");
-                postHeader.appendChild(postProfileImg);
+
+                const authorProfileLink = document.createElement('a');
+                authorProfileLink.href = `/profile.html?id=${post.author.id}`;
+                authorProfileLink.className = "flex items-center space-x-3 group"; // Added group for potential hover effects
+
+                const postProfileImg = createProfileImage(post.author.photo, post.author.name, "w-10 h-10");
+                authorProfileLink.appendChild(postProfileImg);
                 
                 const postHeaderInfo = document.createElement('div');
                 postHeaderInfo.innerHTML = `
-                    <div class="font-medium text-gray-800">${escapeHtml(post.author)}</div>
+                    <div class="font-medium text-gray-800 group-hover:underline">${escapeHtml(post.author.name)}</div>
                     <div class="text-sm text-gray-500">${formatDate(post.createdAt)}</div>
                 `;
-                postHeader.appendChild(postHeaderInfo);
+                authorProfileLink.appendChild(postHeaderInfo);
+                postHeader.appendChild(authorProfileLink);
                 
                 // Create post content
                 const postContent = document.createElement('div');
@@ -594,21 +599,40 @@
                 post.comments.forEach(comment => {
                     const commentDiv = document.createElement('div');
                     commentDiv.className = 'flex items-start space-x-3 bg-gray-50 p-3 rounded-lg';
+
+                    const commentAuthorProfileLink = document.createElement('a');
+                    commentAuthorProfileLink.href = `/profile.html?id=${comment.author.id}`;
+                    commentAuthorProfileLink.className = "shrink-0 group"; // Added group for potential hover effects
+
+                    const commentProfileImg = createProfileImage(comment.author.photo, comment.author.name, "w-8 h-8");
+                    commentAuthorProfileLink.appendChild(commentProfileImg);
+                    commentDiv.appendChild(commentAuthorProfileLink);
                     
-                    const commentProfileImg = createProfileImage(comment.authorPhoto, comment.author, "w-8 h-8");
-                    commentDiv.appendChild(commentProfileImg);
+                    const commentBody = document.createElement('div');
+                    commentBody.className = 'flex-1';
                     
-                    const commentContent = document.createElement('div');
-                    commentContent.className = 'flex-1';
-                    commentContent.innerHTML = `
-                        <div class="flex items-center space-x-2 mb-1">
-                            <span class="font-medium text-gray-800">${escapeHtml(comment.author)}</span>
-                            <span class="text-sm text-gray-500">${formatDate(comment.createdAt)}</span>
-                        </div>
-                        <p class="text-gray-700 whitespace-pre-wrap">${escapeHtml(comment.content)}</p>
-                    `;
-                    commentDiv.appendChild(commentContent);
+                    const commentAuthorNameLink = document.createElement('a');
+                    commentAuthorNameLink.href = `/profile.html?id=${comment.author.id}`;
+                    commentAuthorNameLink.className = "font-medium text-gray-800 hover:underline";
+                    commentAuthorNameLink.textContent = escapeHtml(comment.author.name);
+
+                    const commentHeader = document.createElement('div');
+                    commentHeader.className = 'flex items-center space-x-2 mb-1';
+                    commentHeader.appendChild(commentAuthorNameLink);
                     
+                    const commentTimestamp = document.createElement('span');
+                    commentTimestamp.className = "text-sm text-gray-500";
+                    commentTimestamp.textContent = formatDate(comment.createdAt);
+                    commentHeader.appendChild(commentTimestamp);
+
+                    commentBody.appendChild(commentHeader);
+
+                    const commentText = document.createElement('p');
+                    commentText.className = "text-gray-700 whitespace-pre-wrap";
+                    commentText.textContent = escapeHtml(comment.content); // Text content for p tags
+                    commentBody.appendChild(commentText);
+                    
+                    commentDiv.appendChild(commentBody);
                     commentsContainer.appendChild(commentDiv);
                 });
                 

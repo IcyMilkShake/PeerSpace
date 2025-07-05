@@ -32,6 +32,11 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date,
     default: Date.now
+  },
+  description: {
+    type: String,
+    default: '',
+    maxlength: 500 // Optional: set a max length for the description
   }
 }, { collection: 'User' });
 

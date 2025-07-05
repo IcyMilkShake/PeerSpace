@@ -45,6 +45,7 @@ const storage = multer.diskStorage({
   }
 });
 
+
 const upload = multer({ 
   storage: storage,
   limits: {
@@ -207,6 +208,10 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+app.get('/profile', (req, res) => {
+  res.sendFile(path.join(__dirname, 'profile.html'));
+});
+
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
@@ -230,18 +235,71 @@ app.post('/auth/logout', (req, res) => {
 
 app.get('/api/user', (req, res) => {
   if (req.isAuthenticated() && req.user) {
-    const { _id, name, email, profilePicture } = req.user;
+    const { _id, name, email, profilePicture, description, createdAt } = req.user;
     return res.json({
       id: _id,
       name,
       email,
-      photo: profilePicture.path || '/default-profile.png'
+      photo: profilePicture.path || '/default-profile.png',
+      description: description || '',
+      createdAt: createdAt
     });
   } else {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 });
 
+// Get public user profile
+app.get('/api/users/:userId', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId).select('name profilePicture description createdAt');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({
+      id: user._id,
+      name: user.name,
+      photo: user.profilePicture.path || '/default-profile.png',
+      description: user.description || '',
+      createdAt: user.createdAt
+    });
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    if (error.kind === 'ObjectId') {
+      return res.status(400).json({ error: 'Invalid user ID format' });
+    }
+    res.status(500).json({ error: 'Failed to fetch user profile' });
+  }
+});
+
+// Update user description
+app.put('/api/user/description', isAuthenticated, async (req, res) => {
+  try {
+    const { description } = req.body;
+    if (typeof description !== 'string') {
+      return res.status(400).json({ error: 'Invalid description format' });
+    }
+    if (description.length > 500) { // Max length from schema
+        return res.status(400).json({ error: 'Description is too long. Maximum 500 characters.' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.description = description;
+    await user.save();
+    
+    // Update the user object in the session
+    req.user.description = user.description;
+
+    res.json({ success: true, description: user.description });
+  } catch (error) {
+    console.error('Error updating user description:', error);
+    res.status(500).json({ error: 'Failed to update description' });
+  }
+});
 // Upload profile picture endpoint
 app.post('/api/user/profile-picture', isAuthenticated, upload.single('profilePicture'), async (req, res) => {
   try {
@@ -310,21 +368,27 @@ app.get('/api/posts', async (req, res) => {
     const postsWithComments = await Promise.all(
       posts.map(async (post) => {
         const comments = await Comment.find({ post: post._id })
-          .populate('author', 'name profilePicture')
+          .populate('author', '_id name profilePicture') // Ensure _id is populated
           .sort({ createdAt: 1 });
 
         return {
           id: post._id,
           title: post.title,
           content: post.content,
-          author: post.author.name,
-          authorPhoto: post.author.profilePicture.path || '/default-profile.png',
+          author: {
+            id: post.author._id,
+            name: post.author.name,
+            photo: post.author.profilePicture.path || '/default-profile.png'
+          },
           createdAt: post.createdAt.toISOString(),
           comments: comments.map(comment => ({
             id: comment._id,
             content: comment.content,
-            author: comment.author.name,
-            authorPhoto: comment.author.profilePicture.path || '/default-profile.png',
+            author: {
+              id: comment.author._id,
+              name: comment.author.name,
+              photo: comment.author.profilePicture.path || '/default-profile.png'
+            },
             createdAt: comment.createdAt.toISOString()
           }))
         };
@@ -360,8 +424,11 @@ app.post('/api/posts', isAuthenticated, async (req, res) => {
       id: post._id,
       title: post.title,
       content: post.content,
-      author: post.author.name,
-      authorPhoto: post.author.profilePicture.path || '/default-profile.png',
+      author: {
+        id: post.author._id,
+        name: post.author.name,
+        photo: post.author.profilePicture.path || '/default-profile.png'
+      },
       createdAt: post.createdAt.toISOString(),
       comments: []
     };
@@ -400,8 +467,11 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
     const responseComment = {
       id: comment._id,
       content: comment.content,
-      author: comment.author.name,
-      authorPhoto: comment.author.profilePicture.path || '/default-profile.png',
+      author: {
+        id: comment.author._id,
+        name: comment.author.name,
+        photo: comment.author.profilePicture.path || '/default-profile.png'
+      },
       createdAt: comment.createdAt.toISOString()
     };
 

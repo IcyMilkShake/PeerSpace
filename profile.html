@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - Forum</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css"> <!-- If you have additional global styles -->
+    <style>
+        /* Basic styling, can be expanded */
+        .profile-header {
+            background-color: #f9fafb; /* Tailwind gray-50 */
+        }
+        .profile-avatar {
+            width: 128px;
+            height: 128px;
+            object-fit: cover;
+            border: 4px solid white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .profile-avatar-placeholder {
+            width: 128px;
+            height: 128px;
+            background-color: #e5e7eb; /* Tailwind gray-200 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: #4b5563; /* Tailwind gray-600 */
+            border: 4px solid white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md border-b">
+        <div class="max-w-4xl mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <a href="/" class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-lg">F</span>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-800">Forum</h1>
+                </a>
+                <div id="auth-section-profile">
+                    <!-- Auth status will be rendered here by JS -->
+                     <a href="/" class="text-blue-600 hover:text-blue-700">Back to Forum</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Profile Content -->
+    <main class="max-w-3xl mx-auto px-4 py-8">
+        <div id="profile-loading" class="text-center py-12">
+            <p class="text-gray-500">Loading profile...</p>
+        </div>
+
+        <div id="profile-content" class="hidden bg-white rounded-lg shadow-lg overflow-hidden">
+            <!-- Profile Header -->
+            <div class="profile-header p-6 md:p-8 text-center border-b">
+                <div id="profile-avatar-container" class="inline-block rounded-full mx-auto">
+                    <!-- Avatar will be loaded here -->
+                </div>
+                <h2 id="profile-name" class="text-3xl font-bold text-gray-800 mt-4"></h2>
+                <p id="profile-joined-date" class="text-sm text-gray-500 mt-1"></p>
+            </div>
+
+            <!-- Profile Details -->
+            <div class="p-6 md:p-8">
+                <h3 class="text-xl font-semibold text-gray-700 mb-3">About Me</h3>
+                <div id="profile-description-view" class="text-gray-600 whitespace-pre-wrap leading-relaxed">
+                    <!-- Description will be loaded here -->
+                </div>
+                
+                <!-- Edit Description Form (hidden by default) -->
+                <div id="edit-description-form" class="hidden mt-4">
+                    <textarea id="profile-description-edit" rows="4" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                              placeholder="Tell us about yourself..."></textarea>
+                    <div class="mt-3 flex justify-end space-x-2">
+                        <button id="cancel-edit-description" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg">
+                            Cancel
+                        </button>
+                        <button id="save-description" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg">
+                            Save Description
+                        </button>
+                    </div>
+                </div>
+
+                <button id="edit-description-button" class="hidden mt-4 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg">
+                    Edit Description
+                </button>
+            </div>
+        </div>
+
+        <div id="profile-error" class="hidden text-center py-12">
+            <p class="text-red-500">Could not load profile. The user may not exist or there was an error.</p>
+            <a href="/" class="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">Go to Homepage</a>
+        </div>
+    </main>
+
+    <!-- User Profile Modal (similar to index.html, for logged-in user nav) -->
+    <div id="user-profile-modal" class="hidden fixed top-4 right-4 bg-white rounded-lg shadow-lg p-4 border z-50 w-64">
+        <div class="flex items-center space-x-3 mb-3">
+            <div id="modal-profile-img-container" class="profile-img w-10 h-10 rounded-full bg-gray-300 cursor-pointer relative border-2 border-gray-200">
+                <!-- Profile image will be inserted here by JS -->
+            </div>
+            <div>
+                <div id="modal-user-name" class="font-medium text-gray-800 text-sm"></div>
+                <div id="modal-user-email" class="text-xs text-gray-500"></div>
+            </div>
+        </div>
+        <!-- Link to own profile -->
+        <a id="view-my-profile-link" href="#" class="block w-full text-left py-2 px-3 hover:bg-gray-100 rounded-md text-sm text-gray-700 mb-1">
+            View My Profile
+        </a>
+        <button id="logout-btn-profile" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded-lg font-medium text-sm transition-colors">
+            Sign Out
+        </button>
+    </div>
+
+    <script>
+        // JavaScript for profile page will go here in the next step
+        // For now, basic auth check and nav setup
+        let currentLoggedInUser = null;
+
+        // Get initials from name
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+        }
+        
+        // Create profile image element with fallback
+        function createProfileImageElement(photoUrl, name, sizeClasses = "w-10 h-10", textClasses = "text-xl") {
+            const container = document.createElement('div');
+            container.className = `profile-img ${sizeClasses} rounded-full bg-gray-300 flex items-center justify-center overflow-hidden`;
+            
+            if (photoUrl && photoUrl.trim() && photoUrl !== '/default-profile.png') {
+                const img = document.createElement('img');
+                img.className = 'w-full h-full object-cover';
+                img.alt = name || 'Profile';
+                img.onerror = function() {
+                    container.innerHTML = `<span class="profile-initials ${textClasses} font-semibold text-gray-600">${getInitials(name)}</span>`;
+                };
+                img.src = photoUrl + '?t=' + Date.now(); // Cache busting
+                container.appendChild(img);
+            } else {
+                container.innerHTML = `<span class="profile-initials ${textClasses} font-semibold text-gray-600">${getInitials(name)}</span>`;
+            }
+            return container;
+        }
+
+
+        async function checkAuthStatusForProfilePage() {
+            try {
+                const response = await fetch('/api/user', { credentials: 'include' });
+                if (response.ok) {
+                    currentLoggedInUser = await response.json();
+                    updateProfilePageNav();
+                } else {
+                    currentLoggedInUser = null;
+                    updateProfilePageNav();
+                }
+            } catch (error) {
+                console.error('Auth check failed on profile page:', error);
+                currentLoggedInUser = null;
+                updateProfilePageNav();
+            }
+            // This function will be expanded in the next step to fetch and display the profile data
+            // For now, it just sets up the navigation for the logged-in user
+        }
+
+        function updateProfilePageNav() {
+            const authSection = document.getElementById('auth-section-profile');
+            const userProfileModal = document.getElementById('user-profile-modal');
+
+            if (currentLoggedInUser) {
+                const navProfileImgContainer = createProfileImageElement(currentLoggedInUser.photo, currentLoggedInUser.name, "w-8 h-8", "text-sm");
+                
+                authSection.innerHTML = `
+                    <button onclick="toggleProfileModal()" class="flex items-center space-x-2 hover:bg-gray-100 p-1 rounded-lg transition-colors">
+                        <div id="nav-profile-img-container-profile"></div>
+                        <span class="font-medium text-gray-700 text-sm">${escapeHtml(currentLoggedInUser.name)}</span>
+                    </button>
+                `;
+                document.getElementById('nav-profile-img-container-profile').appendChild(navProfileImgContainer);
+
+                // Update user profile modal
+                const modalImgContainer = document.getElementById('modal-profile-img-container');
+                modalImgContainer.innerHTML = ''; // Clear previous
+                modalImgContainer.appendChild(createProfileImageElement(currentLoggedInUser.photo, currentLoggedInUser.name, "w-10 h-10", "text-lg"));
+                
+                document.getElementById('modal-user-name').textContent = currentLoggedInUser.name;
+                document.getElementById('modal-user-email').textContent = currentLoggedInUser.email;
+                document.getElementById('view-my-profile-link').href = `/profile.html?id=${currentLoggedInUser.id}`;
+
+
+                document.getElementById('logout-btn-profile').addEventListener('click', logoutFromProfilePage);
+            } else {
+                authSection.innerHTML = '<a href="/" class="text-blue-600 hover:text-blue-700">Back to Forum</a>';
+                userProfileModal.classList.add('hidden');
+            }
+        }
+        
+        function toggleProfileModal() {
+            const userProfileModal = document.getElementById('user-profile-modal');
+            if (!currentLoggedInUser) return;
+            userProfileModal.classList.toggle('hidden');
+        }
+
+        async function logoutFromProfilePage() {
+            try {
+                await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+                currentLoggedInUser = null;
+                updateProfilePageNav();
+                // Optionally redirect or update UI further
+                window.location.href = '/'; // Redirect to home after logout
+            } catch (error) {
+                console.error('Logout failed:', error);
+            }
+        }
+        
+        function escapeHtml(text) {
+            if (text === null || typeof text === 'undefined') return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            const userProfileModal = document.getElementById('user-profile-modal');
+            const authSection = document.getElementById('auth-section-profile');
+            if (authSection && userProfileModal && !authSection.contains(e.target) && !userProfileModal.contains(e.target)) {
+                userProfileModal.classList.add('hidden');
+            }
+        });
+        
+        // Initial calls
+        let profileUserId = null;
+
+        function getUserIdFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('id');
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        async function loadProfileData() {
+            profileUserId = getUserIdFromUrl();
+            if (!profileUserId) {
+                displayProfileError("No user ID provided in the URL.");
+                return;
+            }
+
+            document.getElementById('profile-loading').classList.remove('hidden');
+            document.getElementById('profile-content').classList.add('hidden');
+            document.getElementById('profile-error').classList.add('hidden');
+
+            try {
+                const response = await fetch(`/api/users/${profileUserId}`);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ message: `Error ${response.status}` }));
+                    throw new Error(errorData.error || errorData.message || `Failed to load profile: ${response.status}`);
+                }
+                const profileData = await response.json();
+                
+                renderProfileData(profileData);
+
+                document.getElementById('profile-loading').classList.add('hidden');
+                document.getElementById('profile-content').classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Failed to load profile data:", error);
+                displayProfileError(error.message);
+            }
+        }
+
+        function renderProfileData(profile) {
+            // Avatar
+            const avatarContainer = document.getElementById('profile-avatar-container');
+            avatarContainer.innerHTML = ''; // Clear previous
+            const avatarElement = createProfileImageElement(profile.photo, profile.name, "profile-avatar", "text-5xl");
+            avatarContainer.appendChild(avatarElement);
+
+            // Name and Join Date
+            document.getElementById('profile-name').textContent = escapeHtml(profile.name);
+            document.getElementById('profile-joined-date').textContent = `Joined on ${formatDate(profile.createdAt)}`;
+
+            // Description
+            const descriptionView = document.getElementById('profile-description-view');
+            const descriptionEditInput = document.getElementById('profile-description-edit');
+            descriptionView.textContent = profile.description || 'No description provided.';
+            descriptionEditInput.value = profile.description || '';
+
+            // Edit button visibility
+            const editButton = document.getElementById('edit-description-button');
+            if (currentLoggedInUser && currentLoggedInUser.id === profile.id) {
+                editButton.classList.remove('hidden');
+                editButton.onclick = () => {
+                    descriptionView.classList.add('hidden');
+                    editButton.classList.add('hidden');
+                    document.getElementById('edit-description-form').classList.remove('hidden');
+                    descriptionEditInput.focus();
+                };
+            } else {
+                editButton.classList.add('hidden');
+            }
+        }
+
+        function displayProfileError(message) {
+            document.getElementById('profile-loading').classList.add('hidden');
+            document.getElementById('profile-content').classList.add('hidden');
+            const errorElement = document.getElementById('profile-error');
+            errorElement.classList.remove('hidden');
+            errorElement.querySelector('p').textContent = message || "Could not load profile.";
+        }
+        
+        async function saveDescription() {
+            const newDescription = document.getElementById('profile-description-edit').value;
+            const saveButton = document.getElementById('save-description');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+
+            try {
+                const response = await fetch('/api/user/description', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ description: newDescription })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ message: 'Failed to save description.'}));
+                    throw new Error(errorData.error || errorData.message);
+                }
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('profile-description-view').textContent = result.description || 'No description provided.';
+                    // Update currentLoggedInUser if it's their own profile, for consistency
+                    if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
+                         currentLoggedInUser.description = result.description;
+                    }
+                    cancelEditDescription(); // Hide form, show view
+                } else {
+                    alert('Failed to save description: ' + (result.error || 'Unknown error'));
+                }
+
+            } catch (error) {
+                console.error("Error saving description:", error);
+                alert('Error saving description: ' + error.message);
+            } finally {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Description';
+            }
+        }
+
+        function cancelEditDescription() {
+            document.getElementById('edit-description-form').classList.add('hidden');
+            document.getElementById('profile-description-view').classList.remove('hidden');
+            document.getElementById('edit-description-button').classList.remove('hidden');
+            // Optionally reset textarea content if needed:
+            // document.getElementById('profile-description-edit').value = document.getElementById('profile-description-view').textContent;
+        }
+
+        // Event Listeners for description editing
+        document.getElementById('save-description').addEventListener('click', saveDescription);
+        document.getElementById('cancel-edit-description').addEventListener('click', cancelEditDescription);
+
+        // Modified Initial calls
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkAuthStatusForProfilePage(); // Ensure logged-in user status is known first
+            await loadProfileData(); // Then load the profile of the user whose page this is
+        });
+
+    </script>
+</body>
+</html>
