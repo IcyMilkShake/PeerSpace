@@ -59,26 +59,26 @@
 
 /* Midnight Theme - Refined Palette (Deeper Dark) */
 .theme-midnight {
-    --bg-primary: #0f172a;       /* Tailwind slate-900 */
-    --bg-secondary: #020617;     /* Tailwind slate-950 (very dark) */
-    --text-primary: #cbd5e1;     /* Tailwind slate-300 */
-    --text-secondary: #64748b;   /* Tailwind slate-500 */
-    --border-color: #1e293b;     /* Tailwind slate-800 */
-    --link-color: #38bdf8;       /* Tailwind sky-400 */
+    --bg-primary: 		#8c7ae6;       /* Tailwind slate-900 */
+    --bg-secondary: 	#0d0c1d;    /* Tailwind slate-950 (very dark) */
+    --text-primary: #dcdcff;     /* Tailwind slate-300 */
+    --text-secondary: 	#8c7ae6;   /* Tailwind slate-500 */
+    --border-color: 	#2f2d44;     /* Tailwind slate-800 */
+    --link-color: #d15de5;       /* Tailwind sky-400 */
     --link-hover-color: #7dd3fc; /* Tailwind sky-300 */
-    --button-bg: #38bdf8;       /* Tailwind sky-400 */
+    --button-bg: 	#8c7ae6;       /* Tailwind sky-400 */
     --button-text: #020617;     /* Tailwind slate-950 (for contrast) */
-    --button-hover-bg: #0ea5e9; /* Tailwind sky-500 */
-    --card-bg: #0f172a;         /* Tailwind slate-900 */
-    --input-bg: #1e293b;       /* Tailwind slate-800 */
-    --input-border: #334155;   /* Tailwind slate-700 */
-    --input-focus-ring: #38bdf8; /* Tailwind sky-400 */
+    --button-hover-bg:  #4f4970; /* Tailwind sky-500 */
+    --card-bg: 	#1c1b2f;         /* Tailwind slate-900 */
+    --input-bg: 		#3a3552;       /* Tailwind slate-800 */
+    --input-border: 	#1c1b2f;   /* Tailwind slate-700 */
+    --input-focus-ring: #665b8a; /* Tailwind sky-400 */
     --modal-overlay-bg: rgba(2, 6, 23, 0.8); /* slate-950 with opacity */
-    --profile-modal-bg: #1e293b; /* Tailwind slate-800 */
+    --profile-modal-bg: #1C1F26; /* Tailwind slate-800 */
     --notification-success-bg: #15803d; /* Tailwind green-700 */
     --notification-error-bg: #b91c1c;   /* Tailwind red-700 */
     --notification-info-bg: #1d4ed8;    /* Tailwind blue-700 */
-    --notification-warning-bg: #d97706; /* Tailwind amber-600 */
+    --notification-warning-bg: #65533f; /* Tailwind amber-600 */
     --notification-text-color: #e2e8f0; /* Tailwind slate-200 */
     --code-bg: #1e293b;         /* Tailwind slate-800 */
     --code-text: #cbd5e1;       /* Tailwind slate-300 */
@@ -218,14 +218,18 @@ article .border-t, article .border-b {
 .comment-wrapper .text-gray-700 { 
     color: var(--text-primary);
 }
-.comment-actions button, .comment-actions .text-xs.text-gray-500 {
+.comment-actions .text-xs.text-gray-500 {
     color: var(--text-secondary);
+}
+
+.button {
+    color: var(--text-primary);
 }
 .comment-actions button:hover {
-    color: var(--link-color);
+    color: var(--border-color);
 }
 .like-button { 
-    color: var(--text-secondary);
+    color: var(--blockquote-text);
     transition: color 0.2s ease-in-out;
 }
 .like-button:hover {
@@ -632,6 +636,13 @@ article h2.text-xl.font-bold.mb-3 { /* Ensure post titles also wrap */
     border-style: solid; /* From Tailwind Preflight */
     border-color: var(--border-color); /* Default border color from theme */
 }
+
+/* Ensure Tailwind border width classes pick up the theme color */
+.border, .border-t, .border-r, .border-b, .border-l,
+.border-x, .border-y {
+    border-color: var(--border-color);
+}
+
 html {
     line-height: 1.5; /* From Tailwind Preflight */
     -webkit-text-size-adjust: 100%; /* From Tailwind Preflight */

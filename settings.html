@@ -73,10 +73,17 @@
                 <div id="modal-user-email-settings" class="text-xs"></div>
             </div>
         </div>
-        <a id="view-my-profile-link-settings" href="#"> <!-- JS adds .profile-menu-item -->
+        <a id="view-my-profile-link-settings" href="#"> 
+            <!-- JS adds .profile-menu-item class -->
             View My Profile
         </a>
-        <button id="logout-btn-settings"> <!-- JS adds .profile-menu-item -->
+        <a href="settings.html" id="profile-menu-settings-settings" class="profile-menu-item">
+            <svg class="w-5 h-5 mr-2 inline" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            Settings
+        </a>
+        <hr class="my-1" style="border-top-color: var(--border-color);">
+        <button id="logout-btn-settings"> 
+            <!-- JS adds .profile-menu-item class -->
             Sign Out
         </button>
     </div>
@@ -86,7 +93,7 @@
         <h1 class="text-3xl font-bold mb-8">Settings</h1>
 
         <!-- Appearance Settings -->
-        <section id="appearance-settings" class="setting-card bg-white rounded-lg shadow-md p-6 mb-8 border">
+        <section id="appearance-settings" class="setting-card shadow-md rounded-lg p-6 mb-8">
             <h2 class="text-xl font-semibold mb-4">Appearance</h2>
             <p class="text-sm text-gray-600 mb-1">Choose your preferred theme.</p>
             <div class="space-y-3">
@@ -121,7 +128,7 @@
         </section>
 
         <!-- Placeholder Settings -->
-        <section id="placeholder-settings" class="setting-card bg-white rounded-lg shadow-md p-6 border">
+        <section id="placeholder-settings" class="setting-card shadow-md rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Future Settings (Placeholders)</h2>
             <div class="space-y-4">
                 <div class="flex justify-between items-center">
@@ -292,15 +299,20 @@
                 
                 const viewProfileLink = document.getElementById('view-my-profile-link-settings');
                 viewProfileLink.href = `/profile.html?id=${currentLoggedInUserConfig.id}`;
-                viewProfileLink.classList.add('profile-menu-item'); // Add class for styling
+                viewProfileLink.classList.add('profile-menu-item'); 
+
+                const settingsLink = document.getElementById('profile-menu-settings-settings');
+                // It already has the class profile-menu-item from HTML, so no need to add it via JS.
+                // If it needed dynamic content or href, this is where it would be set.
+                // settingsLink.href = 'settings.html'; // Already set in HTML
 
                 const logoutBtn = document.getElementById('logout-btn-settings');
-                logoutBtn.classList.add('profile-menu-item'); // Add class for styling (red will override bg)
-                logoutBtn.removeEventListener('click', logoutFromSettingsPage); // Prevent multiple listeners
+                logoutBtn.classList.add('profile-menu-item'); 
+                logoutBtn.removeEventListener('click', logoutFromSettingsPage); 
                 logoutBtn.addEventListener('click', logoutFromSettingsPage);
 
             } else {
-                authSection.innerHTML = '<a href="/" id="back-to-forum-link" class="hover:underline">Back to Forum</a>'; // Added ID and themed hover
+                authSection.innerHTML = '<a href="/" id="back-to-forum-link" class="hover:underline">Back to Forum</a>'; 
                 if(userProfileModal) userProfileModal.classList.add('hidden');
             }
         }

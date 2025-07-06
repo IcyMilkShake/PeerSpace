@@ -67,7 +67,7 @@
                     <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                         <span class="text-white font-bold text-lg">F</span>
                     </div>
-                    <h1 class="text-2xl font-bold text-gray-800">Forum</h1>
+                    <h1 class="text-2xl font-bold" style="color: #dcdcff">Forum</h1>
                 </div>
                 <div id="auth-section">
                     <button id="login-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
@@ -429,7 +429,8 @@
                 commentsSection.className = 'border-t pt-4';
                 
                 const commentsHeader = document.createElement('h3');
-                commentsHeader.className = 'font-semibold text-gray-800 mb-3';
+                commentsHeader.className = 'font-semibold mb-3';
+                commentsHeader.style = 'color: var(--bg-primary)'
                 commentsHeader.textContent = `Comments (${post.comments.length})`; // This will need adjustment for replies
                 commentsSection.appendChild(commentsHeader);
 
@@ -460,7 +461,8 @@
                 
                 // Post Actions (Like button)
                 const postActionsDiv = document.createElement('div');
-                postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 border-b pb-2';
+                // Removed 'border-b'
+                postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
                 
                 const likeButtonPost = document.createElement('button');
                 likeButtonPost.className = `like-button flex items-center space-x-1 ${post.isLiked ? 'like-button-active' : ''}`; // Added like-button base class
