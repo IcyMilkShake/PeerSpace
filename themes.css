@@ -1,127 +1,213 @@
 .theme-white {
-    --bg-primary:       #ffffff;
-    --bg-secondary:     #f9f9f9;
-    --text-primary:     #111111;
-    --text-secondary:   #555555;
-    --border-color:     #dddddd;
-    --link-color:       #2b6cb0;
-    --link-hover-color: #2c5282;
-    --button-bg:        #3182ce;
-    --button-text:      #ffffff;
-    --button-hover-bg:  #2c5282;
-    --card-bg:          #ffffff;
-    --input-bg:         #f0f0f0;
-    --input-border:     #cccccc;
-    --input-focus-ring: #63b3ed;
-    --modal-overlay-bg: rgba(255, 255, 255, 0.8);
-    --profile-modal-bg: #f7fafc;
-    --notification-success-bg: #38a169;
-    --notification-error-bg: #e53e3e;
-    --notification-info-bg: #3182ce;
-    --notification-warning-bg: #d69e2e;
-    --notification-text-color: #1a202c;
-    --code-bg:           #f7fafc;
-    --code-text:         #2d3748;
-    --blockquote-border: #cbd5e0;
-    --blockquote-text:   #4a5568;
+  --bg-primary:       #f9fafb;  /* Soft off-white */
+  --bg-secondary:     #f0f2f5;  /* Gentle contrast */
+  --text-primary:     #2d2d2d;  /* Soft charcoal */
+  --text-secondary:   #5f6368;  /* Muted gray */
+  --border-color:     #dcdfe3;
+  --link-color:       #3b82f6;  /* Calmer blue */
+  --link-hover-color: #2563eb;  /* Slightly stronger */
+  --button-bg:        #3b82f6;
+  --button-text:      #ffffff;
+  --button-hover-bg:  #2563eb;
+  --card-bg:          #ffffff;
+  --input-bg:         #f1f5f9;  /* Very light gray-blue */
+  --input-border:     #d1d5db;
+  --input-focus-ring: #60a5fa;
+  --modal-overlay-bg: rgba(249, 250, 251, 0.8);
+  --profile-modal-bg: #ffffff;
+  --notification-success-bg: #4ade80;
+  --notification-error-bg: #f87171;
+  --notification-info-bg: #60a5fa;
+  --notification-warning-bg: #facc15;
+  --notification-text-color: #1f2937;
+  --code-bg:          #f9fafb;
+  --code-text:        #374151;
+  --blockquote-border: #e5e7eb;
+  --blockquote-text:   #6b7280;
+
+  --nav-bg: #ffffff;
+  --nav-text: #2d2d2d;
+  --nav-border-color: #e5e7eb;
+
+  --button-primary-bg: #3b82f6;
+  --button-primary-text: #ffffff;
+  --button-primary-hover-bg: #2563eb;
+  --button-primary-border: transparent;
+
+  --button-secondary-bg: #f3f4f6;
+  --button-secondary-text: #2d2d2d;
+  --button-secondary-hover-bg: #dbeafe;
+  --button-secondary-border: #e5e7eb;
+
+  --button-danger-bg: #ef4444;
+  --button-danger-text: #ffffff;
+  --button-danger-hover-bg: #b91c1c;
+  --button-danger-border: transparent;
+
+  --input-field-bg: #f1f5f9;
+  --input-field-text: #2d2d2d;
+  --input-field-border: #d1d5db;
+  --input-field-focus-ring: #3b82f6;
+  --input-field-placeholder-text: #9ca3af;
+
+  --card-default-bg: #ffffff;
+  --card-default-border: #e5e7eb;
+
+  --post-card-bg: #ffffff;
+  --post-card-border: #e5e7eb;
+
+  --comment-bg: #f9fafb;
+
+  --dropdown-bg: #ffffff;
+  --dropdown-border: #e5e7eb;
+  --dropdown-text: #2d2d2d;
+  --dropdown-item-hover-bg: #f3f4f6;
+
+  --modal-content-bg: #ffffff;
+
+  --like-button-color: #6b7280;
+  --like-button-active-color: #3b82f6;
+  --like-button-hover-color: #2563eb;
+
+  --welcome-banner-bg: #f9fafb;
+  --welcome-banner-text-header: #1f2937;
+  --welcome-banner-text-body: #6b7280;
+  --welcome-banner-border: #e5e7eb;
+
+  --profile-avatar-border: #ffffff;
+  --profile-initials-bg: #e5e7eb;
+  --profile-initials-text-color: #6b7280;
+}
+
+
+
+/* Definition for .theme-dark (New or Updated) */
+.theme-dark {
+    /* Base colors */
+    --bg-primary:       #121212; /* Common dark theme main background */
+    --bg-secondary:     #1E1E1E; /* Slightly lighter secondary background */
+    --text-primary:     #E0E0E0; /* Light gray for primary text */
+    --text-secondary:   #A0A0A0; /* Medium gray for secondary text */
+    --border-color:     #3A3A3A; /* Dark gray for borders */
+    --link-color:       #BB86FC; /* Purple accent, common in dark themes */
+    --link-hover-color: #D1A9FF; /* Lighter purple for hover */
+    --button-bg:        #BB86FC; /* Primary button background (same as link) */
+    --button-text:      #000000; /* Black text for contrast on purple button */
+    --button-hover-bg:  #A870E0; /* Darker purple for button hover */
+    --card-bg:          #242424; /* Dark gray for cards */
+    --input-bg:         #2C2C2C; /* Slightly lighter gray for inputs */
+    --input-border:     #3A3A3A; /* Matches general border color */
+    --input-focus-ring: #BB86FC; /* Purple focus ring */
+    --modal-overlay-bg: rgba(0, 0, 0, 0.7); /* Darker overlay */
+    --profile-modal-bg: #2A2A2A; /* Specific for dropdown/profile modal, slightly distinct */
+    --notification-success-bg: #388E3C; /* Darker green */
+    --notification-error-bg:   #D32F2F; /* Darker red */
+    --notification-info-bg:    #1976D2; /* Darker blue */
+    --notification-warning-bg: #FBC02D; /* Darker yellow/amber */
+    --notification-text-color: #FFFFFF; /* White text for notifications */
+    --code-bg:           #1E1E1E; /* Matches secondary background */
+    --code-text:         #E0E0E0; /* Matches primary text */
+    --blockquote-border: #4A4A4A;
+    --blockquote-text:   #B0B0B0;
 
     /* Nav */
-    --nav-bg: #ffffff;
-    --nav-text: #111111;
-    --nav-border-color: #dddddd;
+    --nav-bg: #242424; /* Matches card background */
+    --nav-text: #E0E0E0;
+    --nav-border-color: #3A3A3A;
 
     /* Buttons */
-    --button-primary-bg: #3182ce;
-    --button-primary-text: #ffffff;
-    --button-primary-hover-bg: #2c5282;
+    --button-primary-bg: #BB86FC;
+    --button-primary-text: #000000;
+    --button-primary-hover-bg: #A870E0;
     --button-primary-border: transparent;
 
-    --button-secondary-bg: #f0f0f0;
-    --button-secondary-text: #111111;
-    --button-secondary-hover-bg: #3182ce;
-    --button-secondary-border: #dddddd;
+    --button-secondary-bg: #3A3A3A; /* Using border color as secondary button bg */
+    --button-secondary-text: #E0E0E0;
+    --button-secondary-hover-bg: #4A4A4A;
+    --button-secondary-border: #5A5A5A;
 
-    --button-danger-bg: #e53e3e;
-    --button-danger-text: #ffffff;
-    --button-danger-hover-bg: #9b2c2c;
+    --button-danger-bg: #CF6679; /* Material Design Dark theme error color */
+    --button-danger-text: #000000;
+    --button-danger-hover-bg: #B04F5F;
     --button-danger-border: transparent;
 
     /* Input fields */
-    --input-field-bg: #f0f0f0;
-    --input-field-text: #111111;
-    --input-field-border: #cccccc;
-    --input-field-focus-ring: #63b3ed;
-    --input-field-placeholder-text: #555555;
+    --input-field-bg: #2C2C2C;
+    --input-field-text: #E0E0E0;
+    --input-field-border: #3A3A3A;
+    --input-field-focus-ring: #BB86FC;
+    --input-field-placeholder-text: #A0A0A0; /* Matches secondary text */
 
     /* Cards */
-    --card-default-bg: #ffffff;
-    --card-default-border: #dddddd;
+    --card-default-bg: #242424;
+    --card-default-border: #3A3A3A;
     
-    --post-card-bg: #ffffff;
-    --post-card-border: #dddddd;
+    --post-card-bg: #242424;
+    --post-card-border: #3A3A3A;
 
     /* Comments */
-    --comment-bg: #f9f9f9;
+    --comment-bg: #1E1E1E; /* Matches secondary background */
 
     /* Dropdowns */
-    --dropdown-bg: #f7fafc;
-    --dropdown-border: #dddddd;
-    --dropdown-text: #111111;
-    --dropdown-item-hover-bg: #f0f0f0;
+    --dropdown-bg: #2A2A2A; /* Matches profile modal bg */
+    --dropdown-border: #3A3A3A;
+    --dropdown-text: #E0E0E0;
+    --dropdown-item-hover-bg: #3A3A3A; /* Using border color for item hover */
     
     /* Modals */
-    --modal-content-bg: #ffffff;
+    --modal-content-bg: #242424; /* Matches card background */
 
     /* Like buttons */
-    --like-button-color: #4a5568;
-    --like-button-active-color: #2b6cb0;
-    --like-button-hover-color: #2b6cb0;
+    --like-button-color: #A0A0A0; /* Secondary text color */
+    --like-button-active-color: #BB86FC; /* Link color */
+    --like-button-hover-color: #BB86FC; /* Link color */
 
     /* Welcome banner */
-    --welcome-banner-bg: #ffffff;
-    --welcome-banner-text-header: #111111;
-    --welcome-banner-text-body: #555555;
-    --welcome-banner-border: #dddddd;
+    --welcome-banner-bg: #242424; /* Card background */
+    --welcome-banner-text-header: #E0E0E0;
+    --welcome-banner-text-body: #A0A0A0;
+    --welcome-banner-border: #3A3A3A;
 
     /* Profile avatar */
-    --profile-avatar-border: #ffffff;
-    --profile-initials-bg: #f0f0f0;
-    --profile-initials-text-color: #555555;
+    --profile-avatar-border: #242424; /* Card background */
+    --profile-initials-bg: #3A3A3A;   /* Border color as initials bg */
+    --profile-initials-text-color: #E0E0E0; /* Primary text for initials */
 }
 
 
 .theme-midnight {
     /* Base colors */
-    --bg-primary:       #8c7ae6;       
-    --bg-secondary:     #0d0c1d;    
+    /* Base colors - Backgrounds slightly darkened */
+    --bg-primary:       #8c7ae6;       /* Accent color, not a main background, kept as is */
+    --bg-secondary:     #0A091A;    /* Darkened from #0d0c1d */
     --text-primary:     #dcdcff;     
     --text-secondary:   #8c7ae6;   
-    --border-color:     #2f2d44;     
+    --border-color:     #2A283E;     /* Slightly adjusted from #2f2d44 to match new bg tones */
     --link-color:       #d15de5;       
-    --link-hover-color: #a463e8;    /* Changed to purple hover */
+    --link-hover-color: #a463e8;    
     --button-bg:        #8c7ae6;       
     --button-text:      #020617;     
     --button-hover-bg:  #4f4970; 
-    --card-bg:          #1c1b2f;         
-    --input-bg:         #3a3552;       
-    --input-border:     #1c1b2f;   
+    --card-bg:          #18172A;     /* Darkened from #1c1b2f */    
+    --input-bg:         #35304D;     /* Darkened from #3a3552 */   
+    --input-border:     #18172A;     /* Darkened from #1c1b2f, matches new card-bg */
     --input-focus-ring: #665b8a; 
-    --modal-overlay-bg: rgba(2, 6, 23, 0.8); 
-    --profile-modal-bg: #1C1F26; 
+    --modal-overlay-bg: rgba(2, 6, 23, 0.85); /* Slightly increased opacity */
+    --profile-modal-bg: #181A21; /* Darkened from #1C1F26 - This is also used for dropdown-bg */
     --notification-success-bg: #15803d; 
     --notification-error-bg: #b91c1c;   
-    --notification-info-bg: #7e62b8;  /* Purple-ish info bg instead of blue */
+    --notification-info-bg: #7e62b8;  
     --notification-warning-bg: #65533f; 
     --notification-text-color: #e2e8f0; 
-    --code-bg:           #1e293b;         
+    --code-bg:           #1a2535;     /* Darkened from #1e293b */    
     --code-text:         #cbd5e1;       
-    --blockquote-border: #334155; 
+    --blockquote-border: #2e3c4f;     /* Darkened from #334155 */
     --blockquote-text:   #94a3b8;   
 
     /* Nav */
-    --nav-bg: #1c1b2f;
+    --nav-bg: #18172A; /* Darkened from #1c1b2f */
     --nav-text: #dcdcff;
-    --nav-border-color: #2f2d44;
+    --nav-border-color: #2A283E; /* Matches new --border-color */
 
     /* Buttons */
     --button-primary-bg: #8c7ae6;
@@ -129,10 +215,10 @@
     --button-primary-hover-bg: #4f4970;
     --button-primary-border: transparent;
 
-    --button-secondary-bg: #3a3552;
+    --button-secondary-bg: #35304D; /* Darkened from #3a3552, matches new --input-bg */
     --button-secondary-text: #dcdcff;
     --button-secondary-hover-bg: #8c7ae6;
-    --button-secondary-border: #2f2d44;
+    --button-secondary-border: #2A283E; /* Matches new --border-color */
 
     --button-danger-bg: #b91c1c;
     --button-danger-text: #e2e8f0;
@@ -140,30 +226,30 @@
     --button-danger-border: transparent;
 
     /* Input fields */
-    --input-field-bg: #3a3552;
+    --input-field-bg: #35304D; /* Darkened from #3a3552 */
     --input-field-text: #dcdcff;
-    --input-field-border: #1c1b2f;
+    --input-field-border: #18172A; /* Darkened from #1c1b2f, matches new --card-bg */
     --input-field-focus-ring: #665b8a;
     --input-field-placeholder-text: #8c7ae6;
 
     /* Cards */
-    --card-default-bg: #1c1b2f;
-    --card-default-border: #2f2d44;
+    --card-default-bg: #18172A; /* Darkened from #1c1b2f */
+    --card-default-border: #2A283E; /* Matches new --border-color */
     
-    --post-card-bg: #1c1b2f;
-    --post-card-border: #2f2d44;
+    --post-card-bg: #18172A; /* Darkened from #1c1b2f */
+    --post-card-border: #2A283E; /* Matches new --border-color */
 
     /* Comments */
-    --comment-bg: #0d0c1d;
+    --comment-bg: #0A091A; /* Darkened from #0d0c1d, matches new --bg-secondary */
 
     /* Dropdowns */
-    --dropdown-bg: #1C1F26;
-    --dropdown-border: #2f2d44;
+    --dropdown-bg: #181A21; /* Darkened from #1C1F26, matches new --profile-modal-bg */
+    --dropdown-border: #2A283E; /* Matches new --border-color */
     --dropdown-text: #dcdcff;
-    --dropdown-item-hover-bg: #0d0c1d;
+    --dropdown-item-hover-bg: #0A091A; /* Darkened from #0d0c1d, matches new --bg-secondary */
     
     /* Modals */
-    --modal-content-bg: #1c1b2f;
+    --modal-content-bg: #18172A; /* Darkened from #1c1b2f, matches new --card-bg */
 
     /* Like buttons */
     --like-button-color: #94a3b8;
@@ -181,7 +267,6 @@
     --profile-initials-bg: #3a3552;
     --profile-initials-text-color: #8c7ae6;
 }
-
 
 /* --- Apply Theme Variables --- */
 /* Resetting some Tailwind text colors to use theme variables */
@@ -374,48 +459,127 @@ article .border-t, article .border-b { /* Internal borders */
     color: var(--text-secondary);
 }
 
-/* User Profile Modal (Dropdown in Nav) */
-#user-profile, #user-profile-modal, #user-profile-modal-settings { 
-    background-color: var(--dropdown-bg); /* UPDATED from --profile-modal-bg */
-    border: 1px solid var(--dropdown-border); /* UPDATED */
-    /* box-shadow: var(--card-default-shadow); */ /* ADDED - if defined for dropdowns */
+/* User Profile Modal (Dropdown in Nav) - Consolidated Styling */
+/* Targets #user-profile (index), #user-profile-dropdown-profile (profile), #user-profile-dropdown-settings (settings) */
+#user-profile, 
+#user-profile-dropdown-profile, 
+#user-profile-dropdown-settings { 
+    background-color: var(--dropdown-bg); 
+    border: 1px solid var(--dropdown-border);
+    border-radius: 0.5rem; /* Tailwind rounded-lg */
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); /* Tailwind shadow-lg consistency */
+    padding: 0.5rem; /* Tailwind p-2 */
+    width: 15rem; /* Tailwind w-60 */
+    position: fixed; /* Already in HTML, but good to note */
+    z-index: 50; /* Already in HTML */
+    /* top: 4rem; right: 1rem; /* Tailwind top-16 right-4 - handled by inline HTML or specific JS if needed, but base structure is this */
 }
-#user-profile #user-name, #user-profile .font-medium, 
-#user-profile-modal #modal-user-name, #user-profile-modal-settings #modal-user-name-settings {
-    color: var(--dropdown-text); /* UPDATED */
+
+/* Header section within the dropdown */
+#user-profile > div:first-child,
+#user-profile-dropdown-profile > div:first-child,
+#user-profile-dropdown-settings > div:first-child {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem; /* Tailwind p-2 */
+    margin-bottom: 0.5rem; /* Tailwind mb-2 */
+    border-bottom: 1px solid var(--dropdown-border); /* Tailwind border-b */
 }
-#user-profile #user-email, #user-profile .text-sm,
-#user-profile-modal #modal-user-email, #user-profile-modal-settings #modal-user-email-settings {
-    color: var(--text-secondary); /* Email can remain secondary */
+
+/* User name in dropdown */
+#user-profile #user-name, 
+#user-profile-dropdown-profile #modal-user-name-profile, 
+#user-profile-dropdown-settings #modal-user-name-settings {
+    color: var(--dropdown-text);
+    font-weight: 500; /* Tailwind font-medium */
+    font-size: 0.875rem; /* Tailwind text-sm */
 }
-#user-profile a.profile-menu-item, #user-profile button.profile-menu-item,
-#user-profile-modal a.profile-menu-item, #user-profile-modal button.profile-menu-item,
-#user-profile-modal-settings a.profile-menu-item, #user-profile-modal-settings button.profile-menu-item {
-    display: block;
+
+/* User email in dropdown */
+#user-profile #user-email, 
+#user-profile-dropdown-profile #modal-user-email-profile, 
+#user-profile-dropdown-settings #modal-user-email-settings {
+    color: var(--text-secondary); /* Using text-secondary for less emphasis */
+    font-size: 0.75rem; /* Tailwind text-xs */
+}
+
+/* Profile image container within dropdown */
+#modal-profile-img-container,
+#modal-profile-img-container-profile,
+#modal-profile-img-container-settings {
+    /* Styling for the image itself is handled by createProfileImage JS (size, border) */
+    margin-right: 0.75rem; /* Tailwind space-x-3 from parent */
+}
+
+
+/* Navigation links container within dropdown */
+#user-profile nav,
+#user-profile-dropdown-profile nav,
+#user-profile-dropdown-settings nav {
+    /* space-y-1 is handled by Tailwind class on the nav element */
+}
+
+/* Individual menu items (links and buttons) */
+.profile-menu-item { /* This class is applied to a and button elements by JS/HTML */
+    display: flex; /* For icon alignment */
+    align-items: center; /* For icon alignment */
     width: 100%; 
     text-align: left; 
-    padding: 0.5rem 1rem; 
-    border-radius: 0.375rem; 
-    transition: background-color 0.2s;
-    color: var(--dropdown-text); /* UPDATED */
+    padding: 0.5rem; /* Tailwind p-2, adjusted from 0.5rem 1rem for consistency */
+    border-radius: 0.375rem; /* Tailwind rounded-md, matches index.html appearance */
+    transition: background-color 0.2s, color 0.2s;
+    color: var(--dropdown-text);
+    font-size: 0.875rem; /* Tailwind text-sm */
 }
-#user-profile a.profile-menu-item:hover, #user-profile button.profile-menu-item:hover,
-#user-profile-modal a.profile-menu-item:hover, #user-profile-modal button.profile-menu-item:hover,
-#user-profile-modal-settings a.profile-menu-item:hover, #user-profile-modal-settings button.profile-menu-item:hover {
-    background-color: var(--dropdown-item-hover-bg);  /* UPDATED */
+.profile-menu-item svg {
+    margin-right: 0.5rem; /* Tailwind mr-2 */
+    width: 1.25rem; /* Tailwind w-5 */
+    height: 1.25rem; /* Tailwind h-5 */
+    /* stroke: currentColor; /* Usually inherited or set inline */
 }
-/* Specific Logout Button in Nav Dropdown - now uses danger button vars */
-#user-profile #logout-btn, #logout-btn-profile, #logout-btn-settings {
-    background-color: var(--button-danger-bg) !important; /* UPDATED */
-    color: var(--button-danger-text) !important; /* UPDATED */
+
+.profile-menu-item:hover {
+    background-color: var(--dropdown-item-hover-bg);
+    color: var(--link-hover-color); /* Make text color also change on hover for better feedback */
 }
-#user-profile #logout-btn:hover, #logout-btn-profile:hover, #logout-btn-settings:hover {
-    background-color: var(--button-danger-hover-bg) !important; /* UPDATED */
+
+/* Specific Logout Button in Nav Dropdown */
+/* Targets #logout-btn (index), #logout-btn-profile-page (profile), #logout-btn-settings-page (settings) */
+#logout-btn, 
+#logout-btn-profile-page, 
+#logout-btn-settings-page {
+    /* .profile-menu-item already provides most styling */
+    /* Override for danger indication */
+    background-color: transparent; /* Start transparent */
 }
-/* Border inside nav dropdown */
-#user-profile .border-b, #user-profile-modal .border-b, #user-profile-modal-settings .border-b,
-#user-profile hr, #user-profile-modal hr, #user-profile-modal-settings hr { /* Added hr rules */
-    border-color: var(--dropdown-border); /* UPDATED (was --border-color) */
+
+#logout-btn:hover, 
+#logout-btn-profile-page:hover, 
+#logout-btn-settings-page:hover {
+    background-color: var(--button-danger-bg) !important; 
+    color: var(--button-danger-text) !important; 
+}
+#logout-btn:hover svg, 
+#logout-btn-profile-page:hover svg, 
+#logout-btn-settings-page:hover svg {
+    stroke: var(--button-danger-text) !important; /* Ensure icon color changes too */
+}
+
+
+/* Horizontal rule (hr) in dropdown */
+#user-profile hr, 
+#user-profile-dropdown-profile hr, 
+#user-profile-dropdown-settings hr {
+    border-top: 1px solid var(--dropdown-border);
+    margin-top: 0.25rem; /* Tailwind my-1 */
+    margin-bottom: 0.25rem; /* Tailwind my-1 */
+}
+
+/* Ensure dropdown items are not overly bold if they are part of .font-medium from user name */
+#user-profile .profile-menu-item,
+#user-profile-dropdown-profile .profile-menu-item,
+#user-profile-dropdown-settings .profile-menu-item {
+    font-weight: normal; /* Override any inherited font-medium */
 }
 
 

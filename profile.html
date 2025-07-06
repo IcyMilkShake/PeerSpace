@@ -66,43 +66,74 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="shadow-md border-b"> <!-- bg-white was not here, but ensuring it's not -->
+    <nav class="shadow-md border-b">
         <div class="max-w-4xl mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
                 <a href="/" class="flex items-center space-x-2">
                     <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                         <span class="text-white font-bold text-lg">F</span>
                     </div>
-                    <h1 class="text-2xl font-bold text-gray-800">Forum</h1>
+                    <h1 class="text-2xl font-bold">Forum</h1> <!-- text-gray-800 removed, handled by themes.css -->
                 </a>
                 <div id="auth-section-profile">
-                    <!-- Auth status will be rendered here by JS -->
-                     <a href="/" class="text-blue-600 hover:text-blue-700">Back to Forum</a>
+                    <!-- Auth status will be rendered here by JS. Example when logged out:
+                         <a href="/" class="text-blue-600 hover:text-blue-700">Back to Forum</a>
+                         When logged in, it will be a button to toggle the profile modal.
+                    -->
                 </div>
             </div>
         </div>
     </nav>
 
+    <!-- User Profile Modal (Dropdown in Nav - structure from index.html) -->
+    <!-- ID is changed to user-profile-dropdown-profile to avoid conflict if we reuse user-profile ID from index.html -->
+    <div id="user-profile-dropdown-profile" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-2 border z-50 w-60" style="border-color: var(--border-color);">
+        <div class="flex items-center space-x-3 p-2 mb-2 border-b" style="border-bottom-color: var(--border-color);">
+            <div id="modal-profile-img-container-profile">
+                <!-- Profile image component from createProfileImage will be inserted here. -->
+            </div>
+            <div>
+                <div id="modal-user-name-profile" class="font-medium text-sm"></div>
+                <div id="modal-user-email-profile" class="text-xs text-gray-500"></div> <!-- text-gray-500 will be themed -->
+            </div>
+        </div>
+        <nav class="space-y-1">
+            <a href="#" id="profile-menu-profile-page" class="profile-menu-item">
+                <svg class="w-5 h-5 mr-2 inline" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                Profile
+            </a>
+            <a href="settings.html" id="profile-menu-settings" class="profile-menu-item">
+                <svg class="w-5 h-5 mr-2 inline" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Settings
+            </a>
+            <hr class="my-1" style="border-top-color: var(--border-color);">
+            <button id="logout-btn-profile-page" class="w-full text-left profile-menu-item">
+                 <svg class="w-5 h-5 mr-2 inline" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                Sign Out
+            </button>
+        </nav>
+    </div>
+
     <!-- Main Profile Content -->
     <main class="max-w-3xl mx-auto px-4 py-8">
         <div id="profile-loading" class="text-center py-12">
-            <p class="text-gray-500">Loading profile...</p>
+            <p>Loading profile...</p> <!-- text-gray-500 removed -->
         </div>
 
-        <div id="profile-content" class="hidden bg-white rounded-lg shadow-lg overflow-hidden">
+        <div id="profile-content" class="hidden rounded-lg shadow-lg overflow-hidden"> <!-- bg-white removed -->
             <!-- Profile Header -->
             <div class="profile-header p-6 md:p-8 text-center border-b">
                 <div id="profile-avatar-container" class="inline-block rounded-full mx-auto">
                     <!-- Avatar will be loaded here -->
                 </div>
-                <h2 id="profile-name" class="text-3xl font-bold text-gray-800 mt-4"></h2>
-                <p id="profile-joined-date" class="text-sm text-gray-500 mt-1"></p>
+                <h2 id="profile-name" class="text-3xl font-bold mt-4"></h2> <!-- text-gray-800 removed -->
+                <p id="profile-joined-date" class="text-sm mt-1"></p> <!-- text-gray-500 removed -->
             </div>
 
             <!-- Profile Details -->
             <div class="p-6 md:p-8">
-                <h3 class="text-xl font-semibold text-gray-700 mb-3">About Me</h3>
-                <div id="profile-description-view" class="text-gray-600 whitespace-pre-wrap leading-relaxed">
+                <h3 class="text-xl font-semibold mb-3">About Me</h3> <!-- text-gray-700 removed -->
+                <div id="profile-description-view" class="whitespace-pre-wrap leading-relaxed"> <!-- text-gray-600 removed -->
                     <!-- Description will be loaded here -->
                 </div>
                 
@@ -110,27 +141,27 @@
                 <div id="edit-description-form" class="hidden mt-4">
                     <textarea id="profile-description-edit" rows="4" 
                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 resize-y"
-                              placeholder="Tell us about yourself..."></textarea> <!-- Theme variables for border, bg, color, focus are applied via CSS -->
+                              placeholder="Tell us about yourself..."></textarea>
                     <div class="mt-3 flex justify-end space-x-2">
-                        <button id="cancel-edit-description" class="button-secondary text-sm"> <!-- Applied button-secondary -->
+                        <button id="cancel-edit-description" class="button-secondary text-sm">
                             Cancel
                         </button>
-                        <button id="save-description" class="button-primary text-sm"> <!-- Applied button-primary -->
+                        <button id="save-description" class="button-primary text-sm">
                             Save Description
                         </button>
                     </div>
                 </div>
 
-                <button id="edit-description-button" class="button-primary hidden mt-4 text-sm"> <!-- Applied button-primary -->
+                <button id="edit-description-button" class="button-primary hidden mt-4 text-sm">
                     Edit Description
                 </button>
 
                 <!-- Change Profile Picture Button - Shown only if it's the current user's profile -->
-                <div id="change-picture-section" class="hidden mt-6 pt-6 border-t"> <!-- Theme variable for border-t -->
-                    <h3 class="text-xl font-semibold mb-3">Profile Picture</h3> <!-- Theme variable for color -->
+                <div id="change-picture-section" class="hidden mt-6 pt-6 border-t">
+                    <h3 class="text-xl font-semibold mb-3">Profile Picture</h3>
                     <div class="file-upload">
                         <input type="file" id="profile-picture-input-profile-page" accept="image/*" class="hidden"/>
-                        <label for="profile-picture-input-profile-page" id="change-profile-picture-button" class="button-primary cursor-pointer inline-block text-sm"> <!-- Applied button-primary -->
+                        <label for="profile-picture-input-profile-page" id="change-profile-picture-button" class="button-primary cursor-pointer inline-block text-sm">
                             Change Profile Picture
                         </label>
                     </div>
@@ -140,36 +171,34 @@
         </div>
 
         <div id="profile-error" class="hidden text-center py-12">
-            <p>Could not load profile. The user may not exist or there was an error.</p> <!-- Theme variable for color -->
-            <a href="/" id="go-home-error-btn" class="button-primary mt-4 inline-block">Go to Homepage</a> <!-- Applied button-primary -->
+            <p>Could not load profile. The user may not exist or there was an error.</p>
+            <a href="/" id="go-home-error-btn" class="button-primary mt-4 inline-block">Go to Homepage</a>
         </div>
     </main>
 
     <!-- User Profile Modal (for logged-in user nav on this page) -->
-    <div id="user-profile-modal" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-4 border z-50 w-64"> <!-- Adjusted top -->
+    <!-- THIS IS THE OLD MODAL - IT WILL BE REPLACED BY THE NEW user-profile-dropdown-profile above -->
+    <!-- <div id="user-profile-modal" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-4 border z-50 w-64"> 
         <div class="flex items-center space-x-3 mb-3">
             <div id="modal-profile-img-container" class="profile-img w-10 h-10 rounded-full border-2">
-                <!-- Profile image will be inserted here by JS -->
             </div>
             <div>
                 <div id="modal-user-name" class="font-medium text-gray-800 text-sm"></div>
                 <div id="modal-user-email" class="text-xs text-gray-500"></div>
             </div>
         </div>
-        <!-- Link to own profile -->
-        <a id="view-my-profile-link" href="#" class="profile-menu-item"> <!-- mb-1 removed for consistency with index.html structure if hr is used -->
+        <a id="view-my-profile-link" href="#" class="profile-menu-item"> 
             View My Profile
         </a>
         <a href="settings.html" id="profile-menu-settings-profile" class="profile-menu-item">
             <svg class="w-5 h-5 mr-2 inline" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
             Settings
         </a>
-        <hr class="my-1" style="border-top-color: var(--border-color);"> <!-- Themed border color -->
+        <hr class="my-1" style="border-top-color: var(--border-color);">
         <button id="logout-btn-profile" class="profile-menu-item"> 
-            <!-- SVG for sign out can be added here for consistency if desired -->
             Sign Out
         </button>
-    </div>
+    </div> -->
 
     <!-- Image Cropper Modal (Copied from index.html) -->
     <div id="crop-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[60] p-4"> <!-- Ensure z-index is higher than nav modal if needed -->
@@ -340,76 +369,71 @@
                 console.error('Auth check failed on profile page:', error);
                 currentLoggedInUser = null;
             }
-            updateProfilePageNav(); // Call this regardless to update nav based on login status
-            // loadProfileData() will be called after this in DOMContentLoaded
+            updateProfilePageNav(); 
         }
-
 
         function updateProfilePageNav() {
             const authSection = document.getElementById('auth-section-profile');
-            const userProfileModal = document.getElementById('user-profile-modal');
+            // Use the new dropdown ID
+            const userProfileDropdown = document.getElementById('user-profile-dropdown-profile'); 
 
             if (currentLoggedInUser) {
-                // Use standardized createProfileImage
                 const navProfileImg = createProfileImage(currentLoggedInUser.photo, currentLoggedInUser.name, "w-8 h-8", "text-xs");
                 
+                // Standardized button structure from index.html
                 authSection.innerHTML = `
-                    <button onclick="toggleProfileModal()" class="nav-profile-button-hover flex items-center space-x-2 p-1 rounded-lg transition-colors">
-                        <div id="nav-profile-img-container-profile"></div>
+                    <button onclick="toggleProfileDropdown()" class="nav-profile-button-hover flex items-center space-x-2 p-1 rounded-lg transition-colors">
+                        <div id="nav-profile-img-container-profile-page"></div> <!-- Unique ID for nav image container -->
                         <span class="font-medium text-sm">${escapeHtml(currentLoggedInUser.name)}</span>
                     </button>
                 `;
-                document.getElementById('nav-profile-img-container-profile').appendChild(navProfileImg);
+                document.getElementById('nav-profile-img-container-profile-page').appendChild(navProfileImg);
 
-                // Update user profile modal
-                const modalImgContainer = document.getElementById('modal-profile-img-container');
-                modalImgContainer.innerHTML = ''; // Clear previous
-                // Use standardized createProfileImage, pass "border-2" for the border style consistent with index.html
+                // Update new user profile dropdown modal
+                const modalImgContainer = document.getElementById('modal-profile-img-container-profile');
+                modalImgContainer.innerHTML = ''; 
                 modalImgContainer.appendChild(createProfileImage(currentLoggedInUser.photo, currentLoggedInUser.name, "w-10 h-10", "text-base", "border-2"));
                 
-                document.getElementById('modal-user-name').textContent = currentLoggedInUser.name;
-                document.getElementById('modal-user-email').textContent = currentLoggedInUser.email;
+                document.getElementById('modal-user-name-profile').textContent = currentLoggedInUser.name;
+                document.getElementById('modal-user-email-profile').textContent = currentLoggedInUser.email;
                 
-                const viewProfileLink = document.getElementById('view-my-profile-link');
-                viewProfileLink.href = `/profile.html?id=${currentLoggedInUser.id}`;
-                if (!viewProfileLink.classList.contains('profile-menu-item')) {
-                    viewProfileLink.classList.add('profile-menu-item');
+                // Update links in the new dropdown
+                const profileMenuLink = document.getElementById('profile-menu-profile-page');
+                if (profileMenuLink) {
+                    profileMenuLink.href = `profile.html?id=${currentLoggedInUser.id}`;
                 }
+                // Settings link 'profile-menu-settings-profile-page' href is already correct in HTML
 
-                const settingsLink = document.getElementById('profile-menu-settings-profile');
-                if (!settingsLink.classList.contains('profile-menu-item')) {
-                    settingsLink.classList.add('profile-menu-item');
-                }
-                // settingsLink.href is already "settings.html"
-
-                const logoutBtn = document.getElementById('logout-btn-profile');
-                 if (!logoutBtn.classList.contains('profile-menu-item')) {
-                    logoutBtn.classList.add('profile-menu-item');
-                }
-                logoutBtn.removeEventListener('click', logoutFromProfilePage); // Good practice to remove before adding
+                const logoutBtn = document.getElementById('logout-btn-profile-page');
+                logoutBtn.removeEventListener('click', logoutFromProfilePage); 
                 logoutBtn.addEventListener('click', logoutFromProfilePage);
 
+                // Ensure dropdown is hidden initially if user just logged in, or shown if it was already toggled (though typically hidden on load)
+                // userProfileDropdown.classList.add('hidden'); // Or manage visibility based on previous state if needed
+
             } else {
-                authSection.innerHTML = '<a href="/" class="text-blue-600 hover:text-blue-700">Back to Forum</a>';
-                if (userProfileModal) userProfileModal.classList.add('hidden');
+                authSection.innerHTML = '<a href="/" id="back-to-forum-link-profile" class="hover:underline">Back to Forum</a>'; // Added ID for consistency
+                if (userProfileDropdown) userProfileDropdown.classList.add('hidden');
             }
         }
         
-        function toggleProfileModal() {
-            const userProfileModal = document.getElementById('user-profile-modal');
-            if (!currentLoggedInUser) return;
-            userProfileModal.classList.toggle('hidden');
+        // Renamed and updated to match index.html's toggleUserProfile
+        function toggleProfileDropdown() {
+            const userProfileDropdown = document.getElementById('user-profile-dropdown-profile');
+            if (!currentLoggedInUser || !userProfileDropdown) return;
+            userProfileDropdown.classList.toggle('hidden');
         }
 
         async function logoutFromProfilePage() {
             try {
                 await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
                 currentLoggedInUser = null;
-                updateProfilePageNav();
-                // Optionally redirect or update UI further
-                window.location.href = '/'; // Redirect to home after logout
+                updateProfilePageNav(); 
+                // Redirect to home after logout
+                window.location.href = '/'; 
             } catch (error) {
                 console.error('Logout failed:', error);
+                showNotification('Logout failed. Please try again.', 'error');
             }
         }
         
@@ -420,14 +444,18 @@
             return div.innerHTML;
         }
 
-        // Close modal when clicking outside
+        // Close dropdown when clicking outside - updated to new IDs
         document.addEventListener('click', (e) => {
-            const userProfileModal = document.getElementById('user-profile-modal');
+            const userProfileDropdown = document.getElementById('user-profile-dropdown-profile');
             const authSection = document.getElementById('auth-section-profile');
-            if (authSection && userProfileModal && !authSection.contains(e.target) && !userProfileModal.contains(e.target)) {
-                userProfileModal.classList.add('hidden');
+            // Check if elements exist before trying to access contains
+            if (authSection && userProfileDropdown && 
+                !authSection.contains(e.target) && 
+                !userProfileDropdown.contains(e.target)) {
+                userProfileDropdown.classList.add('hidden');
             }
         });
+
         function getUserIdFromUrl() {
             const params = new URLSearchParams(window.location.search);
             return params.get('id');
