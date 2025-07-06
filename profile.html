@@ -215,30 +215,35 @@
         let profileUserId = null; // To store the ID of the profile being viewed
         let cropper = null; // For profile picture cropping
 
-        // Get initials from name
+        // Get initials from name (Standardized - Copied from index.html)
         function getInitials(name) {
             if (!name) return '?';
             return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
         }
         
-        // Create profile image element with fallback - adjusted for theme
-        function createProfileImageElement(photoUrl, name, sizeClasses = "w-10 h-10", textClasses = "text-xl") {
+        // Create profile image element with fallback (Standardized - Copied from index.html)
+        // Added borderClass parameter for optional borders (e.g., for modal profile image)
+        function createProfileImage(photoUrl, name, size = "w-10 h-10", textClass = "text-sm", borderClass = "") {
             const container = document.createElement('div');
-            // bg-gray-300 is a fallback, actual color will be from theme var --input-bg
-            container.className = `profile-img ${sizeClasses} rounded-full flex items-center justify-center overflow-hidden`;
-            container.style.backgroundColor = 'var(--input-bg)'; // Apply theme variable for background of initials
+            container.className = `profile-img ${size} ${borderClass} rounded-full flex items-center justify-center overflow-hidden`;
+            container.style.backgroundColor = 'var(--input-field-bg)'; // Apply theme variable
+            
+            if (borderClass && borderClass.includes('border')) { 
+                container.style.borderColor = 'var(--border-color-medium)';
+            }
             
             if (photoUrl && photoUrl.trim() && photoUrl !== '/default-profile.png') {
                 const img = document.createElement('img');
-                img.className = 'w-full h-full object-cover'; // Ensure image covers the round container
+                img.className = 'w-full h-full object-cover'; 
                 img.alt = name || 'Profile';
-                img.onerror = function() { // Fallback to initials if image fails
-                    container.innerHTML = `<span class="profile-initials ${textClasses} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
+                
+                img.onerror = function() {
+                    container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
                 };
                 img.src = photoUrl + '?t=' + Date.now(); // Cache busting
                 container.appendChild(img);
-            } else { // Initials for no photo or default photo
-                container.innerHTML = `<span class="profile-initials ${textClasses} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
+            } else {
+                container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
             }
             return container;
         }
@@ -345,7 +350,8 @@
             const userProfileModal = document.getElementById('user-profile-modal');
 
             if (currentLoggedInUser) {
-                const navProfileImgContainer = createProfileImageElement(currentLoggedInUser.photo, currentLoggedInUser.name, "w-8 h-8", "text-sm");
+                // Use standardized createProfileImage
+                const navProfileImg = createProfileImage(currentLoggedInUser.photo, currentLoggedInUser.name, "w-8 h-8", "text-xs");
                 
                 authSection.innerHTML = `
                     <button onclick="toggleProfileModal()" class="nav-profile-button-hover flex items-center space-x-2 p-1 rounded-lg transition-colors">
@@ -353,22 +359,39 @@
                         <span class="font-medium text-sm">${escapeHtml(currentLoggedInUser.name)}</span>
                     </button>
                 `;
-                document.getElementById('nav-profile-img-container-profile').appendChild(navProfileImgContainer);
+                document.getElementById('nav-profile-img-container-profile').appendChild(navProfileImg);
 
                 // Update user profile modal
                 const modalImgContainer = document.getElementById('modal-profile-img-container');
                 modalImgContainer.innerHTML = ''; // Clear previous
-                modalImgContainer.appendChild(createProfileImageElement(currentLoggedInUser.photo, currentLoggedInUser.name, "w-10 h-10", "text-lg"));
+                // Use standardized createProfileImage, pass "border-2" for the border style consistent with index.html
+                modalImgContainer.appendChild(createProfileImage(currentLoggedInUser.photo, currentLoggedInUser.name, "w-10 h-10", "text-base", "border-2"));
                 
                 document.getElementById('modal-user-name').textContent = currentLoggedInUser.name;
                 document.getElementById('modal-user-email').textContent = currentLoggedInUser.email;
-                document.getElementById('view-my-profile-link').href = `/profile.html?id=${currentLoggedInUser.id}`;
+                
+                const viewProfileLink = document.getElementById('view-my-profile-link');
+                viewProfileLink.href = `/profile.html?id=${currentLoggedInUser.id}`;
+                if (!viewProfileLink.classList.contains('profile-menu-item')) {
+                    viewProfileLink.classList.add('profile-menu-item');
+                }
 
+                const settingsLink = document.getElementById('profile-menu-settings-profile');
+                if (!settingsLink.classList.contains('profile-menu-item')) {
+                    settingsLink.classList.add('profile-menu-item');
+                }
+                // settingsLink.href is already "settings.html"
 
-                document.getElementById('logout-btn-profile').addEventListener('click', logoutFromProfilePage);
+                const logoutBtn = document.getElementById('logout-btn-profile');
+                 if (!logoutBtn.classList.contains('profile-menu-item')) {
+                    logoutBtn.classList.add('profile-menu-item');
+                }
+                logoutBtn.removeEventListener('click', logoutFromProfilePage); // Good practice to remove before adding
+                logoutBtn.addEventListener('click', logoutFromProfilePage);
+
             } else {
                 authSection.innerHTML = '<a href="/" class="text-blue-600 hover:text-blue-700">Back to Forum</a>';
-                userProfileModal.classList.add('hidden');
+                if (userProfileModal) userProfileModal.classList.add('hidden');
             }
         }
         
@@ -450,7 +473,8 @@
             // Avatar
             const avatarContainer = document.getElementById('profile-avatar-container');
             avatarContainer.innerHTML = ''; // Clear previous
-            const avatarElement = createProfileImageElement(profile.photo, profile.name, "profile-avatar", "text-5xl");
+            // CORRECTED: Call the standardized createProfileImage function
+            const avatarElement = createProfileImage(profile.photo, profile.name, "profile-avatar", "text-5xl");
             avatarContainer.appendChild(avatarElement);
 
             // Name and Join Date

@@ -236,26 +236,37 @@
         // --- Auth & Nav specific to settings.html (similar to profile.html) ---
         let currentLoggedInUserConfig = null;
 
+        // Get initials from name (Standardized - Copied from index.html)
         function getInitials(name) {
             if (!name) return '?';
             return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
         }
 
-        function createProfileImageElementForSettings(photoUrl, name, sizeClasses = "w-10 h-10", textClasses = "text-xl") {
+        // Create profile image element with fallback (Standardized - Copied from index.html)
+        // Added borderClass parameter for optional borders (e.g., for modal profile image)
+        function createProfileImage(photoUrl, name, size = "w-10 h-10", textClass = "text-sm", borderClass = "") {
             const container = document.createElement('div');
-            container.className = `profile-img ${sizeClasses} rounded-full bg-gray-300 flex items-center justify-center overflow-hidden`;
+            // Ensured all necessary classes for layout and appearance are here.
+            container.className = `profile-img ${size} ${borderClass} rounded-full flex items-center justify-center overflow-hidden`;
+            container.style.backgroundColor = 'var(--input-field-bg)'; // Apply theme variable (changed from --input-bg)
+            
+            // If a border class is provided (e.g., "border-2"), set its color using CSS variable.
+            if (borderClass && borderClass.includes('border')) { 
+                container.style.borderColor = 'var(--border-color-medium)'; // (changed from --border-color)
+            }
             
             if (photoUrl && photoUrl.trim() && photoUrl !== '/default-profile.png') {
                 const img = document.createElement('img');
-                img.className = 'w-full h-full object-cover';
+                img.className = 'w-full h-full object-cover'; 
                 img.alt = name || 'Profile';
+                
                 img.onerror = function() {
-                    container.innerHTML = `<span class="profile-initials ${textClasses} font-semibold" style="color: var(--text-primary);">${getInitials(name)}</span>`;
+                    container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
                 };
-                img.src = photoUrl + '?t=' + Date.now();
+                img.src = photoUrl + '?t=' + Date.now(); // Cache busting
                 container.appendChild(img);
             } else {
-                container.innerHTML = `<span class="profile-initials ${textClasses} font-semibold" style="color: var(--text-primary);">${getInitials(name)}</span>`;
+                container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
             }
             return container;
         }
@@ -280,7 +291,8 @@
             const userProfileModal = document.getElementById('user-profile-modal-settings');
 
             if (currentLoggedInUserConfig) {
-                const navProfileImgContainer = createProfileImageElementForSettings(currentLoggedInUserConfig.photo, currentLoggedInUserConfig.name, "w-8 h-8", "text-sm");
+                // Use the standardized createProfileImage function
+                const navProfileImg = createProfileImage(currentLoggedInUserConfig.photo, currentLoggedInUserConfig.name, "w-8 h-8", "text-xs");
                 
                 authSection.innerHTML = `
                     <button onclick="toggleSettingsProfileModal()" class="nav-profile-button-hover flex items-center space-x-2 p-1 rounded-lg transition-colors">
@@ -288,26 +300,32 @@
                         <span class="font-medium text-sm">${escapeHtml(currentLoggedInUserConfig.name)}</span>
                     </button>
                 `;
-                document.getElementById('nav-profile-img-container-settings').appendChild(navProfileImgContainer);
+                document.getElementById('nav-profile-img-container-settings').appendChild(navProfileImg);
 
                 const modalImgContainer = document.getElementById('modal-profile-img-container-settings');
                 modalImgContainer.innerHTML = ''; 
-                modalImgContainer.appendChild(createProfileImageElementForSettings(currentLoggedInUserConfig.photo, currentLoggedInUserConfig.name, "w-10 h-10", "text-lg"));
+                 // Use standardized createProfileImage, pass "border-2" for the border style consistent with index.html
+                modalImgContainer.appendChild(createProfileImage(currentLoggedInUserConfig.photo, currentLoggedInUserConfig.name, "w-10 h-10", "text-base", "border-2"));
                 
                 document.getElementById('modal-user-name-settings').textContent = currentLoggedInUserConfig.name;
                 document.getElementById('modal-user-email-settings').textContent = currentLoggedInUserConfig.email;
                 
                 const viewProfileLink = document.getElementById('view-my-profile-link-settings');
                 viewProfileLink.href = `/profile.html?id=${currentLoggedInUserConfig.id}`;
-                viewProfileLink.classList.add('profile-menu-item'); 
+                if (!viewProfileLink.classList.contains('profile-menu-item')) { // Add class if not present
+                    viewProfileLink.classList.add('profile-menu-item');
+                }
 
                 const settingsLink = document.getElementById('profile-menu-settings-settings');
-                // It already has the class profile-menu-item from HTML, so no need to add it via JS.
-                // If it needed dynamic content or href, this is where it would be set.
-                // settingsLink.href = 'settings.html'; // Already set in HTML
+                 if (!settingsLink.classList.contains('profile-menu-item')) { // Ensure class is present
+                    settingsLink.classList.add('profile-menu-item');
+                }
+                // settingsLink.href is already "settings.html"
 
                 const logoutBtn = document.getElementById('logout-btn-settings');
-                logoutBtn.classList.add('profile-menu-item'); 
+                if (!logoutBtn.classList.contains('profile-menu-item')) { // Ensure class is present
+                    logoutBtn.classList.add('profile-menu-item');
+                }
                 logoutBtn.removeEventListener('click', logoutFromSettingsPage); 
                 logoutBtn.addEventListener('click', logoutFromSettingsPage);
 
