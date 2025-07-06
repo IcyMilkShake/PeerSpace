@@ -1,0 +1,639 @@
+/* --- Theme Variables --- */
+/* Light Theme (will be default if no theme is set or if 'light' is chosen) */
+.theme-light {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb; /* gray-50 */
+    --text-primary: #1f2937; /* gray-800 */
+    --text-secondary: #6b7280; /* gray-500 */
+    --border-color: #e5e7eb; /* gray-200 */
+    --link-color: #2563eb; /* blue-600 */
+    --link-hover-color: #1d4ed8; /* blue-700 */
+    --button-bg: #3b82f6; /* blue-500 */
+    --button-text: #ffffff;
+    --button-hover-bg: #2563eb; /* blue-600 */
+    --card-bg: #ffffff;
+    --input-bg: #ffffff;
+    --input-border: #d1d5db; /* gray-300 */
+    --input-focus-ring: #3b82f6; /* blue-500 */
+    --modal-overlay-bg: rgba(0, 0, 0, 0.5);
+    --profile-modal-bg: var(--card-bg);
+    --notification-success-bg: #10B981;
+    --notification-error-bg: #EF4444;
+    --notification-info-bg: #3B82F6;
+    --notification-warning-bg: #F59E0B;
+    --notification-text-color: #ffffff;
+    --code-bg: #f3f4f6; /* gray-100 */
+    --code-text: #374151; /* gray-700 */
+    --blockquote-border: #d1d5db; /* gray-300 */
+    --blockquote-text: #4b5563; /* gray-600 */
+}
+
+/* Dark Theme - Refined Palette */
+.theme-dark {
+    --bg-primary: #1e293b;       /* Tailwind slate-800 */
+    --bg-secondary: #0f172a;     /* Tailwind slate-900 */
+    --text-primary: #f1f5f9;     /* Tailwind slate-100 */
+    --text-secondary: #94a3b8;   /* Tailwind slate-400 */
+    --border-color: #334155;     /* Tailwind slate-700 */
+    --link-color: #38bdf8;       /* Tailwind sky-400 */
+    --link-hover-color: #7dd3fc; /* Tailwind sky-300 */
+    --button-bg: #38bdf8;       /* Tailwind sky-400 */
+    --button-text: #0f172a;     /* Tailwind slate-900 (for contrast on light blue button) */
+    --button-hover-bg: #0ea5e9; /* Tailwind sky-500 */
+    --card-bg: #1e293b;         /* Tailwind slate-800 (same as primary bg for flatter look or #283648 for slight diff) */
+    --input-bg: #334155;       /* Tailwind slate-700 */
+    --input-border: #475569;   /* Tailwind slate-600 */
+    --input-focus-ring: #38bdf8; /* Tailwind sky-400 */
+    --modal-overlay-bg: rgba(15, 23, 42, 0.7); /* slate-900 with opacity */
+    --profile-modal-bg: #283648; /* Slightly lighter than primary card for depth */
+    --notification-success-bg: #16a34a; /* Tailwind green-600 */
+    --notification-error-bg: #dc2626;   /* Tailwind red-600 */
+    --notification-info-bg: #2563eb;    /* Tailwind blue-600 */
+    --notification-warning-bg: #f59e0b; /* Tailwind amber-500 */
+    --notification-text-color: #f1f5f9; /* Tailwind slate-100 */
+    --code-bg: #334155;         /* Tailwind slate-700 */
+    --code-text: #e2e8f0;       /* Tailwind slate-200 */
+    --blockquote-border: #475569; /* Tailwind slate-600 */
+    --blockquote-text: #94a3b8;   /* Tailwind slate-400 */
+}
+
+/* Midnight Theme - Refined Palette (Deeper Dark) */
+.theme-midnight {
+    --bg-primary: #0f172a;       /* Tailwind slate-900 */
+    --bg-secondary: #020617;     /* Tailwind slate-950 (very dark) */
+    --text-primary: #cbd5e1;     /* Tailwind slate-300 */
+    --text-secondary: #64748b;   /* Tailwind slate-500 */
+    --border-color: #1e293b;     /* Tailwind slate-800 */
+    --link-color: #38bdf8;       /* Tailwind sky-400 */
+    --link-hover-color: #7dd3fc; /* Tailwind sky-300 */
+    --button-bg: #38bdf8;       /* Tailwind sky-400 */
+    --button-text: #020617;     /* Tailwind slate-950 (for contrast) */
+    --button-hover-bg: #0ea5e9; /* Tailwind sky-500 */
+    --card-bg: #0f172a;         /* Tailwind slate-900 */
+    --input-bg: #1e293b;       /* Tailwind slate-800 */
+    --input-border: #334155;   /* Tailwind slate-700 */
+    --input-focus-ring: #38bdf8; /* Tailwind sky-400 */
+    --modal-overlay-bg: rgba(2, 6, 23, 0.8); /* slate-950 with opacity */
+    --profile-modal-bg: #1e293b; /* Tailwind slate-800 */
+    --notification-success-bg: #15803d; /* Tailwind green-700 */
+    --notification-error-bg: #b91c1c;   /* Tailwind red-700 */
+    --notification-info-bg: #1d4ed8;    /* Tailwind blue-700 */
+    --notification-warning-bg: #d97706; /* Tailwind amber-600 */
+    --notification-text-color: #e2e8f0; /* Tailwind slate-200 */
+    --code-bg: #1e293b;         /* Tailwind slate-800 */
+    --code-text: #cbd5e1;       /* Tailwind slate-300 */
+    --blockquote-border: #334155; /* Tailwind slate-700 */
+    --blockquote-text: #94a3b8;   /* Tailwind slate-400 */
+}
+
+/* --- Apply Theme Variables --- */
+/* Resetting some Tailwind text colors to use theme variables */
+.text-gray-800 { color: var(--text-primary); }
+.text-gray-700 { color: var(--text-primary); } /* For post/comment content if not overridden by more specific rules */
+.text-gray-600 { color: var(--text-secondary); }
+.text-gray-500 { color: var(--text-secondary); }
+.text-gray-400 { color: var(--text-secondary); } /* For icons or less important text */
+
+/* Specific blue text colors - these might need to be more contextual or removed if generic links are enough */
+.text-blue-600 { color: var(--link-color); }
+.text-blue-800 { color: var(--text-primary); } /* Or a more specific variable if blue-800 has a theme meaning */
+
+
+body {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: background-color 0.3s, color 0.3s;
+}
+nav {
+    background-color: var(--card-bg);
+    border-bottom: 1px solid var(--border-color); /* Added explicit border style */
+}
+nav h1, nav #login-btn, nav #auth-section button span {
+    color: var(--text-primary);
+}
+nav #login-btn { /* For when user is logged out */
+     background-color: var(--button-bg);
+     color: var(--button-text);
+}
+nav #login-btn:hover {
+    background-color: var(--button-hover-bg);
+}
+
+/* General button styles */
+.button-primary, button[type="submit"], .button-submit-comment, .button-submit-reply {
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    padding: 0.5rem 1rem; /* Default padding */
+    border-radius: 0.375rem; /* rounded-lg */
+    font-weight: 500; /* font-medium */
+    transition: background-color 0.2s;
+    border: 1px solid transparent;
+}
+.button-primary:hover, button[type="submit"]:hover, .button-submit-comment:hover, .button-submit-reply:hover {
+    background-color: var(--button-hover-bg);
+}
+
+.button-secondary, .button-cancel-reply {
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    padding: 0.5rem 1rem; /* Default padding */
+    border-radius: 0.375rem; /* rounded-lg */
+    font-weight: 500; /* font-medium */
+    border: 1px solid var(--border-color);
+    transition: background-color 0.2s;
+}
+.button-secondary:hover, .button-cancel-reply:hover {
+    background-color: var(--bg-primary); 
+}
+
+
+/* Welcome message */
+#welcome-message {
+    background-color: var(--card-bg); 
+    border: 1px solid var(--border-color); /* Added explicit border style */
+    color: var(--text-primary); 
+}
+#welcome-message h2 {
+     color: var(--text-primary);
+}
+#welcome-message p {
+    color: var(--text-secondary); 
+}
+
+/* Create Post Form / Generic Form Styling */
+#create-post-form, .form-card { /* Added .form-card for general use */
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color); /* Added explicit border style */
+    border-radius: 0.375rem; /* rounded-lg for consistency if not applied by Tailwind */
+    padding: 1.5rem; /* p-6 */
+}
+#create-post-form h2, .form-card h2, #create-post-form label, .form-card label {
+    color: var(--text-primary);
+}
+input[type="text"], input[type="email"], input[type="password"], textarea {
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
+    border-radius: 0.375rem; /* rounded-lg */
+    padding: 0.75rem 1rem; /* px-4 py-3 */
+}
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, textarea:focus {
+    border-color: var(--input-focus-ring);
+    --tw-ring-color: var(--input-focus-ring); /* For Tailwind focus ring */
+    box-shadow: 0 0 0 2px var(--input-focus-ring); /* Ensure visibility */
+    outline: none;
+}
+/* Specific for create post form submit button if it doesn't use .button-primary */
+#create-post-form button[type="submit"] {
+    /* Uses .button-primary defined above */
+}
+
+
+/* Posts / Articles */
+article { 
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color); /* Added explicit border style */
+    border-radius: 0.375rem; /* rounded-lg */
+}
+article h2, article .font-medium.text-gray-800 { 
+    color: var(--text-primary);
+}
+article .text-gray-700, article .text-gray-700 p { 
+    color: var(--text-primary); 
+}
+article .text-sm.text-gray-500 { 
+    color: var(--text-secondary);
+}
+article .border-t, article .border-b {
+    border-color: var(--border-color);
+}
+
+/* Comments */
+.comment-wrapper .bg-gray-50 { 
+    background-color: var(--bg-secondary); 
+}
+.comment-wrapper .font-medium.text-gray-800 { 
+    color: var(--text-primary);
+}
+.comment-wrapper .text-gray-700 { 
+    color: var(--text-primary);
+}
+.comment-actions button, .comment-actions .text-xs.text-gray-500 {
+    color: var(--text-secondary);
+}
+.comment-actions button:hover {
+    color: var(--link-color);
+}
+.like-button { 
+    color: var(--text-secondary);
+    transition: color 0.2s ease-in-out;
+}
+.like-button:hover {
+    color: var(--link-color);
+}
+.like-button-active {
+    color: var(--link-color) !important; 
+    font-weight: 600;
+}
+
+/* Comment/Reply Forms (Textareas are covered by general textarea styles) */
+.reply-form p.text-gray-500 { 
+    color: var(--text-secondary);
+}
+.reply-form a { 
+    color: var(--link-color);
+}
+.reply-form a:hover {
+    color: var(--link-hover-color);
+}
+
+/* Empty State */
+#empty-state h3 {
+    color: var(--text-primary);
+}
+#empty-state p {
+    color: var(--text-secondary);
+}
+#empty-state .text-gray-400 { 
+    color: var(--text-secondary);
+}
+
+/* User Profile Modal (Dropdown in Nav) */
+#user-profile, #user-profile-modal, #user-profile-modal-settings { /* Common class for nav dropdown */
+    background-color: var(--profile-modal-bg);
+    border: 1px solid var(--border-color);
+}
+#user-profile #user-name, #user-profile .font-medium, 
+#user-profile-modal #modal-user-name, #user-profile-modal-settings #modal-user-name-settings {
+    color: var(--text-primary);
+}
+#user-profile #user-email, #user-profile .text-sm,
+#user-profile-modal #modal-user-email, #user-profile-modal-settings #modal-user-email-settings {
+    color: var(--text-secondary);
+}
+#user-profile a.profile-menu-item, #user-profile button.profile-menu-item,
+#user-profile-modal a.profile-menu-item, #user-profile-modal button.profile-menu-item,
+#user-profile-modal-settings a.profile-menu-item, #user-profile-modal-settings button.profile-menu-item {
+    display: block;
+    width: 100%; 
+    text-align: left; 
+    padding: 0.5rem 1rem; 
+    border-radius: 0.375rem; 
+    transition: background-color 0.2s;
+    color: var(--text-primary); 
+}
+#user-profile a.profile-menu-item:hover, #user-profile button.profile-menu-item:hover,
+#user-profile-modal a.profile-menu-item:hover, #user-profile-modal button.profile-menu-item:hover,
+#user-profile-modal-settings a.profile-menu-item:hover, #user-profile-modal-settings button.profile-menu-item:hover {
+    background-color: var(--bg-secondary); 
+}
+/* Specific Logout Button in Nav Dropdown */
+#user-profile #logout-btn, #logout-btn-profile, #logout-btn-settings {
+    background-color: #EF4444 !important; /* Keep logout distinct red, needs important due to specificity */
+    color: white !important;
+}
+#user-profile #logout-btn:hover, #logout-btn-profile:hover, #logout-btn-settings:hover {
+    background-color: #dc2626 !important; /* red-600 */
+}
+/* Border inside nav dropdown */
+#user-profile .border-b, #user-profile-modal .border-b, #user-profile-modal-settings .border-b {
+    border-bottom-color: var(--border-color);
+}
+#user-profile hr, #user-profile-modal hr, #user-profile-modal-settings hr {
+    border-top-color: var(--border-color);
+}
+
+
+/* Confirmation Modal */
+#confirmation-modal-overlay {
+    background-color: var(--modal-overlay-bg);
+    backdrop-filter: blur(4px); /* Copied from index.html */
+}
+#confirmation-modal {
+    background-color: var(--card-bg);
+}
+#confirmation-modal h3, #confirmation-modal p {
+    color: var(--text-primary);
+}
+#confirmation-modal-cancel-btn {
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color); /* Added for consistency */
+}
+#confirmation-modal-cancel-btn:hover {
+     background-color: var(--bg-primary);
+}
+#confirmation-modal-confirm-btn { 
+    background-color: #EF4444; 
+    color: white;
+}
+ #confirmation-modal-confirm-btn:hover {
+    background-color: #dc2626;
+}
+
+/* Cropper Modal & Upload Modal (General Modal Styles) */
+#crop-modal, #upload-modal { /* The overlay */
+    background-color: var(--modal-overlay-bg);
+    backdrop-filter: blur(4px); /* Copied from index.html */
+}
+.crop-modal-content, #upload-modal .bg-white { /* The modal content box */
+    background-color: var(--card-bg);
+}
+.crop-modal-content h3, #upload-modal h3, #upload-modal p {
+    color: var(--text-primary);
+}
+.crop-modal-content .text-gray-500:hover, .crop-modal-content .text-gray-600:hover { /* Close button etc. */
+    color: var(--text-primary);
+}
+.crop-image-container { /* Specific to cropper */
+     background-color: var(--bg-primary);
+     border: 2px dashed var(--border-color);
+}
+#crop-cancel-btn { 
+    color: var(--text-secondary);
+     border: 1px solid var(--border-color); /* Added for consistency */
+}
+#crop-cancel-btn:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+}
+#crop-save { /* Save button in crop modal */
+    /* Uses .button-primary */
+}
+#upload-modal .bg-gray-200 { /* Progress bar background */
+    background-color: var(--input-bg);
+}
+#upload-modal .bg-blue-600 { /* Progress bar fill */
+    background-color: var(--button-bg);
+}
+
+/* Notification Styling */
+.notification {
+    padding: 1rem;
+    border-radius: 0.375rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    color: var(--notification-text-color);
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.notification-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.notification-success { background-color: var(--notification-success-bg); }
+.notification-error { background-color: var(--notification-error-bg); }
+.notification-info { background-color: var(--notification-info-bg); }
+.notification-warning { background-color: var(--notification-warning-bg); }
+
+.notification-close-btn {
+    background: none;
+    border: none;
+    color: var(--notification-text-color);
+    font-size: 1.25rem;
+    line-height: 1;
+    opacity: 0.7;
+    cursor: pointer;
+    padding: 0.25rem;
+}
+.notification-close-btn:hover {
+    opacity: 1;
+}
+
+/* Links in posts/comments content */
+.text-gray-700 a, .whitespace-pre-wrap a { /* Target links within generated content */
+    color: var(--link-color);
+    text-decoration: underline; /* Make links more obvious */
+}
+.text-gray-700 a:hover, .whitespace-pre-wrap a:hover {
+    color: var(--link-hover-color);
+}
+
+/* Profile Image Styling (General) */
+.profile-img {
+     background-color: var(--input-bg); 
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     overflow: hidden;
+     border-radius: 9999px; /* Ensure it's always round */
+}
+.profile-img img {
+     width: 100%;
+     height: 100%;
+     object-fit: cover;
+}
+.profile-initials {
+     color: var(--text-secondary); 
+     font-weight: 600;
+}
+/* Specific for nav profile button hover */
+.nav-profile-button-hover:hover {
+    background-color: var(--bg-secondary) !important; 
+}
+
+/* Utility classes from index.html that might be useful globally */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.hover-lift:hover {
+    transform: translateY(-2px);
+    transition: transform 0.3s ease;
+}
+.file-upload {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+}
+.file-upload input[type=file] {
+    position: absolute;
+    left: -9999px;
+}
+.whitespace-pre-wrap {
+    white-space: pre-wrap; 
+    overflow-wrap: break-word; 
+    word-wrap: break-word; 
+    word-break: break-word; 
+}
+article h2.text-xl.font-bold.mb-3 { /* Ensure post titles also wrap */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: normal; 
+}
+
+/* Settings Page Specific (Radio buttons, Toggles) */
+.setting-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem; /* rounded-lg */
+    padding: 1.5rem; /* p-6 */
+    margin-bottom: 2rem; /* mb-8 */
+}
+.setting-card h2 {
+    color: var(--text-primary);
+    font-size: 1.25rem; /* text-xl */
+    font-weight: 600; /* font-semibold */
+    margin-bottom: 1rem; /* mb-4 */
+}
+.setting-card p { /* Descriptive text under titles */
+    color: var(--text-secondary);
+    font-size: 0.875rem; /* text-sm */
+    margin-bottom: 0.25rem; /* mb-1 */
+}
+.setting-card label[for^="theme-"] { 
+    color: var(--text-primary);
+    border: 2px solid var(--input-border); 
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 0.75rem; /* p-3 */
+    border-radius: 0.5rem; /* rounded-lg */
+    transition: background-color 0.2s, border-color 0.2s;
+}
+.setting-card label[for^="theme-"]:hover {
+    background-color: var(--input-bg); 
+}
+.setting-card input[type="radio"]:checked + label[for^="theme-"] {
+    border-color: var(--link-color); 
+    background-color: var(--bg-secondary); 
+}
+.setting-card input[type="radio"] + label[for^="theme-"] .radio-dot-container { /* The circle itself */
+    width: 1.25rem; /* w-5 */
+    height: 1.25rem; /* h-5 */
+    border: 2px solid var(--input-border);
+    border-radius: 9999px; /* rounded-full */
+    margin-right: 0.75rem; /* mr-3 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.setting-card input[type="radio"]:checked + label[for^="theme-"] .radio-dot-container {
+    border-color: var(--link-color);
+}
+.setting-card input[type="radio"] + label[for^="theme-"] .radio-dot { /* The custom dot */
+    width: 0.625rem; /* w-2.5 */
+    height: 0.625rem; /* h-2.5 */
+    background-color: var(--link-color); 
+    border-radius: 9999px; /* rounded-full */
+    display: none; /* Hidden by default */
+}
+.setting-card input[type="radio"]:checked + label[for^="theme-"] .radio-dot {
+    display: block; /* Show when checked */
+}
+
+/* Toggle Switches in Settings */
+.setting-card label[for$="-toggle"] { 
+    color: var(--text-primary);
+}
+.setting-card .toggle-bg { 
+    background-color: var(--input-bg); 
+    border: 1px solid var(--input-border);
+    display: block;
+    overflow: hidden;
+    height: 1.5rem; /* h-6 */
+    border-radius: 9999px; /* rounded-full */
+    cursor: pointer;
+    width: 2.5rem; /* w-10 */
+    position: relative;
+}
+.setting-card .toggle-checkbox { /* The actual checkbox, visually hidden but functional */
+    opacity: 0;
+    position: absolute;
+    width: 0;
+    height: 0;
+}
+.setting-card .toggle-knob { /* The circle/knob of the toggle */
+    display: block;
+    width: 1.25rem; /* w-5 (h-6 with border: h-1.5rem -> w-1.25rem, h-1.25rem) */
+    height: 1.25rem; /* h-5 */
+    background-color: var(--card-bg); 
+    border-radius: 9999px; /* rounded-full */
+    position: absolute;
+    top: 0.125rem; /* Adjust to center */
+    left: 0.125rem; /* Adjust for padding */
+    transition: transform 0.2s ease-in-out;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--input-border);
+}
+.setting-card .toggle-checkbox:checked + .toggle-bg { 
+    background-color: var(--button-bg);
+    border-color: var(--button-bg);
+}
+.setting-card .toggle-checkbox:checked + .toggle-bg .toggle-knob {
+    transform: translateX(1rem); /* Moves knob to the right: width of track (2.5rem) - width of knob (1.25rem) - 2*padding (0.125rem*2) */
+    border-color: var(--button-bg);
+}
+
+/* Profile Page Specific Styles */
+#profile-content { 
+    background-color: var(--card-bg);
+    border-radius: 0.5rem; /* rounded-lg */
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); /* shadow-lg */
+    overflow: hidden; /* if children have rounded corners and parent has bg */
+}
+.profile-header { 
+    background-color: var(--bg-primary); 
+    border-bottom: 1px solid var(--border-color);
+}
+#profile-name {
+    color: var(--text-primary);
+}
+#profile-joined-date {
+    color: var(--text-secondary);
+}
+#profile-description-view {
+    color: var(--text-primary); 
+}
+#profile-description-edit::placeholder {
+    color: var(--text-secondary);
+}
+#profile-description-edit { 
+    /* Uses general textarea styles */
+}
+#change-picture-section .border-t {
+    border-top-color: var(--border-color);
+}
+#change-picture-section h3 {
+    color: var(--text-primary);
+}
+
+/* Profile avatar on profile page */
+.profile-avatar { /* This is the container for the image or initials */
+    width: 128px; /* Tailwind w-32 */
+    height: 128px; /* Tailwind h-32 */
+    border: 4px solid var(--card-bg); /* Creates floating effect if card-bg is different from profile-header bg */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
+    /* .profile-img class handles the rest: bg, display flex, overflow hidden, rounded-full */
+}
+.profile-avatar .profile-initials { /* For initials inside the large avatar */
+    font-size: 3rem; /* text-5xl or 6xl depending on desired size */
+    /* color is var(--text-secondary) from general .profile-initials */
+}
+
+#profile-loading p, #profile-error p {
+    color: var(--text-secondary);
+}
+#profile-error a#go-home-error-btn { 
+    /* Uses .button-primary */
+}
+
+/* Ensure Tailwind base is loaded or some reset is active for consistency if not using Tailwind entirely */
+/* For example, box-sizing: border-box; */
+*, ::before, ::after {
+    box-sizing: border-box;
+    border-width: 0; /* From Tailwind Preflight, good reset */
+    border-style: solid; /* From Tailwind Preflight */
+    border-color: var(--border-color); /* Default border color from theme */
+}
+html {
+    line-height: 1.5; /* From Tailwind Preflight */
+    -webkit-text-size-adjust: 100%; /* From Tailwind Preflight */
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; /* Tailwind default font stack */
+}

@@ -8,544 +8,32 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
     <script src="theme-loader.js"></script> <!-- THEME LOADER -->
+    <link rel="stylesheet" href="themes.css"> <!-- THEME STYLES -->
     <style>
-        /* --- Theme Variables --- */
-        /* Light Theme (will be default if no theme is set or if 'light' is chosen) */
-        .theme-light {
-            --bg-primary: #ffffff;
-            --bg-secondary: #f9fafb; /* gray-50 */
-            --text-primary: #1f2937; /* gray-800 */
-            --text-secondary: #6b7280; /* gray-500 */
-            --border-color: #e5e7eb; /* gray-200 */
-            --link-color: #2563eb; /* blue-600 */
-            --link-hover-color: #1d4ed8; /* blue-700 */
-            --button-bg: #3b82f6; /* blue-500 */
-            --button-text: #ffffff;
-            --button-hover-bg: #2563eb; /* blue-600 */
-            --card-bg: #ffffff;
-            --input-bg: #ffffff;
-            --input-border: #d1d5db; /* gray-300 */
-            --input-focus-ring: #3b82f6; /* blue-500 */
-            --modal-overlay-bg: rgba(0, 0, 0, 0.5);
-            --profile-modal-bg: var(--card-bg);
-            --notification-success-bg: #10B981;
-            --notification-error-bg: #EF4444;
-            --notification-info-bg: #3B82F6;
-            --notification-warning-bg: #F59E0B;
-            --notification-text-color: #ffffff;
-            --code-bg: #f3f4f6; /* gray-100 */
-            --code-text: #374151; /* gray-700 */
-            --blockquote-border: #d1d5db; /* gray-300 */
-            --blockquote-text: #4b5563; /* gray-600 */
-        }
+        /* Specific styles for index.html, if any, can remain here. */
+        /* Most general styles are now in themes.css */
 
-        /* Dark Theme - Refined Palette */
-        .theme-dark {
-            --bg-primary: #1e293b;       /* Tailwind slate-800 */
-            --bg-secondary: #0f172a;     /* Tailwind slate-900 */
-            --text-primary: #f1f5f9;     /* Tailwind slate-100 */
-            --text-secondary: #94a3b8;   /* Tailwind slate-400 */
-            --border-color: #334155;     /* Tailwind slate-700 */
-            --link-color: #38bdf8;       /* Tailwind sky-400 */
-            --link-hover-color: #7dd3fc; /* Tailwind sky-300 */
-            --button-bg: #38bdf8;       /* Tailwind sky-400 */
-            --button-text: #0f172a;     /* Tailwind slate-900 (for contrast on light blue button) */
-            --button-hover-bg: #0ea5e9; /* Tailwind sky-500 */
-            --card-bg: #1e293b;         /* Tailwind slate-800 (same as primary bg for flatter look or #283648 for slight diff) */
-            --input-bg: #334155;       /* Tailwind slate-700 */
-            --input-border: #475569;   /* Tailwind slate-600 */
-            --input-focus-ring: #38bdf8; /* Tailwind sky-400 */
-            --modal-overlay-bg: rgba(15, 23, 42, 0.7); /* slate-900 with opacity */
-            --profile-modal-bg: #283648; /* Slightly lighter than primary card for depth */
-            --notification-success-bg: #16a34a; /* Tailwind green-600 */
-            --notification-error-bg: #dc2626;   /* Tailwind red-600 */
-            --notification-info-bg: #2563eb;    /* Tailwind blue-600 */
-            --notification-warning-bg: #f59e0b; /* Tailwind amber-500 */
-            --notification-text-color: #f1f5f9; /* Tailwind slate-100 */
-            --code-bg: #334155;         /* Tailwind slate-700 */
-            --code-text: #e2e8f0;       /* Tailwind slate-200 */
-            --blockquote-border: #475569; /* Tailwind slate-600 */
-            --blockquote-text: #94a3b8;   /* Tailwind slate-400 */
-        }
+        /* Example of a page-specific style that might remain or be added: */
+        /* #unique-index-element { */
+        /*     color: var(--link-color); */
+        /* } */
 
-        /* Midnight Theme - Refined Palette (Deeper Dark) */
-        .theme-midnight {
-            --bg-primary: #0f172a;       /* Tailwind slate-900 */
-            --bg-secondary: #020617;     /* Tailwind slate-950 (very dark) */
-            --text-primary: #cbd5e1;     /* Tailwind slate-300 */
-            --text-secondary: #64748b;   /* Tailwind slate-500 */
-            --border-color: #1e293b;     /* Tailwind slate-800 */
-            --link-color: #38bdf8;       /* Tailwind sky-400 */
-            --link-hover-color: #7dd3fc; /* Tailwind sky-300 */
-            --button-bg: #38bdf8;       /* Tailwind sky-400 */
-            --button-text: #020617;     /* Tailwind slate-950 (for contrast) */
-            --button-hover-bg: #0ea5e9; /* Tailwind sky-500 */
-            --card-bg: #0f172a;         /* Tailwind slate-900 */
-            --input-bg: #1e293b;       /* Tailwind slate-800 */
-            --input-border: #334155;   /* Tailwind slate-700 */
-            --input-focus-ring: #38bdf8; /* Tailwind sky-400 */
-            --modal-overlay-bg: rgba(2, 6, 23, 0.8); /* slate-950 with opacity */
-            --profile-modal-bg: #1e293b; /* Tailwind slate-800 */
-            --notification-success-bg: #15803d; /* Tailwind green-700 */
-            --notification-error-bg: #b91c1c;   /* Tailwind red-700 */
-            --notification-info-bg: #1d4ed8;    /* Tailwind blue-700 */
-            --notification-warning-bg: #d97706; /* Tailwind amber-600 */
-            --notification-text-color: #e2e8f0; /* Tailwind slate-200 */
-            --code-bg: #1e293b;         /* Tailwind slate-800 */
-            --code-text: #cbd5e1;       /* Tailwind slate-300 */
-            --blockquote-border: #334155; /* Tailwind slate-700 */
-            --blockquote-text: #94a3b8;   /* Tailwind slate-400 */
-        }
+        /* Styles that were very specific to index.html structure and not moved to themes.css (if any) */
+        /* For example, if there were any one-off utility classes used only here. */
+        /* However, the goal was to move as much as possible to themes.css for consistency. */
 
-        /* --- Apply Theme Variables --- */
-        body {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            transition: background-color 0.3s, color 0.3s;
-        }
-        nav {
-            background-color: var(--card-bg);
-            border-bottom-color: var(--border-color);
-        }
-        nav h1, nav #login-btn, nav #auth-section button span {
-            color: var(--text-primary);
-        }
-        nav #login-btn { /* For when user is logged out */
-             background-color: var(--button-bg);
-             color: var(--button-text);
-        }
-        nav #login-btn:hover {
-            background-color: var(--button-hover-bg);
-        }
+        /* The following styles were identified as potentially page-specific or already well-handled by Tailwind + theme variables */
+        /* It's often cleaner to rely on themes.css for base component styling and use Tailwind for layout/spacing. */
+
+        /* .fade-in, .hover-lift, .profile-img, .profile-initials, .file-upload, .crop-image-container, #crop-image, .modal-overlay */
+        /* and @media queries related to them are now in themes.css if they are general utilities/components. */
+        /* If some were truly only for index.html, they could be here, but it's unlikely for these. */
+
+        /* Styles for .whitespace-pre-wrap and article h2 wrapping are also in themes.css */
         
-        /* Welcome message */
-        #welcome-message {
-            background-color: var(--card-bg); /* Use card-bg for consistency */
-            border-color: var(--border-color);
-            color: var(--text-primary); /* Title color */
-        }
-        #welcome-message h2 {
-             color: var(--text-primary);
-        }
-        #welcome-message p {
-            color: var(--text-secondary); /* Subtext color */
-        }
-        
-        /* Create Post Form */
-        #create-post-form {
-            background-color: var(--card-bg);
-            border-color: var(--border-color);
-        }
-        #create-post-form h2, #create-post-form label {
-            color: var(--text-primary);
-        }
-        #create-post-form input[type="text"], #create-post-form textarea {
-            background-color: var(--input-bg);
-            border-color: var(--input-border);
-            color: var(--text-primary);
-        }
-        #create-post-form input[type="text"]:focus, #create-post-form textarea:focus {
-            border-color: var(--input-focus-ring);
-            --tw-ring-color: var(--input-focus-ring); /* For Tailwind focus ring */
-        }
-        #create-post-form button[type="submit"] {
-            background-color: var(--button-bg);
-            color: var(--button-text);
-        }
-        #create-post-form button[type="submit"]:hover {
-            background-color: var(--button-hover-bg);
-        }
+        /* Styles for #user-profile .profile-menu-item and .nav-profile-button-hover are in themes.css */
 
-        /* Posts */
-        article.bg-white { /* Assuming articles use bg-white which will be var(--card-bg) */
-            background-color: var(--card-bg);
-            border-color: var(--border-color);
-        }
-        article h2, article .font-medium.text-gray-800 { /* Post title and author name */
-            color: var(--text-primary);
-        }
-        article .text-gray-700, article .text-gray-700 p { /* Post content */
-            color: var(--text-primary); /* Use primary text for content for better readability */
-        }
-        article .text-sm.text-gray-500 { /* Timestamps, comment counts */
-            color: var(--text-secondary);
-        }
-        article .border-t, article .border-b {
-            border-color: var(--border-color);
-        }
-        
-        /* Comments */
-        .comment-wrapper .bg-gray-50 { /* Comment background */
-            background-color: var(--bg-secondary); /* Slightly different from card for nesting */
-        }
-        .comment-wrapper .font-medium.text-gray-800 { /* Comment author */
-            color: var(--text-primary);
-        }
-        .comment-wrapper .text-gray-700 { /* Comment text */
-            color: var(--text-primary);
-        }
-        .comment-actions button, .comment-actions .text-xs.text-gray-500 {
-            color: var(--text-secondary);
-        }
-        .comment-actions button:hover {
-            color: var(--link-color);
-        }
-        .like-button-active {
-            color: var(--link-color) !important; /* Ensure it overrides */
-        }
-        
-        /* Comment/Reply Forms */
-        textarea[id^="comment-textarea-"], textarea[id^="reply-textarea-"] {
-            background-color: var(--input-bg);
-            border: 1px solid var(--input-border); /* Ensure explicit border width */
-            color: var(--text-primary);
-            border-radius: 0.375rem; /* rounded-lg, ensure it's here if not in class */
-        }
-        textarea[id^="comment-textarea-"]:focus, textarea[id^="reply-textarea-"]:focus {
-            border-color: var(--input-focus-ring);
-            /* If using Tailwind focus rings alongside, set variable */
-            --tw-ring-color: var(--input-focus-ring); 
-            outline: none; /* Remove default outline if using custom border/ring */
-            box-shadow: 0 0 0 2px var(--input-focus-ring); /* Example custom focus ring */
-        }
-        .reply-form p.text-gray-500 { /* "Replying to:" text */
-            color: var(--text-secondary);
-        }
-        .reply-form a { /* Link to user being replied to */
-            color: var(--link-color);
-        }
-        .reply-form a:hover {
-            color: var(--link-hover-color);
-        }
-
-        /* Comment/Reply Buttons Styling */
-        .button-submit-comment, .button-submit-reply {
-            background-color: var(--button-bg);
-            color: var(--button-text);
-        }
-        .button-submit-comment:hover, .button-submit-reply:hover {
-            background-color: var(--button-hover-bg);
-        }
-        .button-cancel-reply { /* Cancel button in reply form */
-            background-color: var(--input-bg);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color); /* Add a border for better visibility */
-        }
-        .button-cancel-reply:hover {
-            background-color: var(--bg-primary); 
-        }
-
-        /* Empty State */
-        #empty-state h3 {
-            color: var(--text-primary);
-        }
-        #empty-state p {
-            color: var(--text-secondary);
-        }
-        #empty-state .text-gray-400 { /* Icon color */
-            color: var(--text-secondary);
-        }
-
-        /* User Profile Modal (Dropdown) */
-        #user-profile {
-            background-color: var(--profile-modal-bg);
-            border-color: var(--border-color);
-        }
-        #user-profile #user-name, #user-profile .font-medium {
-            color: var(--text-primary);
-        }
-        #user-profile #user-email, #user-profile .text-sm {
-            color: var(--text-secondary);
-        }
-        #user-profile button, #user-profile a { /* General buttons/links in modal */
-            color: var(--text-primary);
-            /* background-color: var(--button-bg); */ /* Let specific styles handle this */
-            /* color: var(--button-text); */
-        }
-         #user-profile a.hover\:bg-gray-100:hover {
-            background-color: var(--bg-secondary) !important; /* Ensure this overrides default hover */
-        }
-        #user-profile #logout-btn {
-            background-color: #EF4444; /* Keep logout distinct red */
-            color: white;
-        }
-        #user-profile #logout-btn:hover {
-            background-color: #dc2626; /* red-600 */
-        }
-        
-        /* Confirmation Modal */
-        #confirmation-modal-overlay {
-            background-color: var(--modal-overlay-bg);
-        }
-        #confirmation-modal {
-            background-color: var(--card-bg);
-        }
-        #confirmation-modal h3, #confirmation-modal p {
-            color: var(--text-primary);
-        }
-        #confirmation-modal-cancel-btn {
-            background-color: var(--input-bg);
-            color: var(--text-primary);
-        }
-        #confirmation-modal-cancel-btn:hover {
-             background-color: var(--bg-primary);
-        }
-        #confirmation-modal-confirm-btn { /* Keep confirm distinct (usually red for delete) */
-            background-color: #EF4444; 
-            color: white;
-        }
-         #confirmation-modal-confirm-btn:hover {
-            background-color: #dc2626;
-        }
-        
-        /* Cropper Modal */
-        #crop-modal {
-            background-color: var(--modal-overlay-bg);
-        }
-        .crop-modal-content {
-            background-color: var(--card-bg);
-        }
-        .crop-modal-content h3 {
-            color: var(--text-primary);
-        }
-        .crop-modal-content .text-gray-500:hover, .crop-modal-content .text-gray-600:hover {
-            color: var(--text-primary);
-        }
-        .crop-image-container {
-             background-color: var(--bg-primary);
-             border-color: var(--border-color);
-        }
-        #crop-cancel-btn { /* Cancel button in crop modal */
-            color: var(--text-secondary);
-        }
-        #crop-cancel-btn:hover {
-            color: var(--text-primary);
-        }
-        #crop-save { /* Save button in crop modal */
-            background-color: var(--button-bg);
-            color: var(--button-text);
-        }
-        #crop-save:hover {
-            background-color: var(--button-hover-bg);
-        }
-
-        /* Upload Progress Modal */
-        #upload-modal {
-            background-color: var(--modal-overlay-bg);
-        }
-        #upload-modal .bg-white {
-            background-color: var(--card-bg);
-        }
-        #upload-modal h3, #upload-modal p {
-            color: var(--text-primary);
-        }
-        #upload-modal .bg-gray-200 { /* Progress bar background */
-            background-color: var(--input-bg);
-        }
-        #upload-modal .bg-blue-600 { /* Progress bar fill */
-            background-color: var(--button-bg);
-        }
-        
-        /* Notification Styling */
-        .notification {
-            color: var(--notification-text-color); /* Default for all notification types */
-        }
-        .notification-success { background-color: var(--notification-success-bg); }
-        .notification-error { background-color: var(--notification-error-bg); }
-        .notification-info { background-color: var(--notification-info-bg); }
-        .notification-warning { background-color: var(--notification-warning-bg); }
-        .notification-close-btn { color: var(--notification-text-color); }
-
-        /* Links in posts/comments */
-        .text-gray-700 a { /* This targets generated links in content */
-            color: var(--link-color);
-        }
-        .text-gray-700 a:hover {
-            color: var(--link-hover-color);
-        }
-        
-        /* Profile image initials theming */
-        .profile-img { /* Ensure this uses a theme variable if needed, or transparent */
-             background-color: var(--input-bg); /* A neutral background for initials */
-        }
-        .profile-initials {
-             color: var(--text-secondary); /* Initials color */
-        }
-
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-in;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .hover-lift:hover {
-            transform: translateY(-2px);
-            transition: transform 0.3s ease;
-        }
-        /* Profile image styling */
-        .profile-img {
-            background-color: #e5e7eb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-        .profile-img img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .profile-initials {
-            font-weight: 600;
-            color: #374151;
-        }
-        .file-upload {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-        }
-        .file-upload input[type=file] {
-            position: absolute;
-            left: -9999px;
-        }
-        
-        /* Cropper container - simplified and clean */
-        .crop-image-container {
-            width: 100%;
-            height: 60vh;
-            max-height: 500px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #f8f9fa;
-            border: 2px dashed #dee2e6;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        /* Let CropperJS handle the image sizing naturally */
-        #crop-image {
-            max-width: 100%;
-            max-height: 100%;
-            display: block;
-        }
-        
-        .modal-overlay {
-            backdrop-filter: blur(4px);
-        }
-        
-        /* Mobile responsive adjustments */
-        @media (max-width: 768px) {
-            .crop-modal-content {
-                margin: 1rem;
-                max-height: 90vh;
-            }
-            
-            .crop-image-container {
-                height: 50vh;
-                max-height: 400px;
-            }
-        }
-
-        /* Comment and Reply Styling (already themed via variables) */
-        .comment-actions button {
-            transition: color 0.2s ease-in-out;
-        }
-        /* .like-button-active is themed by variables */
-        .reply-form textarea {
-            font-size: 0.875rem; /* text-sm */
-            border-radius: 0.375rem; /* rounded-md */
-        }
-        .reply-form button {
-            font-size: 0.75rem; /* text-xs */
-            padding: 0.25rem 0.75rem; /* Adjust padding for smaller buttons */
-        }
-
-        /* Notification Styling (already themed via variables) */
-        .notification {
-            padding: 1rem; /* p-4 */
-            border-radius: 0.375rem; /* rounded-md */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* shadow-md */
-            /* color: white; themed by --notification-text-color */
-            opacity: 0;
-            transform: translateY(-20px);
-            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .notification-visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        /* background-colors are themed by variables */
-        .notification-close-btn {
-            background: none;
-            border: none;
-            /* color: white; themed by --notification-text-color */
-            font-size: 1.25rem; /* text-xl */
-            line-height: 1;
-            opacity: 0.7;
-            cursor: pointer;
-            padding: 0.25rem;
-        }
-        .notification-close-btn:hover {
-            opacity: 1;
-        }
-
-        /* Styling for links within posts and comments (already themed by variables) */
-        /* .text-gray-700 a is themed by variables */
-
-        /* Ensure long words break and wrap, and newlines are still respected */
-        .whitespace-pre-wrap {
-            white-space: pre-wrap; /* Respects newlines and spaces */
-            overflow-wrap: break-word; /* Breaks long words to prevent overflow */
-            word-wrap: break-word; /* Legacy alias for overflow-wrap */
-            word-break: break-word; /* Ensures words break if they are too long */
-        }
-
-        /* Ensure post titles also wrap */
-        /* Updated selector to remove .text-gray-800 as it was removed from the h2 element */
-        article h2.text-xl.font-bold.mb-3 { 
-            overflow-wrap: break-word;
-            word-break: break-word;
-            white-space: normal; /* Ensures it doesn't inherit pre-wrap or similar */
-        }
-
-        /* User Profile Modal new item styling */
-        #user-profile a.profile-menu-item, #user-profile button.profile-menu-item { /* Apply to buttons too */
-            display: block;
-            width: 100%; /* Make button full width */
-            text-align: left; /* Align button text left */
-            padding: 0.5rem 1rem; /* py-2 px-4 */
-            border-radius: 0.375rem; /* rounded-md */
-            transition: background-color 0.2s;
-            color: var(--text-primary); /* Use themed text color */
-        }
-        #user-profile a.profile-menu-item:hover, #user-profile button.profile-menu-item:hover {
-            background-color: var(--bg-secondary); /* Use themed hover background */
-        }
-        
-        /* Specific hover for nav profile button */
-        .nav-profile-button-hover:hover {
-            background-color: var(--bg-secondary) !important; /* Use important if needed to override other hover styles if any */
-        }
-
-        /* Like button styling refinement */
-        .like-button { /* Base style for like buttons (post and comment) */
-            color: var(--text-secondary); /* Default color for non-liked state */
-            transition: color 0.2s ease-in-out;
-        }
-        .like-button:hover {
-            color: var(--link-color); /* Hover color */
-        }
-        .like-button.like-button-active { /* Active (liked) state */
-            color: var(--link-color) !important; /* Already defined, ensure it overrides */
-            font-weight: 600; /* Keep or adjust as needed */
-        }
-
+        /* Styles for .like-button and .like-button-active are in themes.css */
 
     </style>
 </head>
@@ -593,24 +81,24 @@
     <!-- Main Content -->
     <main class="max-w-4xl mx-auto px-4 py-8">
         <!-- Welcome Message -->
-        <div id="welcome-message" class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8 text-center">
+        <div id="welcome-message" class="rounded-lg p-6 mb-8 text-center"> <!-- Removed bg-blue-50 border border-blue-200 -->
             <h2 class="text-2xl font-bold text-blue-800 mb-2">Welcome to Forum!</h2>
             <p class="text-blue-600">Sign in with Google to start posting and commenting on discussions.</p>
         </div>
 
         <!-- Create Post Form -->
-        <div id="create-post-form" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+        <div id="create-post-form" class="rounded-lg shadow-md p-6 mb-8 hidden"> <!-- Removed bg-white -->
             <h2 class="text-xl font-bold text-gray-800 mb-4">Create a New Post</h2>
             <form id="post-form">
                 <div class="mb-4">
                     <input type="text" id="post-title" placeholder="Post title..." 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                           class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"> <!-- Removed border border-gray-300 -->
                 </div>
                 <div class="mb-4">
                     <textarea id="post-content" placeholder="What's on your mind?" rows="4"
-                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"></textarea>
+                              class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"></textarea> <!-- Removed border border-gray-300 -->
                 </div>
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                <button type="submit" class="text-white px-6 py-3 rounded-lg font-medium transition-colors"> <!-- Removed bg-blue-600 hover:bg-blue-700 -->
                     Create Post
                 </button>
             </form>
@@ -687,11 +175,11 @@
     </div>
 
     <!-- Upload Progress Modal -->
-    <div id="upload-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-overlay flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+    <div id="upload-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-50"> <!-- bg-black bg-opacity-50 already themed by themes.css -->
+        <div class="rounded-lg p-6 max-w-sm w-full mx-4"> <!-- Removed bg-white -->
             <h3 class="text-lg font-semibold mb-4">Uploading Profile Picture</h3>
-            <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
-                <div id="upload-progress" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            <div class="w-full bg-gray-200 rounded-full h-2 mb-4"> <!-- bg-gray-200 themed by themes.css -->
+                <div id="upload-progress" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div> <!-- bg-blue-600 themed by themes.css -->
             </div>
             <p class="text-sm text-gray-600 text-center">Please wait...</p>
         </div>
@@ -893,7 +381,8 @@
             
             posts.forEach(post => {
                 const article = document.createElement('article');
-                article.className = 'bg-white rounded-lg shadow-md p-6 hover-lift fade-in';
+                // Removed 'bg-white' class, themes.css will handle background via 'article' tag selector
+                article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in'; 
                 
                 // Create post header with profile image
                 const postHeader = document.createElement('div');
@@ -996,10 +485,19 @@
             comments.forEach(comment => {
                 const commentWrapper = document.createElement('div');
                 // Use a class for wrapper and apply margin based on depth
-                commentWrapper.className = `comment-wrapper mt-3 pl-${depth * 2}`; // Tailwind pl classes for indentation, e.g., pl-0, pl-2, pl-4 ...
+                commentWrapper.className = `comment-wrapper mt-3 pl-${depth * 2}`; 
 
                 const commentDiv = document.createElement('div');
-                commentDiv.className = 'flex items-start space-x-3 bg-gray-50 p-3 rounded-lg shadow-sm'; // Added shadow-sm for a bit of depth
+                // Removed 'bg-gray-50' class, themes.css will handle background via '.comment-wrapper .bg-gray-50' (or a more direct selector if needed)
+                // However, themes.css has: .comment-wrapper .bg-gray-50 { background-color: var(--bg-secondary); }
+                // To make this rule in themes.css effective, the element needs the class 'bg-gray-50' or the selector in themes.css needs to be changed.
+                // For now, let's assume themes.css is correct and this element should still have a class that themes.css targets.
+                // If the intention is that *all* commentDivs get this style, themes.css should target '.comment-wrapper > div' or similar.
+                // Given the existing themes.css, we'll keep a class that it can target.
+                // Let's add a specific class for the comment div itself if it doesn't have one that themes.css uses.
+                // The existing rule '.comment-wrapper .bg-gray-50' implies the 'bg-gray-50' class IS expected.
+                commentDiv.className = 'flex items-start space-x-3 bg-gray-50 p-3 rounded-lg shadow-sm'; 
+                // This means the themes.css rule for `.comment-wrapper .bg-gray-50` will apply `var(--bg-secondary)`.
 
                 const commentAuthorProfileLink = document.createElement('a');
                 commentAuthorProfileLink.href = `/profile.html?id=${comment.author.id}`;

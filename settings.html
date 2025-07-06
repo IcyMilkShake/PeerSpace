@@ -6,159 +6,39 @@
     <title>Settings - Forum</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="theme-loader.js"></script> <!-- THEME LOADER -->
+    <link rel="stylesheet" href="themes.css"> <!-- THEME STYLES -->
     <style>
-        /* Theme variables are globally available via :root or .theme-* on html element */
-        /* Apply theme variables to settings page elements */
-        body {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            transition: background-color 0.3s, color 0.3s;
-        }
+        /* Settings page specific styles */
+        /* Most base styles (body, nav, cards, modals) are now in themes.css */
 
-        /* Light Theme variable overrides for this page if needed (usually not) */
-        /* Dark Theme variable overrides for this page if needed (usually not) */
-        /* Midnight Theme variable overrides for this page if needed (usually not) */
-        
-        /* Navigation */
-        nav {
-            background-color: var(--card-bg);
-            border-bottom-color: var(--border-color);
-        }
-        nav h1 { /* Forum Title */
-            color: var(--text-primary);
-        }
-        nav a#back-to-forum-link { /* Back to forum when logged out */
-            color: var(--link-color);
-        }
-        nav a#back-to-forum-link:hover {
-            color: var(--link-hover-color);
-        }
-        .nav-profile-button-hover span { /* User name in nav */
-             color: var(--text-primary);
-        }
-        .nav-profile-button-hover:hover { /* Hover for user button in nav */
-            background-color: var(--bg-secondary) !important;
-        }
-
-        /* Main page title */
-        main > h1 {
+        /* Main page title "Settings" */
+        main > h1.text-3xl { /* More specific selector if needed */
             color: var(--text-primary);
         }
         
-        /* Setting Card Styling */
-        .setting-card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color); /* Explicitly add border */
-            /* color: var(--text-primary); Implicitly inherited */
-        }
-        .setting-card h2 { /* Section titles like "Appearance" */
+        /* .setting-card and its internal elements (h2, p) are styled by themes.css */
+        /* Radio button theme selection styling is now in themes.css */
+        /* Placeholder Toggle Switches styling is now in themes.css */
+
+        /* Profile image styling for nav (.profile-img, .profile-initials) is in themes.css */
+        /* User profile modal in nav (#user-profile-modal-settings) is styled by themes.css */
+        
+        /* Ensure Tailwind classes like `bg-white` on .setting-card
+           are effectively themed via themes.css.
+           For example, .setting-card { background-color: var(--card-bg); border: 1px solid var(--border-color); }
+        */
+
+        /* Fallback for nav h1 if its color isn't set by themes.css general nav h1 rule */
+        nav .text-2xl.font-bold {
             color: var(--text-primary);
         }
-        .setting-card p { /* Descriptive text under titles */
+
+        /* Fallback for text colors within setting cards if not covered by general rules */
+        .setting-card .text-gray-600 { /* e.g., paragraph text */
             color: var(--text-secondary);
         }
-        
-        /* Radio button theme selection */
-        .setting-card label[for^="theme-"] { /* Labels for theme radio buttons */
+        .setting-card .text-gray-700 { /* e.g., toggle labels if not themed by more specific rules */
             color: var(--text-primary);
-            border: 1px solid var(--input-border); /* Themed border for the clickable label */
-        }
-        .setting-card label[for^="theme-"]:hover {
-            background-color: var(--input-bg); /* Subtle hover for label */
-        }
-        .setting-card input[type="radio"]:checked + label[for^="theme-"] {
-            border-color: var(--link-color); /* Highlight border for selected theme */
-            background-color: var(--input-bg); /* Can be same as hover or slightly different */
-        }
-        .setting-card input[type="radio"] + label[for^="theme-"] .radio-dot { /* The custom dot */
-            background-color: var(--link-color); /* Dot color when selected */
-            border-color: var(--input-border); /* Border of the circle */
-        }
-        .setting-card input[type="radio"] + label[for^="theme-"] .w-5.h-5 { /* The circle itself */
-             border-color: var(--input-border);
-        }
-         .setting-card input[type="radio"]:checked + label[for^="theme-"] .w-5.h-5 {
-             border-color: var(--link-color);
-        }
-
-
-        /* Placeholder Toggle Switches */
-        .setting-card label[for$="-toggle"] { /* Labels like "Enable Email Notifications" */
-            color: var(--text-primary);
-        }
-        .setting-card .toggle-bg { /* The track of the toggle */
-            background-color: var(--input-bg); /* Default (off) state */
-            border: 1px solid var(--input-border);
-        }
-        .setting-card .toggle-checkbox:checked + .toggle-label.toggle-bg { /* Track when checked */
-            background-color: var(--button-bg);
-            border-color: var(--button-bg);
-        }
-        .setting-card .toggle-checkbox { /* The circle/knob of the toggle */
-            background-color: var(--card-bg); /* Usually white or light */
-            border-color: var(--input-border); /* Border of the knob */
-        }
-         .setting-card .toggle-checkbox:checked {
-            border-color: var(--button-bg); /* Knob border when checked - can be same as track or distinct */
-        }
-
-
-        /* Profile image styling for nav */
-        .profile-img {
-            background-color: var(--input-bg); 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-        .profile-img img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .profile-initials { /* For initials text */
-            font-weight: 600;
-            color: var(--text-secondary); /* Use secondary text for initials like in other pages */
-        }
-
-        /* User profile modal in nav (similar to index.html user-profile) */
-        #user-profile-modal-settings { /* The modal itself */
-            background-color: var(--profile-modal-bg);
-            border-color: var(--border-color);
-        }
-        #user-profile-modal-settings .flex.items-center { /* User info section */
-            border-bottom-color: var(--border-color);
-        }
-        #user-profile-modal-settings #modal-profile-img-container-settings { /* Profile pic in modal */
-            border-color: var(--border-color);
-        }
-        #user-profile-modal-settings #modal-user-name-settings {
-             color: var(--text-primary);
-        }
-        #user-profile-modal-settings #modal-user-email-settings {
-            color: var(--text-secondary);
-        }
-        /* Style for links/buttons in this modal, using profile-menu-item class */
-        #user-profile-modal-settings a.profile-menu-item, 
-        #user-profile-modal-settings button.profile-menu-item { 
-            display: block;
-            width: 100%;
-            text-align: left;
-            padding: 0.5rem 0.75rem; 
-            border-radius: 0.375rem; 
-            color: var(--text-primary);
-            transition: background-color 0.2s;
-        }
-        #user-profile-modal-settings a.profile-menu-item:hover,
-        #user-profile-modal-settings button.profile-menu-item:hover {
-            background-color: var(--bg-secondary);
-        }
-        #logout-btn-settings.profile-menu-item { /* Specific logout button styling */
-            background-color: #ef4444 !important; 
-            color: white !important;
-        }
-        #logout-btn-settings.profile-menu-item:hover {
-            background-color: #dc2626 !important; 
         }
 
     </style>

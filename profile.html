@@ -8,278 +8,55 @@
     <script src="theme-loader.js"></script> <!-- THEME LOADER -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+    <link rel="stylesheet" href="themes.css"> <!-- THEME STYLES -->
     <style>
-        /* Theme variables are globally available via :root or .theme-* on html element */
-        /* Apply theme variables to profile page elements */
-        body {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            transition: background-color 0.3s, color 0.3s;
-        }
-        nav { /* Main navigation bar */
-            background-color: var(--card-bg);
-            border-bottom-color: var(--border-color);
-        }
-        nav h1 { /* Forum title */
-            color: var(--text-primary);
-        }
-        nav a#back-to-forum-link { /* Specific ID for "Back to Forum" if needed, or general 'a' */
-            color: var(--link-color);
-        }
-        nav a#back-to-forum-link:hover {
-            color: var(--link-hover-color);
-        }
-        /* User profile button in nav */
-        .nav-profile-button-hover { /* Added for consistency with index.html */
-             /* Base styles are from Tailwind, color from span */
-        }
-        .nav-profile-button-hover span {
-             color: var(--text-primary);
-        }
-        .nav-profile-button-hover:hover {
-            background-color: var(--bg-secondary) !important;
-        }
+        /* Profile page specific styles */
+        /* Most base styles (body, nav, buttons, modals, inputs) are now in themes.css */
 
+        /* Ensure the main profile card and its header use theme variables if not already covered by Tailwind + themes.css */
+        /* #profile-content is styled by themes.css */
+        /* .profile-header is styled by themes.css */
+        /* #profile-name, #profile-joined-date, #profile-description-view, #profile-description-edit are styled by themes.css */
 
-        #profile-content { /* Main profile card */
-            background-color: var(--card-bg);
-            /* border-color: var(--border-color); Tailwind 'shadow-lg' is used, border might be redundant */
-        }
-        .profile-header { /* Header within the profile card */
-            background-color: var(--bg-primary); 
-            border-bottom-color: var(--border-color);
-        }
-        #profile-name {
+        /* .button-primary and .button-secondary are defined in themes.css */
+        /* Specific buttons like #edit-description-button will use these classes. */
+
+        /* .profile-avatar and related styles are in themes.css */
+        
+        /* #profile-loading p, #profile-error p are styled by themes.css */
+        /* #profile-error a (go to homepage button) is styled by .button-primary in themes.css */
+
+        /* User Profile Modal in nav (#user-profile-modal) is styled by themes.css */
+        
+        /* .profile-img and .profile-initials are general utility classes in themes.css */
+
+        /* Cropper and Modal Styles (file-upload, crop-image-container, #crop-image, .modal-overlay, etc.) */
+        /* are now in themes.css as they are general modal/component styles. */
+
+        /* Styles for text color on specific elements if not covered by general rules in themes.css */
+        /* For example, nav h1 text color is handled by 'nav h1' in themes.css */
+        nav .text-gray-800 { /* Fallback for Forum title if needed */
             color: var(--text-primary);
         }
-        #profile-joined-date {
+        #profile-content .text-gray-800 { /* e.g. Profile Name */
+            color: var(--text-primary);
+        }
+        #profile-content .text-gray-500 { /* e.g. Joined Date */
             color: var(--text-secondary);
         }
-        #profile-description-view {
-            color: var(--text-primary); /* Changed from secondary for better readability */
+        #profile-content .text-gray-700 { /* e.g. "About me" title */
+            color: var(--text-primary); 
         }
-         #profile-description-edit::placeholder {
-            color: var(--text-secondary);
-        }
-        #profile-description-edit { /* Textarea for editing description */
-            background-color: var(--input-bg);
-            border-color: var(--input-border);
-            color: var(--text-primary);
-        }
-        #profile-description-edit:focus {
-            border-color: var(--input-focus-ring);
-            --tw-ring-color: var(--input-focus-ring); /* For Tailwind's focus ring utility */
+        #profile-content .text-gray-600 { /* e.g. description view */
+            color: var(--text-primary); /* Overridden for better readability in themes.css */
         }
         
-        /* Buttons on profile page - general styling for primary and secondary */
-        .button-primary {
-            background-color: var(--button-bg);
-            color: var(--button-text);
-            padding: 0.5rem 1rem; /* px-4 py-2 */
-            border-radius: 0.375rem; /* rounded-lg */
-            font-weight: 500; /* font-medium */
-            transition: background-color 0.2s;
-            border: 1px solid transparent; /* Ensure consistent height with bordered buttons */
-        }
-        .button-primary:hover {
-            background-color: var(--button-hover-bg);
-        }
-        .button-secondary {
-            background-color: var(--input-bg);
-            color: var(--text-primary);
-            padding: 0.5rem 1rem; /* px-4 py-2 */
-            border-radius: 0.375rem; /* rounded-lg */
-            font-weight: 500; /* font-medium */
-            border: 1px solid var(--border-color);
-            transition: background-color 0.2s;
-        }
-        .button-secondary:hover {
-            background-color: var(--bg-primary); /* Slightly darker than input-bg for hover */
-        }
-        /* Apply to specific buttons */
-        #edit-description-button, #save-description, #change-profile-picture-button {
-            /* These will get .button-primary class via JS or directly if static */
-        }
-        #cancel-edit-description {
-            /* This will get .button-secondary class */
-        }
+        /* Ensure that Tailwind classes like `bg-white` on #profile-content, 
+           or `border-b` on .profile-header are effectively themed via themes.css.
+           For example, #profile-content { background-color: var(--card-bg); }
+           .profile-header { border-bottom-color: var(--border-color); }
+        */
 
-
-        /* Profile avatar styles */
-        .profile-avatar {
-            width: 128px;
-            height: 128px;
-            object-fit: cover;
-            border: 4px solid var(--card-bg); /* Border color matching card background for floating effect */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            background-color: var(--input-bg); /* Fallback for initials */
-        }
-         .profile-avatar-placeholder .profile-initials { /* For initials */
-            font-size: 3rem;
-            color: var(--text-secondary);
-        }
-
-
-        #profile-loading p, #profile-error p {
-            color: var(--text-secondary);
-        }
-         #profile-error a { /* Go to homepage button on error */
-            background-color: var(--button-bg);
-            color: var(--button-text);
-        }
-        #profile-error a:hover {
-             background-color: var(--button-hover-bg);
-        }
-
-        /* User Profile Modal in nav (for logged-in user) */
-        #user-profile-modal {
-            background-color: var(--profile-modal-bg);
-            border-color: var(--border-color);
-        }
-        /* User Profile Modal in nav on profile.html */
-        #user-profile-modal { /* The modal itself */
-            background-color: var(--profile-modal-bg);
-            border-color: var(--border-color);
-            /* Tailwind classes: fixed top-16 right-4 rounded-lg shadow-lg p-4 border z-50 w-64 */
-        }
-        #user-profile-modal .flex.items-center { /* User info section */
-            border-bottom-color: var(--border-color);
-        }
-        #user-profile-modal #modal-profile-img-container { /* Profile pic in modal */
-            border-color: var(--border-color);
-        }
-        #user-profile-modal #modal-user-name-settings, /* IDs seem to be from settings.html, correct to profile if different */
-        #user-profile-modal #modal-user-name {
-             color: var(--text-primary);
-        }
-        #user-profile-modal #modal-user-email-settings,
-        #user-profile-modal #modal-user-email {
-            color: var(--text-secondary);
-        }
-        #user-profile-modal a.profile-menu-item, 
-        #user-profile-modal button.profile-menu-item { /* Style for links/buttons in this modal */
-            display: block;
-            width: 100%;
-            text-align: left;
-            padding: 0.5rem 0.75rem; /* Match user-profile from index.html: py-2 px-3 */
-            border-radius: 0.375rem; /* rounded-md */
-            color: var(--text-primary);
-            transition: background-color 0.2s;
-        }
-        #user-profile-modal a.profile-menu-item:hover,
-        #user-profile-modal button.profile-menu-item:hover {
-            background-color: var(--bg-secondary);
-        }
-        #logout-btn-profile { 
-            /* This specific ID should also get profile-menu-item class if it's a button in the list */
-            /* For distinct red color: */
-            background-color: #ef4444 !important; /* Tailwind red-500 */
-            color: white !important;
-        }
-        #logout-btn-profile:hover {
-            background-color: #dc2626 !important; /* Tailwind red-600 */
-        }
-
-        .profile-img { /* General profile image container styling */
-            background-color: var(--input-bg); /* Fallback for initials */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-        .profile-img img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .profile-initials { /* For initials text */
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        /* Copied Cropper and Modal Styles from index.html (and themed) */
-        .file-upload { /* Used for the change profile picture button if styled as a label */
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-        }
-        .file-upload input[type=file] {
-            position: absolute;
-            left: -9999px;
-        }
-        .crop-image-container {
-            width: 100%;
-            height: 60vh; /* As in index.html */
-            max-height: 500px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: var(--bg-primary); /* Themed */
-            border: 2px dashed var(--border-color); /* Themed */
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        #crop-image {
-            max-width: 100%;
-            max-height: 100%;
-            display: block;
-        }
-        .modal-overlay { /* Common for all modals: crop, upload, confirm */
-            backdrop-filter: blur(4px);
-            background-color: var(--modal-overlay-bg); /* Themed */
-        }
-        
-        /* Crop Modal Content */
-        #crop-modal .bg-white { /* This was specific, now use var */
-             background-color: var(--card-bg);
-        }
-        #crop-modal h3 {
-            color: var(--text-primary);
-        }
-        #crop-modal .text-gray-500, #crop-modal .text-gray-600 { /* Close button, cancel text */
-            color: var(--text-secondary);
-        }
-        #crop-modal .text-gray-500:hover, #crop-modal .text-gray-600:hover {
-            color: var(--text-primary);
-        }
-        #crop-save { /* Save button in crop modal */
-            background-color: var(--button-bg);
-            color: var(--button-text);
-        }
-        #crop-save:hover {
-            background-color: var(--button-hover-bg);
-        }
-        #crop-cancel-btn { /* Cancel button text in crop modal */
-             color: var(--text-secondary);
-        }
-        #crop-cancel-btn:hover {
-            color: var(--text-primary);
-        }
-
-        /* Upload Progress Modal */
-        #upload-modal .bg-white { /* Specific to default, now use var */
-            background-color: var(--card-bg);
-        }
-        #upload-modal h3, #upload-modal p {
-            color: var(--text-primary);
-        }
-        #upload-modal .bg-gray-200 { /* Progress bar background */
-            background-color: var(--input-bg);
-        }
-        #upload-modal .bg-blue-600 { /* Progress bar fill */
-            background-color: var(--button-bg);
-        }
-        
-        @media (max-width: 768px) {
-            .crop-modal-content { /* This class is on the div inside #crop-modal */
-                margin: 1rem;
-                max-height: 90vh;
-            }
-            .crop-image-container {
-                height: 50vh;
-                max-height: 400px;
-            }
-        }
     </style>
 </head>
 <body class="min-h-screen"> 
