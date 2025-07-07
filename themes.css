@@ -1,5 +1,5 @@
-.theme-white {
-  --bg-primary:       #f9fafb;  /* Soft off-white */
+.theme-light {
+  --bg-primary:       #000000;  /* Soft off-white */
   --bg-secondary:     #f0f2f5;  /* Gentle contrast */
   --text-primary:     #2d2d2d;  /* Soft charcoal */
   --text-secondary:   #5f6368;  /* Muted gray */
@@ -29,9 +29,9 @@
   --nav-text: #2d2d2d;
   --nav-border-color: #e5e7eb;
 
-  --button-primary-bg: #3b82f6;
+  --button-primary-bg: #101010;
   --button-primary-text: #ffffff;
-  --button-primary-hover-bg: #2563eb;
+  --button-primary-hover-bg: #4a4a4a;
   --button-primary-border: transparent;
 
   --button-secondary-bg: #f3f4f6;
@@ -44,11 +44,11 @@
   --button-danger-hover-bg: #b91c1c;
   --button-danger-border: transparent;
 
-  --input-field-bg: #f1f5f9;
+  --input-field-bg: #fbfbfb;
   --input-field-text: #2d2d2d;
-  --input-field-border: #d1d5db;
+  --input-field-border: #e3e3e3;
   --input-field-focus-ring: #3b82f6;
-  --input-field-placeholder-text: #9ca3af;
+  --input-field-placeholder-text: #cfcfcf;
 
   --card-default-bg: #ffffff;
   --card-default-border: #e5e7eb;
@@ -66,8 +66,8 @@
   --modal-content-bg: #ffffff;
 
   --like-button-color: #6b7280;
-  --like-button-active-color: #3b82f6;
-  --like-button-hover-color: #2563eb;
+  --like-button-active-color: #ff2d2d;
+  --like-button-hover-color: #ff6a6a;
 
   --welcome-banner-bg: #f9fafb;
   --welcome-banner-text-header: #1f2937;
@@ -179,13 +179,14 @@
     /* Base colors */
     /* Base colors - Backgrounds slightly darkened */
     --bg-primary:       #8c7ae6;       /* Accent color, not a main background, kept as is */
-    --bg-secondary:     #0A091A;    /* Darkened from #0d0c1d */
+    --bg-secondary:     #070714;    /* Darkened from #0d0c1d */
     --text-primary:     #dcdcff;     
     --text-secondary:   #8c7ae6;   
     --border-color:     #2A283E;     /* Slightly adjusted from #2f2d44 to match new bg tones */
     --link-color:       #d15de5;       
     --link-hover-color: #a463e8;    
     --button-bg:        #8c7ae6;       
+    
     --button-text:      #020617;     
     --button-hover-bg:  #4f4970; 
     --card-bg:          #18172A;     /* Darkened from #1c1b2f */    
@@ -429,7 +430,7 @@ article .border-t, article .border-b { /* Internal borders */
     transition: color 0.2s ease-in-out;
 }
 .like-button:hover {
-    color: var(--like-button-hover-color); /* UPDATED */
+    color: var(--like-button-hover-color) !important; /* UPDATED */
 }
 .like-button-active {
     color: var(--like-button-active-color) !important;  /* UPDATED */
