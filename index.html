@@ -695,6 +695,10 @@
                 commentDiv.className = 'flex items-start space-x-3 bg-gray-50 p-3 rounded-lg shadow-sm'; 
                 // This means the themes.css rule for `.comment-wrapper .bg-gray-50` will apply `var(--bg-secondary)`.
 
+                const commentBody = document.createElement('div');
+                commentBody.className = 'flex-1';
+
+                // Standard display for all comments (deleted ones won't be in the list from backend)
                 const commentAuthorProfileLink = document.createElement('a');
                 commentAuthorProfileLink.href = `/profile.html?id=${comment.author.id}`;
                 commentAuthorProfileLink.className = "shrink-0 group";
@@ -702,10 +706,7 @@
                 const commentProfileImg = createProfileImage(comment.author.photo, comment.author.name, "w-8 h-8");
                 commentAuthorProfileLink.appendChild(commentProfileImg);
                 commentDiv.appendChild(commentAuthorProfileLink);
-                
-                const commentBody = document.createElement('div');
-                commentBody.className = 'flex-1';
-                
+            
                 const commentAuthorNameLink = document.createElement('a');
                 commentAuthorNameLink.href = `/profile.html?id=${comment.author.id}`;
                 commentAuthorNameLink.className = "font-medium text-gray-800 hover:underline";
@@ -721,18 +722,35 @@
                 commentHeader.appendChild(commentTimestamp);
                 commentBody.appendChild(commentHeader);
 
+                // Add "Replying to" text if it's a reply
+                if (comment.replyingTo && comment.replyingTo.name) {
+                    const replyingToText = document.createElement('p');
+                    replyingToText.className = 'text-xs text-gray-500 mb-1';
+                    // Check if replying to a deleted reply placeholder
+                    if (comment.replyingTo.name === "Reply deleted") { // Updated condition
+                         replyingToText.innerHTML = `Replying to: <span class="font-medium text-gray-600 italic">${escapeHtml(comment.replyingTo.name)}</span>`;
+                    } else {
+                         replyingToText.innerHTML = `
+                            Replying to: 
+                            <a href="/profile.html?id=${comment.replyingTo.id}" class="text-blue-600 hover:underline font-medium">
+                                ${escapeHtml(comment.replyingTo.name)}
+                            </a>
+                        `;
+                    }
+                    commentBody.appendChild(replyingToText);
+                }
+
                 const commentText = document.createElement('p');
                 commentText.className = "text-gray-700 whitespace-pre-wrap";
-                // For comment content, allow links
-                commentText.innerHTML = escapeHtml(comment.content, true);
+                commentText.innerHTML = escapeHtml(comment.content, true); // Allow links
                 commentBody.appendChild(commentText);
 
-                // Comment Actions (Like, Reply)
+                // Comment Actions (Like, Reply, Delete)
                 const commentActionsDiv = document.createElement('div');
                 commentActionsDiv.className = 'comment-actions flex items-center space-x-3 text-xs text-gray-500 mt-2';
 
                 const likeButtonComment = document.createElement('button');
-                likeButtonComment.className = `like-button flex items-center space-x-1 ${comment.isLiked ? 'like-button-active' : ''}`; // Added like-button base class
+                likeButtonComment.className = `like-button flex items-center space-x-1 ${comment.isLiked ? 'like-button-active' : ''}`;
                 likeButtonComment.innerHTML = `
                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
                     <span id="comment-like-count-${comment.id}">${comment.likes || 0}</span>
@@ -746,6 +764,15 @@
                     replyButton.textContent = 'Reply';
                     replyButton.onclick = () => toggleReplyForm(comment.id, postId);
                     commentActionsDiv.appendChild(replyButton);
+
+                    // Delete button only if the current user is the author
+                    if (currentUser.id === comment.author.id) { 
+                        const deleteButton = document.createElement('button');
+                        deleteButton.className = 'hover:text-red-600 font-medium text-xs ml-2';
+                        deleteButton.textContent = 'Delete';
+                        deleteButton.onclick = () => confirmDeleteComment(comment.id, !comment.parentComment); // Pass isTopLevelComment
+                        commentActionsDiv.appendChild(deleteButton);
+                    }
                 }
                 commentBody.appendChild(commentActionsDiv);
                 
@@ -1179,6 +1206,44 @@
                 "Cancel"       // Cancel button text
             );
         }
+        async function confirmDeleteComment(commentId, isTopLevelComment) {
+            if (!currentUser) return;
+
+            let message = "Are you sure you want to delete this reply? This action cannot be undone.";
+            if (isTopLevelComment) {
+                message = "Are you sure you want to delete this comment? This will also delete all its replies. This action cannot be undone.";
+            }
+
+            showConfirmationDialog(
+                message,
+                async () => { // onConfirm
+                    try {
+                        const response = await fetch(`/api/comments/${commentId}`, {
+                            method: 'DELETE',
+                        });
+
+                        if (response.ok) {
+                            await loadPosts(); // Reload posts to reflect the change
+                            showNotification("Comment/reply deleted successfully.", "success");
+                        } else {
+                            const errorData = await response.json().catch(() => ({error: "Server error"}));
+                            showNotification(`Failed to delete comment/reply: ${errorData.error}`, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error deleting comment/reply:', error);
+                        showNotification('An error occurred while trying to delete the comment/reply.', 'error');
+                    }
+                },
+                () => { // onCancel
+                    // Optional: show a message that deletion was cancelled
+                    // showNotification("Delete operation cancelled.", "info", 2000);
+                },
+                "Delete Comment/Reply", // Title for the modal
+                "Delete",      // Confirm button text
+                "Cancel"       // Cancel button text
+            );
+        }
+
         // Utility functions
         function formatDate(dateString) {
             const date = new Date(dateString);

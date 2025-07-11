@@ -45,6 +45,17 @@ const storage = multer.diskStorage({
   }
 });
 
+// Recursive helper function to delete a comment and all its children
+async function deleteCommentAndChildren(commentId) {
+  // Find and delete children first
+  const children = await Comment.find({ parentComment: commentId });
+  for (const child of children) {
+    await deleteCommentAndChildren(child._id); // Recursive call
+  }
+  // After all children are deleted, delete the comment itself
+  await Comment.findByIdAndDelete(commentId);
+}
+
 
 const upload = multer({ 
   storage: storage,
@@ -393,6 +404,44 @@ app.post('/api/posts/:postId/vote', isAuthenticated, async (req, res) => {
   }
 });
 
+// Delete a comment or reply (hard delete)
+app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user._id;
+
+    const comment = await Comment.findById(commentId);
+
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found.' });
+    }
+
+    // Check if the current user is the author of the comment
+    if (comment.author.toString() !== userId.toString()) {
+      return res.status(403).json({ error: 'User not authorized to delete this comment.' });
+    }
+
+    if (comment.parentComment === null) {
+      // This is a top-level comment, delete it and all its children recursively
+      await deleteCommentAndChildren(commentId);
+    } else {
+      // This is a reply, just delete the reply itself
+      // Its direct children's parentComment field will now point to a non-existent ID.
+      // The buildCommentTree logic will need to handle this to show "[reply deleted]".
+      await Comment.findByIdAndDelete(commentId);
+    }
+
+    res.json({ success: true, message: 'Comment deleted successfully.' });
+
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    if (error.kind === 'ObjectId') {
+        return res.status(400).json({ error: 'Invalid Comment ID format.' });
+    }
+    res.status(500).json({ error: 'Failed to delete comment.' });
+  }
+});
+
 // Update user description
 app.put('/api/user/description', isAuthenticated, async (req, res) => {
   try {
@@ -499,25 +548,45 @@ app.get('/api/posts', async (req, res) => {
         const buildCommentTree = (parentId) => {
           return allCommentsRaw
             .filter(comment => String(comment.parentComment) === String(parentId)) // Compare as strings
-            .map(comment => ({
-              id: comment._id,
-              content: comment.content,
-              author: {
-                id: comment.author._id,
-                name: comment.author.name,
-                photo: comment.author.profilePicture.path || '/default-profile.png'
-              },
-              likes: comment.likes.length,
-              isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
-              createdAt: comment.createdAt.toISOString(),
-              parentComment: comment.parentComment,
-              replies: buildCommentTree(comment._id) // Recursively get replies
-            }));
+            .map(comment => {
+              let replyingTo = null;
+              if (comment.parentComment) {
+                const parentCommentObject = allCommentsRaw.find(c => String(c._id) === String(comment.parentComment));
+                if (parentCommentObject) {
+                  // Parent comment exists
+                  replyingTo = {
+                    id: parentCommentObject.author._id,
+                    name: parentCommentObject.author.name
+                  };
+                } else {
+                  // Parent comment was likely deleted (it's a reply to a deleted reply)
+                  replyingTo = {
+                    id: null,
+                    name: "Reply deleted" // Changed placeholder text
+                  };
+                }
+              }
+              return {
+                id: comment._id,
+                content: comment.content,
+                author: {
+                  id: comment.author._id,
+                  name: comment.author.name,
+                  photo: comment.author.profilePicture.path || '/default-profile.png'
+                },
+                likes: comment.likes.length,
+                isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
+                createdAt: comment.createdAt.toISOString(),
+                parentComment: comment.parentComment,
+                replyingTo: replyingTo, // Updated logic here
+                replies: buildCommentTree(comment._id)
+              };
+            });
         };
         
         // Get top-level comments (those without a parentComment or parentComment is null)
         const topLevelComments = allCommentsRaw
-            .filter(comment => !comment.parentComment)
+            .filter(comment => !comment.parentComment) // Filter for actual top-level comments
             .map(comment => ({
                 id: comment._id,
                 content: comment.content,
@@ -529,7 +598,8 @@ app.get('/api/posts', async (req, res) => {
                 likes: comment.likes.length,
                 isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
                 createdAt: comment.createdAt.toISOString(),
-                parentComment: null,
+                parentComment: null, // Explicitly null for top-level
+                replyingTo: null,    // Top-level comments are not replying to anyone
                 replies: buildCommentTree(comment._id)
             }));
 
