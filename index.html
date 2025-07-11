@@ -167,6 +167,20 @@
             </form>
         </div>
 
+        <!-- Filter Bar -->
+        <div id="filter-bar" class="sticky top-0 z-40 mb-6 p-4 rounded-b-lg shadow-lg backdrop-blur-md"> 
+            <!-- Tailwind classes for sticky, z-index, margin, padding, rounded corners, shadow, and backdrop blur -->
+            <!-- Background color will be handled by themes.css for theme adaptability -->
+            <div class="flex flex-wrap gap-x-3 gap-y-2 items-center"> <!-- Adjusted gap for better wrapping -->
+                <span class="font-medium mr-2 text-sm">Filter by:</span> <!-- text-sm added -->
+                <button data-filter-type="all" class="filter-btn active-filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md">All</button> <!-- text-xs sm:text-sm for responsiveness -->
+                <button data-filter-type="normal" class="filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md">Normal</button>
+                <button data-filter-type="question" class="filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md">Question</button>
+                <button data-filter-type="guide" class="filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md">Guide</button>
+                <button data-filter-type="poll" class="filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md">Poll</button>
+            </div>
+        </div>
+
         <!-- Report Post Modal Structure (hidden by default) -->
         <div id="report-modal-overlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[95] p-4">
             <div id="report-modal" class="rounded-lg shadow-xl p-6 max-w-md w-full"> <!-- bg-white removed -->
@@ -282,7 +296,8 @@
 
     <script>
         let currentUser = null;
-        let posts = [];
+        let posts = []; // This will store all fetched posts
+        let currentFilter = 'all'; // To store the currently active filter
         // let cropper = null; // Cropper is now handled in profile.html
 
         // Create profile image element with fallback
@@ -465,16 +480,31 @@
             const container = document.getElementById('posts-container');
             const emptyState = document.getElementById('empty-state');
 
-            if (posts.length === 0) {
+            const filteredPosts = posts.filter(post => {
+                if (currentFilter === 'all') {
+                    return true;
+                }
+                return post.postType === currentFilter || (currentFilter === 'normal' && (!post.postType || post.postType === 'normal'));
+            });
+
+            if (filteredPosts.length === 0) {
                 container.innerHTML = '';
                 emptyState.classList.remove('hidden');
+                // Optionally, you could change the empty state message based on the filter
+                if (currentFilter !== 'all') {
+                    emptyState.querySelector('h3').textContent = `No posts found for "${currentFilter.charAt(0).toUpperCase() + currentFilter.slice(1)}"`;
+                    emptyState.querySelector('p').textContent = 'Try selecting a different filter or creating a new post.';
+                } else {
+                    emptyState.querySelector('h3').textContent = 'No posts yet';
+                    emptyState.querySelector('p').textContent = 'Be the first to start a discussion!';
+                }
                 return;
             }
 
             emptyState.classList.add('hidden');
             container.innerHTML = '';
             
-            posts.forEach(post => {
+            filteredPosts.forEach(post => {
                 const article = document.createElement('article');
                 // Removed 'bg-white' class, themes.css will handle background via 'article' tag selector
                 article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in'; 
@@ -550,24 +580,28 @@
                 }
                 
                 // Create post content
-                const postContentElement = document.createElement('div');
-                
+                const postTagsContainer = document.createElement('div');
+                postTagsContainer.className = 'mb-2'; // Add some margin below the tag
+
                 // Post Type Badge
                 if (post.postType && post.postType !== 'normal') {
                     const typeBadge = document.createElement('span');
-                    typeBadge.className = `inline-block rounded-full px-2 py-0.5 text-xs font-semibold mr-2 mb-2`;
+                    // Tailwind classes for the badge styling
+                    typeBadge.className = `inline-block rounded-full px-3 py-1 text-xs font-semibold`; 
                     let badgeColor = 'bg-gray-200 text-gray-700'; // Default
                     if (post.postType === 'question') badgeColor = 'bg-blue-100 text-blue-700';
                     else if (post.postType === 'guide') badgeColor = 'bg-green-100 text-green-700';
                     else if (post.postType === 'poll') badgeColor = 'bg-purple-100 text-purple-700';
                     typeBadge.classList.add(...badgeColor.split(' '));
                     typeBadge.textContent = post.postType.charAt(0).toUpperCase() + post.postType.slice(1);
-                    postContentElement.appendChild(typeBadge);
+                    postTagsContainer.appendChild(typeBadge);
                 }
 
-                const postTitleHtml = `<h2 class="text-xl font-bold mb-3 ${post.postType && post.postType !== 'normal' ? 'inline' : ''}">${escapeHtml(post.title)}</h2>`;
+                const postContentElement = document.createElement('div');
+                // Removed inline class from h2 as the tag is now separate
+                const postTitleHtml = `<h2 class="text-xl font-bold mb-3">${escapeHtml(post.title)}</h2>`;
                 const postTextHtml = `<p class="text-gray-700 mb-4 whitespace-pre-wrap">${escapeHtml(post.content, true)}</p>`;
-                postContentElement.innerHTML += postTitleHtml + postTextHtml; // Append to existing content (badge)
+                postContentElement.innerHTML = postTitleHtml + postTextHtml; // Set title and text
 
                 // Poll Display and Voting
                 if (post.postType === 'poll' && post.pollOptions && post.pollOptions.length > 0) {
@@ -651,7 +685,10 @@
                 
                 // Assemble the article
                 article.appendChild(postHeader);
-                article.appendChild(postContentElement); // Use the new variable name
+                if (postTagsContainer.hasChildNodes()) { // Only append if there are tags
+                    article.appendChild(postTagsContainer);
+                }
+                article.appendChild(postContentElement);
                 
                 // Post Actions (Like button)
                 const postActionsDiv = document.createElement('div');
@@ -1359,6 +1396,20 @@
             console.log('DOM loaded, initializing...');
             checkAuth();
             loadPosts();
+
+            // Filter button event listeners
+            const filterButtons = document.querySelectorAll('#filter-bar .filter-btn');
+            filterButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    currentFilter = button.getAttribute('data-filter-type');
+                    
+                    // Update active button style
+                    filterButtons.forEach(btn => btn.classList.remove('active-filter-btn'));
+                    button.classList.add('active-filter-btn');
+                    
+                    renderPosts(); // Re-render posts with the new filter
+                });
+            });
         });
 
         // Handle OAuth redirect

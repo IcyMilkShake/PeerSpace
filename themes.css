@@ -1,5 +1,5 @@
 .theme-light {
-  --bg-primary:       #000000;  /* Soft off-white */
+  --bg-primary:       #ffffff;  /* Soft off-white */
   --bg-secondary:     #f0f2f5;  /* Gentle contrast */
   --text-primary:     #2d2d2d;  /* Soft charcoal */
   --text-secondary:   #5f6368;  /* Muted gray */
@@ -934,4 +934,50 @@ html {
     line-height: 1.5; 
     -webkit-text-size-adjust: 100%; 
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; 
+}
+
+/* Filter Bar Styling */
+#filter-bar {
+    /* Applied via Tailwind: sticky top-0 z-40 mb-6 p-4 rounded-b-lg shadow-lg backdrop-blur-md */
+    /* Background color needs to be theme-aware */
+    background-color: var(--bg-elevated-translucent, rgba(255, 255, 255, 0.85)); /* Default for light themes */
+    border-bottom: 1px solid var(--border-color);
+}
+
+.theme-dark #filter-bar {
+    background-color: var(--bg-elevated-translucent, rgba(30, 41, 59, 0.85)); /* Default for dark themes */
+}
+/* Ensure themes define --bg-elevated-translucent or these fallbacks are used */
+/* Example: in .theme-light: --bg-elevated-translucent: rgba(255, 255, 255, 0.85); */
+/* Example: in .theme-dark:  --bg-elevated-translucent: rgba(30, 41, 59, 0.85); */
+/* Example: in .theme-midnight: --bg-elevated-translucent: rgba(24, 26, 33, 0.85); /* #181A21 with alpha */
+
+
+#filter-bar span { /* "Filter by:" text */
+    color: var(--text-secondary);
+}
+
+.filter-btn {
+    background-color: var(--button-secondary-bg);
+    color: var(--button-secondary-text);
+    border: 1px solid var(--button-secondary-border);
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    /* Tailwind classes handle padding, text size, font-medium, rounded-md */
+}
+
+.filter-btn:hover {
+    background-color: var(--button-secondary-hover-bg);
+    color: var(--text-primary); /* More prominent text on hover */
+    border-color: var(--accent-color-subtle, var(--button-secondary-hover-bg)); /* Use accent-color-subtle if available */
+}
+
+.filter-btn.active-filter-btn {
+    background-color: var(--button-primary-bg);
+    color: var(--button-primary-text);
+    border-color: var(--button-primary-border, var(--button-primary-bg));
+}
+
+.filter-btn.active-filter-btn:hover {
+    background-color: var(--button-primary-hover-bg);
+    border-color: var(--button-primary-hover-bg);
 }
