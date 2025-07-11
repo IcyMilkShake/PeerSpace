@@ -272,6 +272,127 @@ app.get('/api/users/:userId', async (req, res) => {
   }
 });
 
+// New endpoint for Reporting Posts
+app.post('/api/posts/:postId/report', isAuthenticated, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { reasonType, reasonDetails } = req.body;
+    const reporterId = req.user._id;
+
+    if (!reasonType) {
+      return res.status(400).json({ error: 'Report reason type is required.' });
+    }
+    if (reasonType.length > 200 || (reasonDetails && reasonDetails.length > 1000)) {
+        return res.status(400).json({ error: 'Report reason or details too long.'});
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found.' });
+    }
+
+    // Optional: Check if user has already reported this post for the same reason to prevent duplicates
+    // const existingReport = post.reports.find(report => 
+    //   report.reporter.equals(reporterId) && report.reasonType === reasonType
+    // );
+    // if (existingReport) {
+    //   return res.status(409).json({ error: 'You have already reported this post for this reason.' });
+    // }
+
+    post.reports.push({
+      reporter: reporterId,
+      reasonType,
+      reasonDetails: reasonDetails || '',
+      reportedAt: new Date()
+    });
+
+    await post.save();
+    res.json({ success: true, message: 'Post reported successfully.' });
+
+  } catch (error) {
+    console.error('Error reporting post:', error);
+    res.status(500).json({ error: 'Failed to report post.' });
+  }
+});
+
+// New endpoint for Poll Voting
+app.post('/api/posts/:postId/vote', isAuthenticated, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { optionIndex } = req.body; // Client will send the index of the chosen option
+    const userId = req.user._id;
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found.' });
+    }
+    if (post.postType !== 'poll') {
+      return res.status(400).json({ error: 'This post is not a poll.' });
+    }
+    if (optionIndex === undefined || optionIndex < 0 || optionIndex >= post.pollOptions.length) {
+      return res.status(400).json({ error: 'Invalid poll option.' });
+    }
+
+    // Check if user has already voted. For simplicity, we'll add a 'voters' array to each option.
+    // This requires a schema change if we want to strictly enforce one vote per user per poll.
+    // For now, let's assume the schema is: pollOptions: [{ option: String, votes: Number, voters: [ObjectId] }]
+    // If 'voters' field is not in schema, this part will need adjustment or a different strategy.
+    // Current schema: pollOptions: [{ option: String, votes: Number }] - so we can't check individual voters easily without schema change.
+    //
+    // Alternative: Add a top-level 'votedBy' array to the Post schema for polls:
+    // votedBy: [{ userId: ObjectId, optionIndex: Number }]
+    // This would be more robust for preventing multiple votes by the same user on a poll.
+    //
+    // For this iteration, sticking to the current schema, we'll just increment votes.
+    // A more advanced implementation would prevent multiple votes.
+
+    const existingVoteIndex = post.usersWhoVoted.findIndex(vote => vote.userId.equals(userId));
+
+    if (existingVoteIndex > -1) {
+      // User has voted before, check if it's for a different option
+      const previousVote = post.usersWhoVoted[existingVoteIndex];
+      if (previousVote.optionIndex === optionIndex) {
+        // Voted for the same option again, no change needed or return specific message
+        return res.json({
+          message: 'You have already voted for this option.',
+          pollOptions: post.pollOptions.map(opt => ({ option: opt.option, votes: opt.votes })),
+          usersWhoVoted: post.usersWhoVoted
+        });
+      }
+
+      // Decrement vote from the old option
+      if (post.pollOptions[previousVote.optionIndex]) {
+        post.pollOptions[previousVote.optionIndex].votes = Math.max(0, post.pollOptions[previousVote.optionIndex].votes - 1);
+      }
+      
+      // Update to the new option index
+      post.usersWhoVoted[existingVoteIndex].optionIndex = optionIndex;
+      post.pollOptions[optionIndex].votes += 1;
+
+    } else {
+      // New vote
+      post.pollOptions[optionIndex].votes += 1;
+      post.usersWhoVoted.push({ userId, optionIndex });
+    }
+    
+    await post.save();
+
+    // Return the updated poll options (or the whole post)
+    // Also indicate if the current user has voted and which option.
+    res.json({
+      pollOptions: post.pollOptions.map(opt => ({ 
+        option: opt.option, 
+        votes: opt.votes 
+      })),
+      usersWhoVoted: post.usersWhoVoted // Send this back so client can update UI
+    });
+
+  } catch (error) {
+    console.error('Error voting in poll:', error);
+    res.status(500).json({ error: 'Failed to cast vote.' });
+  }
+});
+
 // Update user description
 app.put('/api/user/description', isAuthenticated, async (req, res) => {
   try {
@@ -417,6 +538,12 @@ app.get('/api/posts', async (req, res) => {
           id: post._id,
           title: post.title,
           content: post.content,
+          postType: post.postType, // Include postType
+          pollOptions: post.pollOptions ? post.pollOptions.map(opt => ({ // Include pollOptions
+            option: opt.option,
+            votes: opt.votes,
+            // _id: opt._id // Optionally include option ID if needed by frontend for voting, though index is used now
+          })) : [],
           author: {
             id: post.author._id,
             name: post.author.name,
@@ -425,7 +552,8 @@ app.get('/api/posts', async (req, res) => {
           likes: post.likes.length,
           isLiked: currentUserId ? post.likes.includes(currentUserId) : false,
           createdAt: post.createdAt.toISOString(),
-          comments: topLevelComments
+          comments: topLevelComments,
+          usersWhoVoted: post.postType === 'poll' ? post.usersWhoVoted : undefined // Include if it's a poll
         };
       })
     );
@@ -440,18 +568,35 @@ app.get('/api/posts', async (req, res) => {
 // Create new post
 app.post('/api/posts', isAuthenticated, async (req, res) => {
   try {
-    const { title, content } = req.body;
+    const { title, content, postType, pollOptions } = req.body;
 
     if (!title || !content) {
       return res.status(400).json({ error: 'Title and content are required' });
     }
 
-    const post = new Post({
+    const newPostData = {
       title,
       content,
-      author: req.user._id
-    });
+      author: req.user._id,
+      postType: postType || 'normal' // Default to 'normal' if not provided
+    };
 
+    if (postType === 'poll') {
+      if (!pollOptions || !Array.isArray(pollOptions) || pollOptions.length < 2) {
+        return res.status(400).json({ error: 'Polls require at least two options.' });
+      }
+      // Sanitize poll options
+      newPostData.pollOptions = pollOptions.map(opt => ({
+        option: String(opt.option).trim(), // Ensure option is a string and trim whitespace
+        votes: 0 // Votes start at 0
+      })).filter(opt => opt.option); // Filter out any empty options
+
+      if (newPostData.pollOptions.length < 2) {
+        return res.status(400).json({ error: 'Polls require at least two valid options.' });
+      }
+    }
+
+    const post = new Post(newPostData);
     await post.save();
     await post.populate('author', 'name profilePicture');
 
@@ -459,18 +604,25 @@ app.post('/api/posts', isAuthenticated, async (req, res) => {
       id: post._id,
       title: post.title,
       content: post.content,
+      postType: post.postType,
+      pollOptions: post.pollOptions, // Ensure pollOptions are returned
       author: {
         id: post.author._id,
         name: post.author.name,
         photo: post.author.profilePicture.path || '/default-profile.png'
       },
+      likes: [], // Initialize likes
+      isLiked: false, // Initialize isLiked
       createdAt: post.createdAt.toISOString(),
       comments: []
     };
 
-    res.json(responsePost);
+    res.status(201).json(responsePost); // Use 201 for resource creation
   } catch (error) {
     console.error('Error creating post:', error);
+    if (error.name === 'ValidationError') {
+        return res.status(400).json({ error: error.message });
+    }
     res.status(500).json({ error: 'Failed to create post' });
   }
 });

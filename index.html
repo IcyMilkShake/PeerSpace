@@ -35,6 +35,52 @@
 
         /* Styles for .like-button and .like-button-active are in themes.css */
 
+        /* Poll theming */
+        .selected-poll-option {
+            background-color: var(--accent-color-subtle);
+            color: var(--accent-color-text);
+            border: 1px solid var(--accent-color);
+        }
+        .themed-hover-bg:hover {
+            background-color: var(--bg-hover);
+        }
+        .poll-progress-track {
+            background-color: var(--bg-secondary);
+        }
+        .poll-progress-fill {
+            background-color: #3b82f6; /* Tailwind's blue-500. Using a specific blue as requested. */
+        }
+
+        /* Ensure select dropdowns in forms are themed */
+        #create-post-form select, #report-form select {
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color); /* Ensure border for select */
+        }
+        #create-post-form select:focus, #report-form select:focus {
+            border-color: var(--accent-color); /* Or your theme's focus color */
+            box-shadow: 0 0 0 2px var(--accent-color-subtle); /* Example focus ring */
+        }
+
+        /* Report Modal Theming */
+        #report-modal {
+            background-color: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+        #report-modal input[type="text"], #report-modal textarea {
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        #report-modal input[type="text"]:focus, #report-modal textarea:focus {
+             border-color: var(--accent-color);
+             box-shadow: 0 0 0 2px var(--accent-color-subtle);
+        }
+        /* Ensure buttons within report modal pick up general button theming from themes.css */
+        /* If specific styling is needed: */
+        /* #report-modal-cancel-btn { ... } */
+        /* #report-modal-submit-btn { ... } */
+
     </style>
 </head>
 <body class="min-h-screen"> 
@@ -98,12 +144,63 @@
                     <textarea id="post-content" placeholder="What's on your mind?" rows="4"
                               class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"></textarea> <!-- Removed border border-gray-300 -->
                 </div>
+                <div class="mb-4">
+                    <label for="post-type" class="block text-sm font-medium mb-1">Post Type:</label>
+                    <select id="post-type" name="post-type" class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="normal" selected>Normal</option>
+                        <option value="question">Question</option>
+                        <option value="guide">Guide/How-to</option>
+                        <option value="poll">Poll</option>
+                    </select>
+                </div>
+                <div id="poll-options-container" class="mb-4 hidden">
+                    <label class="block text-sm font-medium mb-1">Poll Options (at least 2):</label>
+                    <div id="poll-options-inputs">
+                        <input type="text" name="pollOption[]" placeholder="Option 1" class="w-full px-4 py-2 mb-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="text" name="pollOption[]" placeholder="Option 2" class="w-full px-4 py-2 mb-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button type="button" id="add-poll-option-btn" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Add Another Option</button>
+                </div>
                 <button type="submit" class="text-white px-6 py-3 rounded-lg font-medium transition-colors"> <!-- Removed bg-blue-600 hover:bg-blue-700 -->
                     Create Post
                 </button>
             </form>
         </div>
 
+        <!-- Report Post Modal Structure (hidden by default) -->
+        <div id="report-modal-overlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[95] p-4">
+            <div id="report-modal" class="rounded-lg shadow-xl p-6 max-w-md w-full"> <!-- bg-white removed -->
+                <h3 id="report-modal-title" class="text-lg font-semibold mb-4">Report Post</h3>
+                <form id="report-form">
+                    <input type="hidden" id="report-post-id">
+                    <div class="mb-4">
+                        <label for="report-reason-type" class="block text-sm font-medium mb-1">Reason:</label>
+                        <select id="report-reason-type" name="report-reason-type" class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="not_type">Post not according to its post type</option>
+                            <option value="inappropriate">Inappropriate content</option>
+                            <option value="other">Other (Please specify)</option>
+                        </select>
+                    </div>
+                    <div id="report-reason-other-container" class="mb-4 hidden">
+                        <label for="report-reason-other" class="block text-sm font-medium mb-1">Specify Reason:</label>
+                        <input type="text" id="report-reason-other" name="report-reason-other" class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-6">
+                        <label for="report-description" class="block text-sm font-medium mb-1">Description (Optional):</label>
+                        <textarea id="report-description" name="report-description" rows="3" class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" id="report-modal-cancel-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors"> <!-- bg-gray-200 removed -->
+                            Cancel
+                        </button>
+                        <button type="submit" id="report-modal-submit-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                            Submit Report
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
         <!-- Posts Container -->
         <div id="posts-container" class="space-y-6">
             <!-- Posts will be loaded here -->
@@ -401,26 +498,125 @@
                 authorProfileLink.appendChild(postHeaderInfo);
                 postHeader.appendChild(authorProfileLink);
 
-                // Add Delete Button if current user is the author
+                // Post Actions Menu (Delete, Report)
+                const postActionsMenu = document.createElement('div');
+                postActionsMenu.className = 'ml-auto relative';
+
+                const menuButton = document.createElement('button');
+                menuButton.className = 'text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
+                menuButton.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
+                menuButton.onclick = (e) => {
+                    e.stopPropagation(); // Prevent post click if menu is part of header link
+                    togglePostActionMenu(post.id);
+                };
+                postActionsMenu.appendChild(menuButton);
+
+                const dropdownMenu = document.createElement('div');
+                dropdownMenu.id = `post-action-menu-${post.id}`;
+                dropdownMenu.className = 'hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-20'; // bg-white removed
+                dropdownMenu.style.backgroundColor = 'var(--bg-elevated)'; // Themed background
+
                 if (currentUser && currentUser.id === post.author.id) {
                     const deleteButton = document.createElement('button');
-                    deleteButton.className = 'ml-auto text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-100 transition-colors';
+                    deleteButton.className = 'block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-100 hover:text-red-800';
                     deleteButton.innerHTML = `
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        Delete Post
                     `;
-                    deleteButton.title = "Delete Post";
-                    deleteButton.onclick = () => confirmDeletePost(post.id);
-                    postHeader.appendChild(deleteButton);
+                    deleteButton.onclick = () => {
+                        confirmDeletePost(post.id);
+                        closeAllPostActionMenus();
+                    };
+                    dropdownMenu.appendChild(deleteButton);
+                }
+
+                if (currentUser && currentUser.id !== post.author.id) { // Users cannot report their own posts
+                    const reportButton = document.createElement('button');
+                    reportButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100'; // text-gray-700 removed
+                    reportButton.innerHTML = `
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4.25L16.25 3.5a2.121 2.121 0 013 3L6.25 19H3zm9-13l3 3"></path></svg>
+                        Report Post
+                    `;
+                    reportButton.onclick = () => {
+                        openReportModal(post.id);
+                        closeAllPostActionMenus();
+                    };
+                    dropdownMenu.appendChild(reportButton);
+                }
+                
+                if (dropdownMenu.hasChildNodes()) { // Only add menu if it has items
+                    postActionsMenu.appendChild(dropdownMenu);
+                    postHeader.appendChild(postActionsMenu);
                 }
                 
                 // Create post content
                 const postContentElement = document.createElement('div');
-                // For post titles, we generally don't want links, so allowLinks = false (or default)
-                // Removed text-gray-800 class; color is now handled by 'article h2 { color: var(--text-primary); }'
-                const postTitleHtml = `<h2 class="text-xl font-bold mb-3">${escapeHtml(post.title)}</h2>`;
-                // For post content, allow links
+                
+                // Post Type Badge
+                if (post.postType && post.postType !== 'normal') {
+                    const typeBadge = document.createElement('span');
+                    typeBadge.className = `inline-block rounded-full px-2 py-0.5 text-xs font-semibold mr-2 mb-2`;
+                    let badgeColor = 'bg-gray-200 text-gray-700'; // Default
+                    if (post.postType === 'question') badgeColor = 'bg-blue-100 text-blue-700';
+                    else if (post.postType === 'guide') badgeColor = 'bg-green-100 text-green-700';
+                    else if (post.postType === 'poll') badgeColor = 'bg-purple-100 text-purple-700';
+                    typeBadge.classList.add(...badgeColor.split(' '));
+                    typeBadge.textContent = post.postType.charAt(0).toUpperCase() + post.postType.slice(1);
+                    postContentElement.appendChild(typeBadge);
+                }
+
+                const postTitleHtml = `<h2 class="text-xl font-bold mb-3 ${post.postType && post.postType !== 'normal' ? 'inline' : ''}">${escapeHtml(post.title)}</h2>`;
                 const postTextHtml = `<p class="text-gray-700 mb-4 whitespace-pre-wrap">${escapeHtml(post.content, true)}</p>`;
-                postContentElement.innerHTML = postTitleHtml + postTextHtml;
+                postContentElement.innerHTML += postTitleHtml + postTextHtml; // Append to existing content (badge)
+
+                // Poll Display and Voting
+                if (post.postType === 'poll' && post.pollOptions && post.pollOptions.length > 0) {
+                    const pollContainer = document.createElement('div');
+                    pollContainer.className = 'mb-4 p-4 border rounded-lg'; // border-gray-200 removed
+                    pollContainer.id = `poll-${post.id}`;
+
+                    const currentUserVote = post.usersWhoVoted && currentUser ? post.usersWhoVoted.find(vote => vote.userId === currentUser.id) : null;
+                    
+                    post.pollOptions.forEach((option, index) => {
+                        const optionDiv = document.createElement('div');
+                        optionDiv.className = 'mb-2';
+                        
+                        const totalVotes = post.pollOptions.reduce((sum, opt) => sum + (opt.votes || 0), 0);
+                        const percentage = totalVotes > 0 ? ((option.votes || 0) / totalVotes * 100).toFixed(1) : 0;
+
+                        let buttonClass = "w-full text-left p-2 rounded-md transition-colors flex justify-between items-center text-sm";
+                        let votedIndicator = '';
+                        // User can always click if logged in, to change their vote.
+                        // Button is disabled only if not logged in.
+                        let isDisabled = !currentUser; 
+
+                        if (currentUserVote && currentUserVote.optionIndex === index) {
+                            buttonClass += ' selected-poll-option'; // Will be styled with theme variables
+                            votedIndicator = '<span class="text-xs font-semibold ml-2">(Your Vote)</span>';
+                        }
+                        
+                        if (currentUser) { // Add hover effect if user is logged in (i.e., button is not disabled)
+                             buttonClass += ' themed-hover-bg';
+                        }
+
+
+                        optionDiv.innerHTML = `
+                            <button 
+                                onclick="voteInPoll('${post.id}', ${index})" 
+                                class="${buttonClass}"
+                                ${isDisabled ? 'disabled' : ''} 
+                                ${!currentUser ? 'title="Sign in to vote"' : 'title="Click to vote or change your vote"'} >
+                                <span>${escapeHtml(option.option)} ${votedIndicator}</span>
+                                <span class="text-xs text-gray-500">${option.votes || 0} votes (${percentage}%)</span>
+                            </button>
+                            <div class="h-2 rounded-full mt-1 overflow-hidden poll-progress-track">
+                                <div class="h-full transition-all duration-300 poll-progress-fill" style="width: ${percentage}%;"></div>
+                            </div>
+                        `;
+                        pollContainer.appendChild(optionDiv);
+                    });
+                    postContentElement.appendChild(pollContainer);
+                }
                 
                 // Create comments section
                 const commentsSection = document.createElement('div');
@@ -633,21 +829,36 @@
 
 
         // Create new post
-        async function createPost(title, content) {
+        async function createPost(title, content, postType = 'normal', pollOptions = []) {
             try {
+                const payload = { title, content, postType };
+                if (postType === 'poll' && pollOptions.length > 0) {
+                    payload.pollOptions = pollOptions;
+                }
+
                 const response = await fetch('/api/posts', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ title, content })
+                    body: JSON.stringify(payload)
                 });
 
                 if (response.ok) {
                     const newPost = await response.json();
-                    posts.unshift({...newPost, comments: []}); // Potential issue: newPost here doesn't have likes count
-                    renderPosts(); // This will initially show 'undefined Likes' if not handled by `|| 0`
-                    return true; // Success is handled by the caller
+                    // Ensure newPost has all necessary fields, including likes and isLiked, even if default
+                    const defaultPostFields = {
+                        likes: 0,
+                        isLiked: false,
+                        comments: [],
+                        // Initialize poll options on client if it's a poll post and options were provided
+                        pollOptions: (postType === 'poll' && newPost.pollOptions) ? newPost.pollOptions : [],
+                        postType: newPost.postType || 'normal' // Ensure postType is present
+                        // reports: [] // Reports are not typically sent back on creation to all users
+                    };
+                    posts.unshift({ ...defaultPostFields, ...newPost });
+                    renderPosts();
+                    return true; 
                 } else {
                     const errorData = await response.json().catch(() => ({error: "Server error"}));
                     showNotification(`Failed to create post: ${errorData.error}`, 'error');
@@ -714,6 +925,143 @@
                 showNotification(`An error occurred while adding ${parentCommentId ? 'reply' : 'comment'}. Please try again.`, 'error');
             }
         }
+
+        // --- Post Action Menu Functions ---
+        function togglePostActionMenu(postId) {
+            const menu = document.getElementById(`post-action-menu-${postId}`);
+            if (menu) {
+                // Close other menus first
+                closeAllPostActionMenus(postId);
+                menu.classList.toggle('hidden');
+            }
+        }
+
+        function closeAllPostActionMenus(excludePostId = null) {
+            document.querySelectorAll('[id^="post-action-menu-"]').forEach(menu => {
+                if (!excludePostId || menu.id !== `post-action-menu-${excludePostId}`) {
+                    menu.classList.add('hidden');
+                }
+            });
+        }
+
+        // Close menus if clicking outside
+        document.addEventListener('click', (event) => {
+            const isActionsButton = event.target.closest('button') && event.target.closest('button').innerHTML.includes('M10 6a2'); // Basic check for three-dot button
+            if (!isActionsButton && !event.target.closest('[id^="post-action-menu-"]')) {
+                closeAllPostActionMenus();
+            }
+        });
+
+
+        // --- Report Post Functions ---
+        const reportModalOverlay = document.getElementById('report-modal-overlay');
+        const reportForm = document.getElementById('report-form');
+        const reportPostIdInput = document.getElementById('report-post-id');
+        const reportReasonTypeSelect = document.getElementById('report-reason-type');
+        const reportReasonOtherContainer = document.getElementById('report-reason-other-container');
+        const reportReasonOtherInput = document.getElementById('report-reason-other');
+        const reportDescriptionInput = document.getElementById('report-description');
+
+        function openReportModal(postId) {
+            if (!currentUser) {
+                showNotification("Please sign in to report posts.", "warning");
+                return;
+            }
+            reportPostIdInput.value = postId;
+            reportReasonTypeSelect.value = 'not_type'; // Default
+            reportReasonOtherContainer.classList.add('hidden');
+            reportReasonOtherInput.value = '';
+            reportDescriptionInput.value = '';
+            reportModalOverlay.classList.remove('hidden');
+        }
+
+        function closeReportModal() {
+            reportModalOverlay.classList.add('hidden');
+        }
+
+        reportReasonTypeSelect.addEventListener('change', () => {
+            if (reportReasonTypeSelect.value === 'other') {
+                reportReasonOtherContainer.classList.remove('hidden');
+            } else {
+                reportReasonOtherContainer.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('report-modal-cancel-btn').addEventListener('click', closeReportModal);
+        reportModalOverlay.addEventListener('click', (event) => { // Close on overlay click
+            if (event.target === reportModalOverlay) {
+                closeReportModal();
+            }
+        });
+
+        reportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const postId = reportPostIdInput.value;
+            let reasonType = reportReasonTypeSelect.value;
+            let reasonDetails = reportDescriptionInput.value.trim();
+
+            if (reasonType === 'other') {
+                const otherReason = reportReasonOtherInput.value.trim();
+                if (!otherReason) {
+                    showNotification('Please specify the reason if "Other" is selected.', 'warning');
+                    return;
+                }
+                reasonType = `other: ${otherReason}`; // Combine for storage or backend processing
+            }
+            
+            // The API endpoint for reporting is not yet created, this is a placeholder
+            try {
+                const response = await fetch(`/api/posts/${postId}/report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reasonType, reasonDetails }) // Changed from description to reasonDetails
+                });
+                if (response.ok) {
+                    showNotification('Post reported successfully. Thank you for your feedback.', 'success');
+                    closeReportModal();
+                } else {
+                    const errorData = await response.json().catch(() => ({ error: 'Failed to submit report.' }));
+                    showNotification(`Error: ${errorData.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to submit report:', error);
+                showNotification('An error occurred while submitting the report.', 'error');
+            }
+        });
+
+        // --- Poll Voting Function ---
+        async function voteInPoll(postId, optionIndex) {
+            if (!currentUser) {
+                showNotification("Please sign in to vote.", "warning");
+                return;
+            }
+            try {
+                const response = await fetch(`/api/posts/${postId}/vote`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ optionIndex }) // Send optionIndex instead of optionId for simplicity with current schema
+                });
+
+                if (response.ok) {
+                    const updatedPost = await response.json();
+                    // Update the specific post in the local 'posts' array
+                    const postIndex = posts.findIndex(p => p.id === postId);
+                    if (postIndex !== -1) {
+                        posts[postIndex].pollOptions = updatedPost.pollOptions;
+                        posts[postIndex].usersWhoVoted = updatedPost.usersWhoVoted; // Update usersWhoVoted
+                    }
+                    renderPosts(); // Re-render to show updated votes and disable button
+                    showNotification('Vote cast successfully!', 'success');
+                } else {
+                    const errorData = await response.json().catch(() => ({ error: 'Failed to cast vote.' }));
+                    showNotification(`Error: ${errorData.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error voting in poll:', error);
+                showNotification('An error occurred while casting your vote.', 'error');
+            }
+        }
+
 
         async function toggleLike(type, id) {
             if (!currentUser) {
@@ -868,20 +1216,65 @@
         }
 
         // Event listeners
-        document.getElementById('post-form').addEventListener('submit', async (e) => {
+        const postForm = document.getElementById('post-form');
+        const postTypeSelect = document.getElementById('post-type');
+        const pollOptionsContainer = document.getElementById('poll-options-container');
+        const addPollOptionBtn = document.getElementById('add-poll-option-btn');
+        const pollOptionsInputs = document.getElementById('poll-options-inputs');
+
+        postTypeSelect.addEventListener('change', () => {
+            if (postTypeSelect.value === 'poll') {
+                pollOptionsContainer.classList.remove('hidden');
+            } else {
+                pollOptionsContainer.classList.add('hidden');
+            }
+        });
+
+        addPollOptionBtn.addEventListener('click', () => {
+            const newOptionInput = document.createElement('input');
+            newOptionInput.type = 'text';
+            newOptionInput.name = 'pollOption[]';
+            newOptionInput.placeholder = `Option ${pollOptionsInputs.children.length + 1}`;
+            newOptionInput.className = 'w-full px-4 py-2 mb-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
+            pollOptionsInputs.appendChild(newOptionInput);
+        });
+
+        postForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = document.getElementById('post-title').value.trim();
             const content = document.getElementById('post-content').value.trim();
+            const postType = postTypeSelect.value;
+            let pollOptions = [];
 
             if (!title || !content) {
                 showNotification('Please fill in both title and content for the post.', 'warning');
                 return;
             }
 
-            const success = await createPost(title, content);
+            if (postType === 'poll') {
+                const optionInputs = pollOptionsInputs.querySelectorAll('input[name="pollOption[]"]');
+                optionInputs.forEach(input => {
+                    if (input.value.trim()) {
+                        pollOptions.push({ option: input.value.trim(), votes: 0 });
+                    }
+                });
+                if (pollOptions.length < 2) {
+                    showNotification('Polls must have at least two options.', 'warning');
+                    return;
+                }
+            }
+
+            // Pass postType and pollOptions to createPost function
+            const success = await createPost(title, content, postType, pollOptions);
             if (success) {
                 document.getElementById('post-title').value = '';
                 document.getElementById('post-content').value = '';
+                postTypeSelect.value = 'normal';
+                pollOptionsContainer.classList.add('hidden');
+                pollOptionsInputs.innerHTML = `
+                    <input type="text" name="pollOption[]" placeholder="Option 1" class="w-full px-4 py-2 mb-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" name="pollOption[]" placeholder="Option 2" class="w-full px-4 py-2 mb-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                `;
                 showNotification("Post created successfully!", "success");
             }
         });

@@ -62,7 +62,26 @@ const postSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  postType: {
+    type: String,
+    enum: ['normal', 'question', 'guide', 'poll'],
+    default: 'normal'
+  },
+  pollOptions: [{
+    option: { type: String, required: true },
+    votes: { type: Number, default: 0 }
+  }],
+  reports: [{
+    reporter: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    reasonType: { type: String, required: true },
+    reasonDetails: { type: String },
+    reportedAt: { type: Date, default: Date.now }
+  }],
+  usersWhoVoted: [{ // To track who voted on a poll and for which option
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    optionIndex: { type: Number, required: true }
+  }]
 });
 
 // Comment Schema
