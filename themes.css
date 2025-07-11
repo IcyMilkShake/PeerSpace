@@ -84,7 +84,7 @@
 /* Definition for .theme-dark (New or Updated) */
 .theme-dark {
     /* Base colors */
-    --bg-primary:       #121212; /* Common dark theme main background */
+    --bg-primary:       #D1A9FF; /* Common dark theme main background */
     --bg-secondary:     #1E1E1E; /* Slightly lighter secondary background */
     --text-primary:     #E0E0E0; /* Light gray for primary text */
     --text-secondary:   #A0A0A0; /* Medium gray for secondary text */
