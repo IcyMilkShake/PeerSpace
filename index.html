@@ -641,7 +641,7 @@
                                 ${isDisabled ? 'disabled' : ''} 
                                 ${!currentUser ? 'title="Sign in to vote"' : 'title="Click to vote or change your vote"'} >
                                 <span>${escapeHtml(option.option)} ${votedIndicator}</span>
-                                <span class="text-xs text-gray-500">${option.votes || 0} votes (${percentage}%)</span>
+                                <span class="text-xs text-gray-500" id="percent">${option.votes || 0} votes (${percentage}%)</span>
                             </button>
                             <div class="h-2 rounded-full mt-1 overflow-hidden poll-progress-track">
                                 <div class="h-full transition-all duration-300 poll-progress-fill" style="width: ${percentage}%;"></div>
@@ -1114,7 +1114,52 @@
                         posts[postIndex].pollOptions = updatedPost.pollOptions;
                         posts[postIndex].usersWhoVoted = updatedPost.usersWhoVoted; // Update usersWhoVoted
                     }
-                    renderPosts(); // Re-render to show updated votes and disable button
+                    // renderPosts(); // Re-render to show updated votes and disable button - REMOVED
+
+                    // Directly update the DOM for the voted poll
+                    const pollContainer = document.getElementById(`poll-${postId}`);
+                    if (pollContainer) {
+                        const localPost = posts[postIndex]; // Get the updated post data
+                        const currentUserVote = localPost.usersWhoVoted && currentUser ? localPost.usersWhoVoted.find(vote => vote.userId === currentUser.id) : null;
+                        const totalVotes = localPost.pollOptions.reduce((sum, opt) => sum + (opt.votes || 0), 0);
+
+                        localPost.pollOptions.forEach((option, index) => {
+                            const optionButton = pollContainer.querySelector(`button[onclick="voteInPoll('${postId}', ${index})"]`);
+                            if (optionButton) {
+                                let buttonClass = "w-full text-left p-2 rounded-md transition-colors flex justify-between items-center text-sm";
+                                let votedIndicator = '';
+                                
+                                if (currentUserVote && currentUserVote.optionIndex === index) {
+                                    buttonClass += ' selected-poll-option';
+                                    votedIndicator = '<span class="text-xs font-semibold ml-2">(Your Vote)</span>';
+                                }
+                                if (currentUser) {
+                                     buttonClass += ' themed-hover-bg';
+                                }
+
+                                optionButton.className = buttonClass; // Reset class and apply new one
+
+                                const optionTextSpan = optionButton.querySelector('span:first-child');
+                                if (optionTextSpan) {
+                                    optionTextSpan.innerHTML = `${escapeHtml(option.option)} ${votedIndicator}`;
+                                }
+
+                                const voteCountSpan = optionButton.querySelector('span:last-child');
+                                const percentage = totalVotes > 0 ? ((option.votes || 0) / totalVotes * 100).toFixed(1) : 0;
+                                if (voteCountSpan) {
+                                    voteCountSpan.textContent = `${option.votes || 0} votes (${percentage}%)`;
+                                }
+                                const percent = optionButton.querySelector('#percent');
+                                if (percent) {
+                                    percent.innerHTML = `${option.votes || 0} votes (${percentage}%)`
+                                }
+                                const progressBarFill = optionButton.nextElementSibling.querySelector('.poll-progress-fill');
+                                if (progressBarFill) {
+                                    progressBarFill.style.width = `${percentage}%`;
+                                }
+                            }
+                        });
+                    }
                     showNotification('Vote cast successfully!', 'success');
                 } else {
                     const errorData = await response.json().catch(() => ({ error: 'Failed to cast vote.' }));
