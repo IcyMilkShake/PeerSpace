@@ -145,6 +145,7 @@
                 </div>
 
                 <p id="profile-joined-date" class="text-sm mt-1"></p>
+                <p id="profile-country" class="text-sm mt-1"></p>
 
                 <!-- Edit Name Form (hidden by default) -->
                 <div id="edit-name-form" class="hidden mt-4">
@@ -534,6 +535,11 @@
             // Name and Join Date
             document.getElementById('profile-name').textContent = escapeHtml(profile.name);
             document.getElementById('profile-joined-date').textContent = `Joined on ${formatDate(profile.createdAt)}`;
+            if (profile.displayCountry && profile.country) {
+                document.getElementById('profile-country').textContent = `From ${profile.country}`;
+            } else {
+                document.getElementById('profile-country').textContent = '';
+            }
 
             // Description
             const descriptionView = document.getElementById('profile-description-view');
