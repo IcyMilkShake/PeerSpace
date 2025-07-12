@@ -77,6 +77,7 @@
   --profile-avatar-border: #ffffff;
   --profile-initials-bg: #e5e7eb;
   --profile-initials-text-color: #6b7280;
+  --filter-bar-bg: rgba(249, 250, 251, 0.8);
 }
 
 
@@ -172,6 +173,7 @@
     --profile-avatar-border: #242424; /* Card background */
     --profile-initials-bg: #3A3A3A;   /* Border color as initials bg */
     --profile-initials-text-color: #E0E0E0; /* Primary text for initials */
+    --filter-bar-bg: #292929;
 }
 
 
@@ -267,6 +269,7 @@
     --profile-avatar-border: #1c1b2f;
     --profile-initials-bg: #3a3552;
     --profile-initials-text-color: #8c7ae6;
+    --filter-bar-bg: #110f21;
 }
 
 /* --- Apply Theme Variables --- */
@@ -897,16 +900,14 @@ article h2.text-xl.font-bold.mb-3 {
 /* Change profile picture button uses .button-primary */
 
 /* Profile avatar on profile page */
-.profile-avatar { 
-    width: 128px; 
-    height: 128px; 
-    border: 4px solid var(--profile-avatar-border); /* UPDATED */
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); 
-    /* .profile-img class handles the rest: bg, display flex, overflow hidden, rounded-full */
+.profile-avatar {
+    width: clamp(80px, 20vw, 128px);
+    height: clamp(80px, 20vw, 128px);
+    border: clamp(2px, 0.5vw, 4px) solid var(--profile-avatar-border);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
-.profile-avatar .profile-initials { 
-    font-size: 3rem; 
-    /* color is var(--profile-initials-text-color) from general .profile-initials */
+.profile-avatar .profile-initials {
+    font-size: clamp(2rem, 8vw, 3rem);
 }
 
 #profile-loading p, #profile-error p {
@@ -940,17 +941,9 @@ html {
 #filter-bar {
     /* Applied via Tailwind: sticky top-0 z-40 mb-6 p-4 rounded-b-lg shadow-lg backdrop-blur-md */
     /* Background color needs to be theme-aware */
-    background-color: var(--bg-elevated-translucent, rgba(255, 255, 255, 0.85)); /* Default for light themes */
+    background-color: var(--filter-bar-bg);
     border-bottom: 1px solid var(--border-color);
 }
-
-.theme-dark #filter-bar {
-    background-color: var(--bg-elevated-translucent, rgba(30, 41, 59, 0.85)); /* Default for dark themes */
-}
-/* Ensure themes define --bg-elevated-translucent or these fallbacks are used */
-/* Example: in .theme-light: --bg-elevated-translucent: rgba(255, 255, 255, 0.85); */
-/* Example: in .theme-dark:  --bg-elevated-translucent: rgba(30, 41, 59, 0.85); */
-/* Example: in .theme-midnight: --bg-elevated-translucent: rgba(24, 26, 33, 0.85); /* #181A21 with alpha */
 
 
 #filter-bar span { /* "Filter by:" text */

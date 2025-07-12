@@ -127,7 +127,7 @@
                 <div class="profile-header h-32 sm:h-48"></div>
 
                 <!-- Profile Picture -->
-                <div id="profile-avatar-container" class="absolute -bottom-12 sm:-bottom-16 left-4 sm:left-8 w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden">
+                <div id="profile-avatar-container" class="absolute -bottom-12 sm:-bottom-16 left-4 sm:left-8 flex items-center justify-center">
                     <!-- Avatar will be loaded here -->
                 </div>
             </div>
@@ -527,9 +527,9 @@
             // Avatar
             const avatarContainer = document.getElementById('profile-avatar-container');
             avatarContainer.innerHTML = ''; // Clear previous
-            // CORRECTED: Call the standardized createProfileImage function
             const avatarElement = createProfileImage(profile.photo, profile.name, "profile-avatar", "text-5xl");
             avatarContainer.appendChild(avatarElement);
+
 
             // Name and Join Date
             document.getElementById('profile-name').textContent = escapeHtml(profile.name);
