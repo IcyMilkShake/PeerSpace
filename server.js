@@ -470,6 +470,35 @@ app.put('/api/user/description', isAuthenticated, async (req, res) => {
     res.status(500).json({ error: 'Failed to update description' });
   }
 });
+
+// Update user name
+app.put('/api/user/name', isAuthenticated, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (typeof name !== 'string' || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Invalid name format' });
+    }
+    if (name.length > 50) { // Max length from schema
+        return res.status(400).json({ error: 'Name is too long. Maximum 50 characters.' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.name = name;
+    await user.save();
+    
+    // Update the user object in the session
+    req.user.name = user.name;
+
+    res.json({ success: true, name: user.name });
+  } catch (error) {
+    console.error('Error updating user name:', error);
+    res.status(500).json({ error: 'Failed to update name' });
+  }
+});
 // Upload profile picture endpoint
 app.post('/api/user/profile-picture', isAuthenticated, upload.single('profilePicture'), async (req, res) => {
   try {
