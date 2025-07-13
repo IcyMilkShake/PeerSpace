@@ -378,14 +378,12 @@
             const userProfile = document.getElementById('user-profile');
 
             if (currentUser) {
-                // Create profile image for nav
-                const navProfileImg = createProfileImage(currentUser.photo, currentUser.name, "w-8 h-8", "text-xs"); // Smaller text for nav
+                const navProfileImg = createProfileImage(currentUser.photo, currentUser.name, "w-8 h-8", "text-xs");
 
-                // Show user profile in nav
                 authSection.innerHTML = `
-                    <button onclick="toggleUserProfile()" class="nav-profile-button-hover flex items-center space-x-1 p-1 rounded-lg transition-colors">
-                    <div id="nav-profile-container"></div>
-                    <span class="font-medium text-sm truncate max-w-[150px]">${escapeHtml(currentUser.name)}</span> <!-- reduced space-x and truncate -->
+                    <button onclick="toggleUserProfile()" class="nav-profile-button-hover flex items-center p-1 rounded-lg transition-colors">
+                    <div id="nav-profile-container" class="mr-1"></div>  <!-- Use margin-right instead of space-x -->
+                    <span class="font-medium text-sm truncate max-w-[150px]">${escapeHtml(currentUser.name)}</span>
                     </button>
                 `;
                 document.getElementById('nav-profile-container').appendChild(navProfileImg);
@@ -401,7 +399,8 @@
                 // For email, add styles to allow wrapping and constrain width so it doesn’t overflow
                 const userEmailElem = document.getElementById('user-email');
                 userEmailElem.textContent = currentUser.email;
-                userEmailElem.classList.add('break-all', 'max-w-[250px]', 'whitespace-normal'); // wraps with max width
+                userEmailElem.classList.add('break-words', 'max-w-[250px]', 'whitespace-normal'); // allow wrap
+
 
                 // Set profile link dynamically
                 const profileMenuLink = document.getElementById('profile-menu-profile');
