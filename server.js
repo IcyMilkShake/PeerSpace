@@ -183,6 +183,7 @@ passport.use(new GoogleStrategy({
       });
       
       await newUser.save();
+      console.log(req.user)
       return done(null, newUser);
     }
   } catch (error) {
@@ -206,6 +207,7 @@ passport.deserializeUser(async (id, done) => {
 
 // Authentication middleware
 const isAuthenticated = (req, res, next) => {
+  console.log(req.user)
   if (req.isAuthenticated()) {
     console.log("authed!")
     return next();
