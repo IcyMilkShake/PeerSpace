@@ -74,7 +74,7 @@ app.use(express.static(__dirname));
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true,
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
     touchAfter: 24 * 3600
@@ -83,8 +83,7 @@ app.use(session({
     secure: true, // Always true when using HTTPS
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    sameSite: 'none', // Required for cross-domain cookies
-    domain: '.ipo-servers.net' // Set to your domain
+    sameSite: 'lax'
   }
 }));
 
