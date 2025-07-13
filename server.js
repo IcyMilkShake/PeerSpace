@@ -183,7 +183,6 @@ passport.use(new GoogleStrategy({
       });
       
       await newUser.save();
-      console.log(newUser)
       return done(null, newUser);
     }
   } catch (error) {
@@ -207,7 +206,6 @@ passport.deserializeUser(async (id, done) => {
 
 // Authentication middleware
 const isAuthenticated = (req, res, next) => {
-  console.log(req.user)
   if (req.isAuthenticated()) {
     console.log("authed!")
     return next();
@@ -230,6 +228,7 @@ app.get('/auth/google',
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
+    console.log(isAuthenticated)
     console.log('Google auth callback successful:', req.user);
     res.redirect('/');
   }
