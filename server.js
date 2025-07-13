@@ -228,7 +228,9 @@ app.get('/auth/google',
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
-    console.log(isAuthenticated)
+    if (isAuthenticated) {
+      console.log("yo gurt")
+    }
     console.log('Google auth callback successful:', req.user);
     res.redirect('/');
   }
