@@ -244,6 +244,8 @@ app.post('/auth/logout', (req, res) => {
 });
 
 app.get('/api/user', (req, res) => {
+  console.log(req.isAuthenticated())
+  console.log(req.user)
   if (req.isAuthenticated() && req.user) {
     const { _id, name, email, profilePicture, description, createdAt } = req.user;
     return res.json({
