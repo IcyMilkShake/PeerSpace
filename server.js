@@ -196,10 +196,13 @@ passport.serializeUser((user, done) => {
 });
 
 passport.deserializeUser(async (id, done) => {
+  console.log('[deserializeUser] id:', id);
   try {
     const user = await User.findById(id);
+    console.log('[deserializeUser] user:', user);
     done(null, user);
   } catch (error) {
+    console.error('[deserializeUser] error:', error);
     done(error, null);
   }
 });
@@ -228,11 +231,14 @@ app.get('/auth/google',
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
-    req.session.save(() => {
-      if (req.isAuthenticated()) {
-        console.log("yo gurt")
+    // Manually saving the session to ensure it's persisted before redirecting
+    req.session.save((err) => {
+      if (err) {
+        // handle error
+        console.error('Session save error:', err);
+        return res.redirect('/?auth_error=true');
       }
-      console.log('Google auth callback successful:', req.user);
+      console.log('Google auth callback successful, session saved:', req.user);
       res.redirect('/');
     });
   }
