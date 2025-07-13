@@ -512,7 +512,7 @@ article .border-t, article .border-b { /* Internal borders */
 #modal-profile-img-container-profile,
 #modal-profile-img-container-settings {
     /* Styling for the image itself is handled by createProfileImage JS (size, border) */
-    margin-right: 0.75rem; /* Tailwind space-x-3 from parent */
+    margin-right: 0.25rem; /* Tailwind space-x-3 from parent */
 }
 
 
