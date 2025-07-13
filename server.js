@@ -183,7 +183,7 @@ passport.use(new GoogleStrategy({
       });
       
       await newUser.save();
-      console.log(req.user)
+      console.log(newUser)
       return done(null, newUser);
     }
   } catch (error) {
