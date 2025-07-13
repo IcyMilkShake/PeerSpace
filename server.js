@@ -80,7 +80,7 @@ app.use(session({
     touchAfter: 24 * 3600
   }),
   cookie: {
-    secure: true, // Always true when using HTTPS
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     sameSite: 'lax'
@@ -228,7 +228,7 @@ app.get('/auth/google',
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
-    if (isAuthenticated) {
+    if (req.isAuthenticated()) {
       console.log("yo gurt")
     }
     console.log('Google auth callback successful:', req.user);
@@ -246,8 +246,8 @@ app.post('/auth/logout', (req, res) => {
 });
 
 app.get('/api/user', (req, res) => {
-  console.log(req.isAuthenticated())
-  console.log(req.user)
+  console.log('[/api/user] req.isAuthenticated():', req.isAuthenticated());
+  console.log('[/api/user] req.user:', req.user);
   if (req.isAuthenticated() && req.user) {
     const { _id, name, email, profilePicture, description, createdAt } = req.user;
     return res.json({
