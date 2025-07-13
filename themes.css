@@ -616,6 +616,15 @@ article .border-t, article .border-b { /* Internal borders */
     background-color: var(--button-danger-hover-bg); /* UPDATED */
 }
 
+#report-modal-overlay {
+    background-color: var(--modal-overlay-bg);
+    backdrop-filter: blur(4px);
+}
+
+#report-modal {
+    background-color: var(--modal-content-bg);
+}
+
 /* Cropper Modal & Upload Modal (General Modal Styles) */
 #crop-modal, #upload-modal { /* The overlay */
     background-color: var(--modal-overlay-bg);
