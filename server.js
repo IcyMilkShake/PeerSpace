@@ -72,11 +72,11 @@ app.use(express.static(__dirname));
 
 // Session configuration with MongoDB store
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/PeerSpace',
+    mongoUrl: process.env.MONGODB_URI,
     touchAfter: 24 * 3600
   }),
   cookie: { 
