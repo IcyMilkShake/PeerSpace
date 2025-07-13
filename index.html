@@ -380,12 +380,12 @@
             if (currentUser) {
                 // Create profile image for nav
                 const navProfileImg = createProfileImage(currentUser.photo, currentUser.name, "w-8 h-8", "text-xs"); // Smaller text for nav
-                
+
                 // Show user profile in nav
                 authSection.innerHTML = `
-                    <button onclick="toggleUserProfile()" class="nav-profile-button-hover flex items-center space-x-2 p-1 rounded-lg transition-colors">
-                        <div id="nav-profile-container"></div>
-                        <span class="font-medium text-sm">${escapeHtml(currentUser.name)}</span> <!-- text-sm -->
+                    <button onclick="toggleUserProfile()" class="nav-profile-button-hover flex items-center space-x-1 p-1 rounded-lg transition-colors">
+                    <div id="nav-profile-container"></div>
+                    <span class="font-medium text-sm truncate max-w-[150px]">${escapeHtml(currentUser.name)}</span> <!-- reduced space-x and truncate -->
                     </button>
                 `;
                 document.getElementById('nav-profile-container').appendChild(navProfileImg);
@@ -394,28 +394,30 @@
                 const modalProfileImgContainer = document.getElementById('modal-profile-img-container');
                 modalProfileImgContainer.innerHTML = ''; // Clear previous
                 // Pass "border-2" class for the modal profile image
-                modalProfileImgContainer.appendChild(createProfileImage(currentUser.photo, currentUser.name, "w-10 h-10", "text-base", "border-2")); 
+                modalProfileImgContainer.appendChild(createProfileImage(currentUser.photo, currentUser.name, "w-10 h-10", "text-base", "border-2"));
 
                 document.getElementById('user-name').textContent = currentUser.name;
-                document.getElementById('user-email').textContent = currentUser.email;
-                
+
+                // For email, add styles to allow wrapping and constrain width so it doesn’t overflow
+                const userEmailElem = document.getElementById('user-email');
+                userEmailElem.textContent = currentUser.email;
+                userEmailElem.classList.add('break-all', 'max-w-[250px]', 'whitespace-normal'); // wraps with max width
+
                 // Set profile link dynamically
                 const profileMenuLink = document.getElementById('profile-menu-profile');
                 if (profileMenuLink) {
                     profileMenuLink.href = `profile.html?id=${currentUser.id}`;
                 }
-                
-                // Link to settings page (already set in HTML, but good to be aware)
-                // document.getElementById('profile-menu-settings').href = 'settings.html';
 
                 // Add event listener for logout button in the modal
-                document.getElementById('logout-btn').removeEventListener('click', logout); // Remove if already exists
-                document.getElementById('logout-btn').addEventListener('click', logout);
-
+                const logoutBtn = document.getElementById('logout-btn');
+                logoutBtn.removeEventListener('click', logout);
+                logoutBtn.addEventListener('click', logout);
 
                 // Hide welcome message and show create post form
                 welcomeMessage.classList.add('hidden');
                 createPostForm.classList.remove('hidden');
+
             } else {
                 // Show login button
                 authSection.innerHTML = `
