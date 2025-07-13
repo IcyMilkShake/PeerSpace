@@ -66,6 +66,7 @@ async function deleteCommentAndChildren(commentId) {
 }
 
 // Middleware
+app.set('trust proxy', 1); // Trust first proxy
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
@@ -80,7 +81,7 @@ app.use(session({
     touchAfter: 24 * 3600
   }),
   cookie: {
-    secure: true, // Always true when using HTTPS
+    secure: false, // Set to true if your app is behind a proxy and you trust it
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000,  // Cookie expiration: 1 day
     sameSite: 'lax'
