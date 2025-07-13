@@ -120,11 +120,15 @@ async function downloadProfilePicture(url, filename) {
   });
 }
 
+const CALLBACK_URL = process.env.NODE_ENV === 'production'
+  ? 'https://peerspace.example.com/auth/google/callback'
+  : 'http://localhost:8082/auth/google/callback';
+
 // Google OAuth Strategy
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: "/auth/google/callback"
+  callbackURL: CALLBACK_URL
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     let user = await User.findOne({ googleId: profile.id });
