@@ -17,11 +17,6 @@ const { User, Post, Comment } = require('./schema');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, 'uploads', 'profile_pics');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
 AWS.config.update({
   region: 'ap-southeast-7',
@@ -45,14 +40,18 @@ db.once('open', () => {
 });
 
 // Multer configuration for profile picture uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
   },
-  filename: function (req, file, cb) {
-    const uniqueId = uuidv4();
-    cb(null, `${uniqueId}.png`);
-  }
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Not an image! Please upload only images.'), false);
+    }
+  },
 });
 
 // Recursive helper function to delete a comment and all its children
@@ -66,26 +65,10 @@ async function deleteCommentAndChildren(commentId) {
   await Comment.findByIdAndDelete(commentId);
 }
 
-
-const upload = multer({ 
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Not an image! Please upload only images.'), false);
-    }
-  }
-});
-
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Session configuration with MongoDB store
 app.use(session({
@@ -110,16 +93,28 @@ app.use(passport.session());
 // Helper function to download and save profile picture from Google
 async function downloadProfilePicture(url, filename) {
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(path.join(uploadsDir, filename));
-    
     https.get(url, (response) => {
-      response.pipe(file);
-      file.on('finish', () => {
-        file.close();
-        resolve(filename);
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', async () => {
+        const buffer = Buffer.concat(chunks);
+        const ext = path.extname(url).split('?')[0] || '.png';
+        const key = `profile_pics/${filename}${ext}`;
+        const params = {
+          Bucket: BUCKET_NAME,
+          Key: key,
+          Body: buffer,
+          ContentType: response.headers['content-type'],
+          ACL: 'public-read',
+        };
+        try {
+          const result = await s3.upload(params).promise();
+          resolve(result.Location);
+        } catch (error) {
+          reject(error);
+        }
       });
     }).on('error', (err) => {
-      fs.unlink(path.join(uploadsDir, filename), () => {}); // Delete the file on error
       reject(err);
     });
   });
@@ -140,26 +135,15 @@ passport.use(new GoogleStrategy({
       // Update last login
       user.lastLogin = new Date();
       
-      // Only update profile picture if user doesn't have a custom one
-      // (i.e., if the current profile picture is from Google or is null)
-      const hasCustomProfilePic = user.profilePicture.path && 
-                                  user.profilePicture.path.startsWith('/uploads/profile_pics/');
+      const hasCustomProfilePic = user.profilePicture.path && !user.profilePicture.path.includes('googleusercontent.com');
       
       if (!hasCustomProfilePic && profilePictureUrl) {
         try {
-          const filename = `google_${uuidv4()}.png`;
-          await downloadProfilePicture(profilePictureUrl, filename);
-          
-          // Delete old Google profile picture if it exists
-          if (user.profilePicture.path && user.profilePicture.path.includes('google_')) {
-            const oldFilePath = path.join(__dirname, user.profilePicture.path);
-            if (fs.existsSync(oldFilePath)) {
-              fs.unlinkSync(oldFilePath);
-            }
-          }
+          const filename = `google_${uuidv4()}`;
+          const s3Url = await downloadProfilePicture(profilePictureUrl, filename);
           
           user.profilePicture = {
-            path: `/uploads/profile_pics/${filename}`,
+            path: s3Url,
             contentType: 'image/png'
           };
         } catch (error) {
@@ -176,9 +160,8 @@ passport.use(new GoogleStrategy({
       
       if (profilePictureUrl) {
         try {
-          const filename = `google_${uuidv4()}.png`;
-          await downloadProfilePicture(profilePictureUrl, filename);
-          profilePicturePath = `/uploads/profile_pics/${filename}`;
+          const filename = `google_${uuidv4()}`;
+          profilePicturePath = await downloadProfilePicture(profilePictureUrl, filename);
         } catch (error) {
           console.error('Error downloading profile picture for new user:', error);
         }
@@ -521,28 +504,28 @@ app.post('/api/user/profile-picture', isAuthenticated, upload.single('profilePic
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
-    // Delete old profile picture if it exists and is stored locally
-    if (user.profilePicture.path && user.profilePicture.path.startsWith('/uploads/')) {
-      const oldFilePath = path.join(__dirname, user.profilePicture.path);
-      if (fs.existsSync(oldFilePath)) {
-        try {
-          fs.unlinkSync(oldFilePath);
-          console.log('Deleted old profile picture:', oldFilePath);
-        } catch (error) {
-          console.error('Error deleting old profile picture:', error);
-        }
-      }
-    }
+
+    const ext = req.file.originalname.split('.').pop();
+    const key = `profile_pics/${uuidv4()}.${ext}`;
+
+    const params = {
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+      ACL: 'public-read',
+    };
+
+    const result = await s3.upload(params).promise();
 
     // Update user with new profile picture
     user.profilePicture = {
-      path: `/uploads/profile_pics/${req.file.filename}`,
-      contentType: req.file.mimetype
+      path: result.Location,
+      contentType: req.file.mimetype,
     };
-    
+
     await user.save();
-    
+
     // Update the user object in the session
     req.user.profilePicture = user.profilePicture;
 
@@ -550,20 +533,10 @@ app.post('/api/user/profile-picture', isAuthenticated, upload.single('profilePic
 
     res.json({
       success: true,
-      photo: user.profilePicture.path
+      photo: user.profilePicture.path,
     });
   } catch (error) {
     console.error('Error uploading profile picture:', error);
-    
-    // Clean up uploaded file if there was an error
-    if (req.file && req.file.path) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (unlinkError) {
-        console.error('Error cleaning up uploaded file:', unlinkError);
-      }
-    }
-    
     res.status(500).json({ error: 'Failed to upload profile picture' });
   }
 });
