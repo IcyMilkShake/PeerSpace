@@ -351,7 +351,6 @@
         async function checkAuth() {
             try {
                 const response = await fetch('/api/user', {
-                    credentials: 'include'
                 });
                 if (response.ok) {
                     currentUser = await response.json();

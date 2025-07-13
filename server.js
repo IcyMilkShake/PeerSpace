@@ -212,7 +212,9 @@ const isAuthenticated = (req, res, next) => {
   }
   res.status(401).json({ error: 'Not authenticated' });
 };
-
+if (isAuthenticated) {
+  console.log("autheeeddd")
+}
 // Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
