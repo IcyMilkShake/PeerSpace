@@ -74,7 +74,7 @@ app.use(express.static(__dirname));
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
     touchAfter: 24 * 3600
@@ -228,11 +228,13 @@ app.get('/auth/google',
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
-    if (req.isAuthenticated()) {
-      console.log("yo gurt")
-    }
-    console.log('Google auth callback successful:', req.user);
-    res.redirect('/');
+    req.session.save(() => {
+      if (req.isAuthenticated()) {
+        console.log("yo gurt")
+      }
+      console.log('Google auth callback successful:', req.user);
+      res.redirect('/');
+    });
   }
 );
 
