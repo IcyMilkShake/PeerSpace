@@ -921,8 +921,7 @@ app.use((error, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-const httpsServer = https.createServer(app);
 
-httpsServer.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`HTTPS Server running on https://peerspace.ipo-servers.net:${PORT}`);
 });
