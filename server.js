@@ -82,7 +82,7 @@ app.use(session({
   cookie: {
     secure: true, // Always true when using HTTPS
     httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    maxAge: 24 * 60 * 60 * 1000,  // Cookie expiration: 1 day
     sameSite: 'lax'
   }
 }));
@@ -198,7 +198,6 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await User.findById(id);
-    console.log(user)
     done(null, user);
   } catch (error) {
     done(error, null);
@@ -230,9 +229,12 @@ app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
     console.log('Google auth callback successful:', req.user);
-    res.redirect('/');
+    req.session.save(() => {
+      res.redirect('/');
+    });
   }
 );
+
 
 app.post('/auth/logout', (req, res) => {
   req.logout((err) => {
@@ -244,8 +246,6 @@ app.post('/auth/logout', (req, res) => {
 });
 
 app.get('/api/user', (req, res) => {
-  console.log(req.isAuthenticated())
-  console.log(req.user)
   if (req.isAuthenticated() && req.user) {
     const { _id, name, email, profilePicture, description, createdAt } = req.user;
     return res.json({
