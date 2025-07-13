@@ -121,7 +121,7 @@ async function downloadProfilePicture(url, filename) {
 }
 
 const CALLBACK_URL = process.env.NODE_ENV === 'production'
-  ? 'https://peerspace.example.com/auth/google/callback'
+  ? 'https://peerspace.ipo-servers.net/auth/google/callback'
   : 'http://localhost:8082/auth/google/callback';
 
 // Google OAuth Strategy
