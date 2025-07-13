@@ -15,7 +15,7 @@ require('dotenv').config();
 const { User, Post, Comment } = require('./schema');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8082;
 
 
 AWS.config.update({
@@ -921,6 +921,8 @@ app.use((error, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+const httpsServer = https.createServer(credentials, app);
+
+httpsServer.listen(PORT, () => {
+  console.log(`HTTPS Server running on https://peerspace.ipo-servers.net:${PORT}`);
 });
