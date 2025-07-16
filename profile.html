@@ -422,7 +422,9 @@
                 modalImgContainer.appendChild(createProfileImage(currentLoggedInUser.photo, currentLoggedInUser.name, "w-10 h-10", "text-base", "border-2"));
                 
                 document.getElementById('modal-user-name-profile').textContent = currentLoggedInUser.name;
-                document.getElementById('modal-user-email-profile').textContent = currentLoggedInUser.email;
+                const userEmailElem = document.getElementById('modal-user-email-profile');
+                userEmailElem.textContent = currentLoggedInUser.email;
+                userEmailElem.classList.add('truncate');
                 
                 // Update links in the new dropdown
                 const profileMenuLink = document.getElementById('profile-menu-profile-page');

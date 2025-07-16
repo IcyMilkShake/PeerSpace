@@ -399,7 +399,7 @@
                 // For email, add styles to allow wrapping and constrain width so it doesn’t overflow
                 const userEmailElem = document.getElementById('user-email');
                 userEmailElem.textContent = currentUser.email;
-                userEmailElem.classList.add('break-words', 'max-w-[250px]', 'whitespace-normal'); // allow wrap
+                userEmailElem.classList.add('truncate');
 
 
                 // Set profile link dynamically
