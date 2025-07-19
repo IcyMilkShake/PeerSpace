@@ -710,12 +710,12 @@
                     textarea.id = `comment-textarea-${post.id}`;
                     textarea.placeholder = "Add a comment...";
                     textarea.rows = 2;
-                    textarea.maxLength = 500;
+                    textarea.maxLength = 1000;
                     textarea.className = "w-full px-3 py-2 rounded-lg resize-none focus:outline-none focus:ring-2";
 
                     const charCountSpan = document.createElement('span');
                     charCountSpan.className = 'text-sm text-gray-500';
-                    charCountSpan.textContent = '0 / 500';
+                    charCountSpan.textContent = '0 / 1000';
 
                     const button = document.createElement('button');
                     button.onclick = () => addCommentOrReply(post.id);
@@ -846,7 +846,26 @@
 
                 const commentText = document.createElement('p');
                 commentText.className = "text-gray-700 whitespace-pre-wrap";
-                commentText.innerHTML = escapeHtml(comment.content, true); // Allow links
+                
+                if (comment.content.length > 300) {
+                    const truncatedContent = escapeHtml(comment.content.substring(0, 300), true);
+                    const fullContent = escapeHtml(comment.content, true);
+
+                    commentText.innerHTML = `${truncatedContent}... <button class="text-blue-600 hover:underline">see more</button>`;
+                    
+                    const seeMoreBtn = commentText.querySelector('button');
+                    seeMoreBtn.onclick = () => {
+                        commentText.innerHTML = `${fullContent} <button class="text-blue-600 hover:underline">see less</button>`;
+                        const seeLessBtn = commentText.querySelector('button');
+                        seeLessBtn.onclick = () => {
+                            commentText.innerHTML = `${truncatedContent}... <button class="text-blue-600 hover:underline">see more</button>`;
+                            // Re-attach the see more event listener
+                            commentText.querySelector('button').onclick = seeMoreBtn.onclick;
+                        };
+                    };
+                } else {
+                    commentText.innerHTML = escapeHtml(comment.content, true);
+                }
                 commentBody.appendChild(commentText);
 
                 // Comment Actions (Like, Reply, Delete)
@@ -943,11 +962,11 @@
                             ${escapeHtml(commentData.author.name)}
                         </a>
                     </p>
-                    <textarea id="reply-textarea-${commentId}" placeholder="Write a reply..." rows="2" maxlength="500"
+                    <textarea id="reply-textarea-${commentId}" placeholder="Write a reply..." rows="2" maxlength="1000"
                               class="w-full px-3 py-2 text-sm rounded-lg resize-none focus:outline-none focus:ring-1"></textarea> 
                               <!-- Removed: border, border-gray-300, focus:ring-blue-500. CSS rules will handle. -->
                     <div class="flex justify-between items-center mt-1">
-                        <span class="text-xs text-gray-500">0 / 500</span>
+                        <span class="text-xs text-gray-500">0 / 1000</span>
                         <div class="flex justify-end space-x-2">
                             <button onclick="document.getElementById('${containerId}').classList.add('hidden');" 
                                     class="button-cancel-reply px-3 py-1 text-xs rounded-md">Cancel</button>

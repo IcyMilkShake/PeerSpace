@@ -744,8 +744,8 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: 'Content is required' });
     }
 
-    if (content.length > 500) {
-      return res.status(400).json({ error: 'Comment cannot exceed 500 characters.' });
+    if (content.length > 1000) {
+      return res.status(400).json({ error: 'Comment cannot exceed 1000 characters.' });
     }
 
     const post = await Post.findById(postId);
@@ -790,8 +790,8 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
       return res.status(400).json({ error: 'Content is required for a reply.' });
     }
 
-    if (content.length > 500) {
-      return res.status(400).json({ error: 'Reply cannot exceed 500 characters.' });
+    if (content.length > 1000) {
+      return res.status(400).json({ error: 'Reply cannot exceed 1000 characters.' });
     }
 
     const parentComment = await Comment.findById(commentId);
