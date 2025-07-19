@@ -667,6 +667,14 @@ app.post('/api/posts', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: 'Title and content are required' });
     }
 
+    if (title.length > 75) {
+      return res.status(400).json({ error: 'Title cannot exceed 75 characters.' });
+    }
+
+    if (content.length > 2500) {
+      return res.status(400).json({ error: 'Content cannot exceed 2500 characters.' });
+    }
+
     const newPostData = {
       title,
       content,
@@ -686,6 +694,12 @@ app.post('/api/posts', isAuthenticated, async (req, res) => {
 
       if (newPostData.pollOptions.length < 2) {
         return res.status(400).json({ error: 'Polls require at least two valid options.' });
+      }
+
+      for (const opt of newPostData.pollOptions) {
+        if (opt.option.length > 75) {
+          return res.status(400).json({ error: 'Poll option cannot exceed 75 characters.' });
+        }
       }
     }
 
@@ -730,6 +744,10 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: 'Content is required' });
     }
 
+    if (content.length > 500) {
+      return res.status(400).json({ error: 'Comment cannot exceed 500 characters.' });
+    }
+
     const post = await Post.findById(postId);
     if (!post) {
       return res.status(404).json({ error: 'Post not found' });
@@ -770,6 +788,10 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
 
     if (!content) {
       return res.status(400).json({ error: 'Content is required for a reply.' });
+    }
+
+    if (content.length > 500) {
+      return res.status(400).json({ error: 'Reply cannot exceed 500 characters.' });
     }
 
     const parentComment = await Comment.findById(commentId);

@@ -44,11 +44,13 @@ const userSchema = new mongoose.Schema({
 const postSchema = new mongoose.Schema({
   title: {
     type: String,
-    required: true
+    required: true,
+    maxlength: 80
   },
   content: {
     type: String,
-    required: true
+    required: true,
+    maxlength: 2500
   },
   author: {
     type: mongoose.Schema.Types.ObjectId,
@@ -69,7 +71,7 @@ const postSchema = new mongoose.Schema({
     default: 'normal'
   },
   pollOptions: [{
-    option: { type: String, required: true },
+    option: { type: String, required: true, maxlength: 75 },
     votes: { type: Number, default: 0 }
   }],
   reports: [{
@@ -88,7 +90,8 @@ const postSchema = new mongoose.Schema({
 const commentSchema = new mongoose.Schema({
   content: {
     type: String,
-    required: true
+    required: true,
+    maxlength: 500
   },
   author: {
     type: mongoose.Schema.Types.ObjectId,

@@ -465,6 +465,11 @@ article .border-t, article .border-b { /* Internal borders */
 
 /* User Profile Modal (Dropdown in Nav) - Consolidated Styling */
 /* Targets #user-profile (index), #user-profile-dropdown-profile (profile), #user-profile-dropdown-settings (settings) */
+.post-action-menu {
+    background-color: var(--dropdown-bg);
+    border: 1px solid var(--dropdown-border);
+}
+
 #user-profile, 
 #user-profile-dropdown-profile, 
 #user-profile-dropdown-settings { 
@@ -559,13 +564,15 @@ article .border-t, article .border-b { /* Internal borders */
 
 #logout-btn:hover, 
 #logout-btn-profile-page:hover, 
-#logout-btn-settings-page:hover {
+#logout-btn-settings-page:hover,
+.profile-menu-item-danger:hover {
     background-color: var(--button-danger-bg) !important; 
     color: var(--button-danger-text) !important; 
 }
 #logout-btn:hover svg, 
 #logout-btn-profile-page:hover svg, 
-#logout-btn-settings-page:hover svg {
+#logout-btn-settings-page:hover svg,
+.profile-menu-item-danger:hover svg {
     stroke: var(--button-danger-text) !important; /* Ensure icon color changes too */
 }
 
