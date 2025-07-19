@@ -623,7 +623,7 @@
                 
                 if (post.content.length > 500) {
                     const seeMoreContainer = document.createElement('div');
-                    seeMoreContainer.className = 'see-more-container';
+                    seeMoreContainer.className = 'see-more-container post-see-more';
 
                     const fullContent = document.createElement('p');
                     fullContent.className = 'text-gray-700 mb-4 whitespace-pre-wrap';
@@ -856,7 +856,7 @@
                 
                 if (comment.content.length > 300) {
                     const seeMoreContainer = document.createElement('div');
-                    seeMoreContainer.className = 'see-more-container';
+                    seeMoreContainer.className = `see-more-container ${depth === 0 ? 'comment-see-more' : 'reply-see-more'}`;
 
                     const fullContent = document.createElement('p');
                     fullContent.className = 'text-gray-700 whitespace-pre-wrap';

@@ -998,14 +998,37 @@ html {
     transition: max-height 0.5s ease-in-out;
 }
 
-.see-more-container::after {
+/* Post "See More" Gradient */
+.post-see-more::after {
     content: '';
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
     height: 50px;
-    background: linear-gradient(to bottom, transparent, var(--card-bg));
+    background: linear-gradient(to bottom, transparent, var(--post-card-bg));
+}
+
+/* Comment "See More" Gradient */
+.comment-see-more::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background: linear-gradient(to bottom, transparent, var(--comment-bg));
+}
+
+/* Reply "See More" Gradient */
+.reply-see-more::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background: linear-gradient(to bottom, transparent, var(--comment-bg));
 }
 
 .see-more-container.expanded {
