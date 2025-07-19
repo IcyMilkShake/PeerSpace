@@ -990,3 +990,34 @@ html {
     background-color: var(--button-primary-hover-bg);
     border-color: var(--button-primary-hover-bg);
 }
+
+.see-more-container {
+    position: relative;
+    max-height: 120px; /* Adjust as needed */
+    overflow: hidden;
+    transition: max-height 0.5s ease-in-out;
+}
+
+.see-more-container::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background: linear-gradient(to bottom, transparent, var(--bg-primary));
+}
+
+.see-more-container.expanded {
+    max-height: none;
+}
+
+.see-more-container.expanded::after {
+    display: none;
+}
+
+.see-more-btn {
+    display: block;
+    margin: 1rem auto 0;
+    font-weight: 600;
+}

@@ -616,32 +616,39 @@
                 const postContentElement = document.createElement('div');
                 // Removed inline class from h2 as the tag is now separate
                 const postTitleHtml = `<h2 class="text-xl font-bold mb-3">${escapeHtml(post.title)}</h2>`;
-                
+                postContentElement.innerHTML = postTitleHtml;
+
                 const postTextParagraph = document.createElement('p');
                 postTextParagraph.className = "text-gray-700 mb-4 whitespace-pre-wrap";
                 
                 if (post.content.length > 500) {
-                    const truncatedContent = escapeHtml(post.content.substring(0, 500), true);
-                    const fullContent = escapeHtml(post.content, true);
+                    const seeMoreContainer = document.createElement('div');
+                    seeMoreContainer.className = 'see-more-container';
 
-                    postTextParagraph.innerHTML = `<span>${truncatedContent}... </span><button class="text-blue-600 hover:underline inline">see more</button>`;
-                    
-                    const seeMoreBtn = postTextParagraph.querySelector('button');
+                    const fullContent = document.createElement('p');
+                    fullContent.className = 'text-gray-700 mb-4 whitespace-pre-wrap';
+                    fullContent.innerHTML = escapeHtml(post.content, true);
+
+                    seeMoreContainer.appendChild(fullContent);
+
+                    const seeMoreBtn = document.createElement('button');
+                    seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
+                    seeMoreBtn.textContent = 'See More';
                     seeMoreBtn.onclick = () => {
-                        postTextParagraph.innerHTML = `<span>${fullContent} </span><button class="text-blue-600 hover:underline inline">see less</button>`;
-                        const seeLessBtn = postTextParagraph.querySelector('button');
-                        seeLessBtn.onclick = () => {
-                            postTextParagraph.innerHTML = `<span>${truncatedContent}... </span><button class="text-blue-600 hover:underline inline">see more</button>`;
-                            // Re-attach the see more event listener
-                            postTextParagraph.querySelector('button').onclick = seeMoreBtn.onclick;
-                        };
+                        if (seeMoreContainer.classList.contains('expanded')) {
+                            seeMoreContainer.classList.remove('expanded');
+                            seeMoreBtn.textContent = 'See More';
+                        } else {
+                            seeMoreContainer.classList.add('expanded');
+                            seeMoreBtn.textContent = 'See Less';
+                        }
                     };
+                    postContentElement.appendChild(seeMoreContainer);
+                    postContentElement.appendChild(seeMoreBtn);
                 } else {
                     postTextParagraph.innerHTML = escapeHtml(post.content, true);
+                    postContentElement.appendChild(postTextParagraph);
                 }
-
-                postContentElement.innerHTML = postTitleHtml;
-                postContentElement.appendChild(postTextParagraph);
 
                 // Poll Display and Voting
                 if (post.postType === 'poll' && post.pollOptions && post.pollOptions.length > 0) {
@@ -848,25 +855,33 @@
                 commentText.className = "text-gray-700 whitespace-pre-wrap";
                 
                 if (comment.content.length > 300) {
-                    const truncatedContent = escapeHtml(comment.content.substring(0, 300), true);
-                    const fullContent = escapeHtml(comment.content, true);
+                    const seeMoreContainer = document.createElement('div');
+                    seeMoreContainer.className = 'see-more-container';
 
-                    commentText.innerHTML = `${truncatedContent}... <button class="text-blue-600 hover:underline">see more</button>`;
-                    
-                    const seeMoreBtn = commentText.querySelector('button');
+                    const fullContent = document.createElement('p');
+                    fullContent.className = 'text-gray-700 whitespace-pre-wrap';
+                    fullContent.innerHTML = escapeHtml(comment.content, true);
+
+                    seeMoreContainer.appendChild(fullContent);
+
+                    const seeMoreBtn = document.createElement('button');
+                    seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
+                    seeMoreBtn.textContent = 'See More';
                     seeMoreBtn.onclick = () => {
-                        commentText.innerHTML = `${fullContent} <button class="text-blue-600 hover:underline">see less</button>`;
-                        const seeLessBtn = commentText.querySelector('button');
-                        seeLessBtn.onclick = () => {
-                            commentText.innerHTML = `${truncatedContent}... <button class="text-blue-600 hover:underline">see more</button>`;
-                            // Re-attach the see more event listener
-                            commentText.querySelector('button').onclick = seeMoreBtn.onclick;
-                        };
+                        if (seeMoreContainer.classList.contains('expanded')) {
+                            seeMoreContainer.classList.remove('expanded');
+                            seeMoreBtn.textContent = 'See More';
+                        } else {
+                            seeMoreContainer.classList.add('expanded');
+                            seeMoreBtn.textContent = 'See Less';
+                        }
                     };
+                    commentBody.appendChild(seeMoreContainer);
+                    commentBody.appendChild(seeMoreBtn);
                 } else {
                     commentText.innerHTML = escapeHtml(comment.content, true);
+                    commentBody.appendChild(commentText);
                 }
-                commentBody.appendChild(commentText);
 
                 // Comment Actions (Like, Reply, Delete)
                 const commentActionsDiv = document.createElement('div');
