@@ -17,6 +17,8 @@ const { User, Post, Comment } = require('./schema');
 const app = express();
 const PORT = process.env.PORT || 8082;
 
+const development = process.env.NODE_ENV !== 'production';
+
 
 AWS.config.update({
   region: 'ap-southeast-7',
@@ -81,10 +83,10 @@ app.use(session({
     touchAfter: 24 * 3600
   }),
   cookie: {
-    secure: false, // Set to true if your app is behind a proxy and you trust it
+    secure: !development,
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000,  // Cookie expiration: 1 day
-    sameSite: 'lax'
+    sameSite: development ? 'lax' : 'none'
   }
 }));
 
@@ -122,9 +124,9 @@ async function downloadProfilePicture(url, filename) {
   });
 }
 
-const CALLBACK_URL = process.env.NODE_ENV === 'production'
-  ? 'https://peerspace.ipo-servers.net/auth/google/callback'
-  : 'http://localhost:8082/auth/google/callback';
+const CALLBACK_URL = development
+  ? 'http://localhost:8082/auth/google/callback'
+  : 'https://peerspace.ipo-servers.net/auth/google/callback';
 
 // Google OAuth Strategy
 passport.use(new GoogleStrategy({
@@ -931,5 +933,9 @@ app.use((error, req, res, next) => {
 
 
 app.listen(PORT, () => {
-  console.log(`HTTPS Server running on https://peerspace.ipo-servers.net:${PORT}`);
+  if (development) {
+    console.log(`Development server running on http://localhost:${PORT}`);
+  } else {
+    console.log(`HTTPS Server running on https://peerspace.ipo-servers.net:${PORT}`);
+  }
 });
