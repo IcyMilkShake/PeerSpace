@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
     <script src="theme-loader.js"></script> <!-- THEME LOADER -->
     <link rel="stylesheet" href="themes.css"> <!-- THEME STYLES -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="navigation.css">
     <style>
         /* Specific styles for index.html, if any, can remain here. */
         /* Most general styles are now in themes.css */
@@ -83,7 +85,34 @@
 
     </style>
 </head>
-<body class="min-h-screen"> 
+<body class="min-h-screen">
+    <nav class="navigation-bar">
+      <div class="nav-container">
+        <a href="#" class="nav-item">
+          <i class="fas fa-home"></i>
+          <span class="nav-text">Home</span>
+        </a>
+        <a href="#" class="nav-item">
+          <i class="fas fa-user"></i>
+          <span class="nav-text">Profile</span>
+        </a>
+        <a href="#" class="nav-item">
+          <i class="fas fa-users"></i>
+          <span class="nav-text">Friends</span>
+        </a>
+        <a href="#" class="nav-item">
+          <i class="fas fa-comments"></i>
+          <span class="nav-text">Communities</span>
+        </a>
+        <div class="nav-item dropdown">
+          <i class="fas fa-ellipsis-h"></i>
+          <div class="dropdown-content">
+            <a href="#">Settings</a>
+            <a href="#">Logout</a>
+          </div>
+        </div>
+      </div>
+    </nav>
     <!-- Notification Container -->
     <div id="notification-container" class="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm sm:max-w-md p-4 space-y-3 z-[100]">
         <!-- Notifications will be dynamically added here -->
@@ -106,7 +135,7 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="shadow-lg border-b"> <!-- bg-white removed -->
+    <nav class="shadow-lg border-b" style="background-color: var(--bg-secondary);"> <!-- bg-white removed -->
         <div class="max-w-4xl mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
                 <div class="flex items-center space-x-2">

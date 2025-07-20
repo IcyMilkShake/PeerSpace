@@ -289,19 +289,19 @@ body {
     color: var(--text-primary);
     transition: background-color 0.3s, color 0.3s;
 }
-nav {
+header {
     background-color: var(--nav-bg); /* UPDATED */
     border-bottom: 1px solid var(--nav-border-color); /* UPDATED */
 }
-nav h1, nav #auth-section button span { /* UPDATED nav #login-btn removed */
+header h1, header #auth-section button span { /* UPDATED nav #login-btn removed */
     color: var(--nav-text); /* UPDATED */
 }
-nav #login-btn { /* For when user is logged out - uses primary button vars */
+header #login-btn { /* For when user is logged out - uses primary button vars */
      background-color: var(--button-primary-bg); /* UPDATED */
      color: var(--button-primary-text); /* UPDATED */
      border: 1px solid var(--button-primary-border); /* ADDED */
 }
-nav #login-btn:hover {
+header #login-btn:hover {
     background-color: var(--button-primary-hover-bg); /* UPDATED */
 }
 
