@@ -104,9 +104,28 @@
 }
 
 /* Responsive styles */
-@media (max-width: 1200px) {
+@media (max-width: 1300px) {
   .navigation-bar {
-    left: 20px;
+    width: 80px;
+    left: 10px;
+  }
+  
+  .nav-header {
+    justify-content: center;
+  }
+
+  .nav-header .logo-text {
+    display: none;
+  }
+
+  .nav-text {
+    display: none;
+  }
+
+  .nav-item {
+    justify-content: center;
+    margin: 0 5px;
+    padding: 10px;
   }
 }
 
