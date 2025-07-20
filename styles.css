@@ -1036,9 +1036,6 @@ video {
   z-index: 100;
 }
 
-main {
-  margin-left: 250px;
-}
 
 .nav-container {
   display: flex;
