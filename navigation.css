@@ -104,6 +104,11 @@
 }
 
 /* Responsive styles */
+@media (max-width: 1400px) and (min-width: 768px) {
+  .navigation-bar {
+    left: calc(50% - 56rem/2 - 280px);
+  }
+}
 @media (max-width: 1300px) {
   .navigation-bar {
     width: 80px;
@@ -166,6 +171,7 @@
     border-right: none;
     padding: 0;
     background-color: var(--card-bg);
+    position: fixed;
   }
   
   .nav-header {
