@@ -157,8 +157,9 @@ passport.use(new GoogleStrategy({
     const profilePictureUrl = profile.photos && profile.photos[0] ? profile.photos[0].value : null;
     
     if (user) {
-      // Update last login
+      // Update last login and displayName
       user.lastLogin = new Date();
+      user.displayName = profile.displayName;
       
       const hasCustomProfilePic = user.profilePicture.path && !user.profilePicture.path.includes('googleusercontent.com');
       
