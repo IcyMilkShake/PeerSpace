@@ -86,7 +86,7 @@ app.use(session({
     secure: !development,
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000,  // Cookie expiration: 1 day
-    sameSite: development ? 'lax' : 'none'
+    sameSite: 'lax' // Use 'lax' for both dev and prod to avoid issues with 'none'
   }
 }));
 
