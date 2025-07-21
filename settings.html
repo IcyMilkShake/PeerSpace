@@ -242,14 +242,14 @@
         let currentLoggedInUserConfig = null;
 
         // Get initials from name (Standardized - Copied from index.html)
-        function getInitials(name) {
-            if (!name) return '?';
-            return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+        function getInitials(displayName) {
+            if (!displayName) return '?';
+            return displayName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
         }
 
         // Create profile image element with fallback (Standardized - Copied from index.html)
         // Added borderClass parameter for optional borders (e.g., for modal profile image)
-        function createProfileImage(photoUrl, name, size = "w-10 h-10", textClass = "text-sm", borderClass = "") {
+        function createProfileImage(photoUrl, displayName, size = "w-10 h-10", textClass = "text-sm", borderClass = "") {
             const container = document.createElement('div');
             // Ensured all necessary classes for layout and appearance are here.
             container.className = `profile-img ${size} ${borderClass} rounded-full flex items-center justify-center overflow-hidden`;
@@ -263,15 +263,15 @@
             if (photoUrl && photoUrl.trim() && photoUrl !== '/default-profile.png') {
                 const img = document.createElement('img');
                 img.className = 'w-full h-full object-cover'; 
-                img.alt = name || 'Profile';
+                img.alt = displayName || 'Profile';
                 
                 img.onerror = function() {
-                    container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
+                    container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(displayName)}</span>`;
                 };
                 img.src = photoUrl + '?t=' + Date.now(); // Cache busting
                 container.appendChild(img);
             } else {
-                container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
+                container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(displayName)}</span>`;
             }
             return container;
         }
@@ -297,13 +297,13 @@
             const userProfileDropdown = document.getElementById('user-profile-dropdown-settings'); 
 
             if (currentLoggedInUserConfig) {
-                const navProfileImg = createProfileImage(currentLoggedInUserConfig.photo, currentLoggedInUserConfig.name, "w-8 h-8", "text-xs");
+                const navProfileImg = createProfileImage(currentLoggedInUserConfig.photo, currentLoggedInUserConfig.displayName, "w-8 h-8", "text-xs");
                 
                 // Standardized button structure from index.html
                 authSection.innerHTML = `
                     <button onclick="toggleSettingsDropdown()" class="nav-profile-button-hover flex items-center space-x-2 p-1 rounded-lg transition-colors">
                         <div id="nav-profile-img-container-settings-page"></div> <!-- Unique ID for nav image container -->
-                        <span class="font-medium text-sm">${escapeHtml(currentLoggedInUserConfig.name)}</span>
+                        <span class="font-medium text-sm">${escapeHtml(currentLoggedInUserConfig.displayName)}</span>
                     </button>
                 `;
                 document.getElementById('nav-profile-img-container-settings-page').appendChild(navProfileImg);
@@ -311,9 +311,9 @@
                 // Update new user profile dropdown modal
                 const modalImgContainer = document.getElementById('modal-profile-img-container-settings');
                 modalImgContainer.innerHTML = ''; 
-                modalImgContainer.appendChild(createProfileImage(currentLoggedInUserConfig.photo, currentLoggedInUserConfig.name, "w-10 h-10", "text-base", "border-2"));
+                modalImgContainer.appendChild(createProfileImage(currentLoggedInUserConfig.photo, currentLoggedInUserConfig.displayName, "w-10 h-10", "text-base", "border-2"));
                 
-                document.getElementById('modal-user-name-settings').textContent = currentLoggedInUserConfig.name;
+                document.getElementById('modal-user-name-settings').textContent = currentLoggedInUserConfig.displayName;
                 const userEmailElem = document.getElementById('modal-user-email-settings');
                 userEmailElem.textContent = currentLoggedInUserConfig.email;
                 userEmailElem.classList.add('truncate');

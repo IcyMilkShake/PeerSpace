@@ -7,9 +7,19 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  name: {
+  username: {
     type: String,
-    required: true
+    required: true,
+    unique: true,
+    lowercase: true,
+    match: /^[a-zA-Z0-9_.]+$/,
+    minLength: 3,
+    maxLength: 20
+  },
+  displayName: {
+    type: String,
+    required: true,
+    maxLength: 50
   },
   email: {
     type: String,

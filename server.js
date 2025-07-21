@@ -124,6 +124,23 @@ async function downloadProfilePicture(url, filename) {
   });
 }
 
+// Function to generate a unique username
+async function generateUniqueUsername(email) {
+    let username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_.]/g, '');
+    if (username.length < 3) {
+        username = `user_${username}${uuidv4().substring(0, 8)}`;
+    }
+    username = username.substring(0, 20);
+
+    let user = await User.findOne({ username });
+    while (user) {
+        const randomSuffix = uuidv4().substring(0, 4);
+        username = `${username.substring(0, 15)}_${randomSuffix}`;
+        user = await User.findOne({ username });
+    }
+    return username;
+}
+
 const CALLBACK_URL = development
   ? 'http://localhost:8082/auth/google/callback'
   : 'https://peerspace.ipo-servers.net/auth/google/callback';
@@ -174,11 +191,15 @@ passport.use(new GoogleStrategy({
           console.error('Error downloading profile picture for new user:', error);
         }
       }
+
+      const email = profile.emails && profile.emails[0] ? profile.emails[0].value : '';
+      const username = await generateUniqueUsername(email);
       
       const newUser = new User({
         googleId: profile.id,
-        name: profile.displayName,
-        email: profile.emails && profile.emails[0] ? profile.emails[0].value : '',
+        username: username,
+        displayName: profile.displayName,
+        email: email,
         profilePicture: {
           path: profilePicturePath,
           contentType: 'image/png'
@@ -230,13 +251,13 @@ app.get('/inbox', isAuthenticated, (req, res) => {
 app.get('/api/notifications', isAuthenticated, async (req, res) => {
   try {
     const notifications = await Notification.find({ user: req.user._id })
-      .populate('sender', 'name')
+      .populate('sender', 'displayName')
       .sort({ createdAt: -1 });
 
     const responseNotifications = notifications.map(n => ({
         _id: n._id,
-        message: `<strong>${n.sender.name}</strong> mentioned you in a post.`,
-        link: `/profile.html?id=${n.post}#comment-${n.comment}`,
+        message: `<strong>${n.sender.displayName}</strong> mentioned you in a post.`,
+        link: `/#/post/${n.post._id}#comment-${n.comment}`,
         read: n.read,
         createdAt: n.createdAt
     }));
@@ -303,10 +324,11 @@ app.post('/auth/logout', (req, res) => {
 
 app.get('/api/user', (req, res) => {
   if (req.isAuthenticated() && req.user) {
-    const { _id, name, email, profilePicture, description, createdAt } = req.user;
+    const { _id, username, displayName, email, profilePicture, description, createdAt } = req.user;
     return res.json({
       id: _id,
-      name,
+      username,
+      displayName,
       email,
       photo: profilePicture.path || '/default-profile.png',
       description: description || '',
@@ -325,8 +347,11 @@ app.get('/api/users/search', isAuthenticated, async (req, res) => {
       return res.json([]);
     }
     const users = await User.find({
-      name: { $regex: query, $options: 'i' }
-    }).select('name').limit(10);
+      $or: [
+        { username: { $regex: query, $options: 'i' } },
+        { displayName: { $regex: query, $options: 'i' } }
+      ]
+    }).select('username displayName').limit(10);
     res.json(users);
   } catch (error) {
     console.error('Error searching users:', error);
@@ -337,13 +362,14 @@ app.get('/api/users/search', isAuthenticated, async (req, res) => {
 // Get public user profile
 app.get('/api/users/:userId', async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId).select('name profilePicture description createdAt');
+    const user = await User.findById(req.params.userId).select('username displayName profilePicture description createdAt');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
     res.json({
       id: user._id,
-      name: user.name,
+      username: user.username,
+      displayName: user.displayName,
       photo: user.profilePicture.path || '/default-profile.png',
       description: user.description || '',
       createdAt: user.createdAt
@@ -355,6 +381,26 @@ app.get('/api/users/:userId', async (req, res) => {
     }
     res.status(500).json({ error: 'Failed to fetch user profile' });
   }
+});
+
+app.get('/api/users/by-username/:username', async (req, res) => {
+    try {
+        const user = await User.findOne({ username: req.params.username.toLowerCase() }).select('username displayName profilePicture description createdAt');
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({
+            id: user._id,
+            username: user.username,
+            displayName: user.displayName,
+            photo: user.profilePicture.path || '/default-profile.png',
+            description: user.description || '',
+            createdAt: user.createdAt
+        });
+    } catch (error) {
+        console.error('Error fetching user by username:', error);
+        res.status(500).json({ error: 'Failed to fetch user profile' });
+    }
 });
 
 // New endpoint for Reporting Posts
@@ -545,15 +591,15 @@ app.put('/api/user/description', isAuthenticated, async (req, res) => {
   }
 });
 
-// Update user name
-app.put('/api/user/name', isAuthenticated, async (req, res) => {
+// Update user display name
+app.put('/api/user/displayName', isAuthenticated, async (req, res) => {
   try {
-    const { name } = req.body;
-    if (typeof name !== 'string' || name.trim().length === 0) {
-      return res.status(400).json({ error: 'Invalid name format' });
+    const { displayName } = req.body;
+    if (typeof displayName !== 'string' || displayName.trim().length === 0) {
+      return res.status(400).json({ error: 'Invalid display name format' });
     }
-    if (name.length > 50) { // Max length from schema
-        return res.status(400).json({ error: 'Name is too long. Maximum 50 characters.' });
+    if (displayName.length > 50) { // Max length from schema
+        return res.status(400).json({ error: 'Display name is too long. Maximum 50 characters.' });
     }
 
     const user = await User.findById(req.user._id);
@@ -561,17 +607,47 @@ app.put('/api/user/name', isAuthenticated, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    user.name = name;
+    user.displayName = displayName;
     await user.save();
     
     // Update the user object in the session
-    req.user.name = user.name;
+    req.user.displayName = user.displayName;
 
-    res.json({ success: true, name: user.name });
+    res.json({ success: true, displayName: user.displayName });
   } catch (error) {
-    console.error('Error updating user name:', error);
-    res.status(500).json({ error: 'Failed to update name' });
+    console.error('Error updating user display name:', error);
+    res.status(500).json({ error: 'Failed to update display name' });
   }
+});
+
+// Update username
+app.put('/api/user/username', isAuthenticated, async (req, res) => {
+    try {
+        const { username } = req.body;
+        if (typeof username !== 'string' || !/^[a-zA-Z0-9_.]+$/.test(username) || username.length < 3 || username.length > 20) {
+            return res.status(400).json({ error: 'Invalid username format or length.' });
+        }
+
+        const existingUser = await User.findOne({ username: username.toLowerCase() });
+        if (existingUser && existingUser._id.toString() !== req.user._id.toString()) {
+            return res.status(409).json({ error: 'Username is already taken.' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
+        user.username = username.toLowerCase();
+        await user.save();
+
+        req.user.username = user.username;
+
+        res.json({ success: true, username: user.username });
+    } catch (error) {
+        console.error('Error updating username:', error);
+        res.status(500).json({ error: 'Failed to update username.' });
+    }
 });
 
 // Upload profile picture endpoint
@@ -626,7 +702,7 @@ app.post('/api/user/profile-picture', isAuthenticated, upload.single('profilePic
 app.get('/api/posts', async (req, res) => {
   try {
     const posts = await Post.find()
-      .populate('author', 'name profilePicture')
+      .populate('author', 'username displayName profilePicture')
       .sort({ createdAt: -1 });
 
     const currentUserId = req.user ? req.user._id : null;
@@ -635,7 +711,7 @@ app.get('/api/posts', async (req, res) => {
       posts.map(async (post) => {
         // Fetch all comments for the post
         const allCommentsRaw = await Comment.find({ post: post._id })
-          .populate('author', '_id name profilePicture')
+          .populate('author', '_id username displayName profilePicture')
           .sort({ createdAt: 1 });
 
         // Function to recursively build comment tree
@@ -650,13 +726,13 @@ app.get('/api/posts', async (req, res) => {
                   // Parent comment exists
                   replyingTo = {
                     id: parentCommentObject.author._id,
-                    name: parentCommentObject.author.name
+                    username: parentCommentObject.author.username
                   };
                 } else {
                   // Parent comment was likely deleted (it's a reply to a deleted reply)
                   replyingTo = {
                     id: null,
-                    name: "Reply deleted" // Changed placeholder text
+                    username: "Reply deleted" // Changed placeholder text
                   };
                 }
               }
@@ -665,7 +741,8 @@ app.get('/api/posts', async (req, res) => {
                 content: comment.content,
                 author: {
                   id: comment.author._id,
-                  name: comment.author.name,
+                  username: comment.author.username,
+                  displayName: comment.author.displayName,
                   photo: comment.author.profilePicture.path || '/default-profile.png'
                 },
                 likes: comment.likes.length,
@@ -686,7 +763,8 @@ app.get('/api/posts', async (req, res) => {
                 content: comment.content,
                 author: {
                     id: comment.author._id,
-                    name: comment.author.name,
+                    username: comment.author.username,
+                    displayName: comment.author.displayName,
                     photo: comment.author.profilePicture.path || '/default-profile.png'
                 },
                 likes: comment.likes.length,
@@ -710,7 +788,8 @@ app.get('/api/posts', async (req, res) => {
           })) : [],
           author: {
             id: post.author._id,
-            name: post.author.name,
+            username: post.author.username,
+            displayName: post.author.displayName,
             photo: post.author.profilePicture.path || '/default-profile.png'
           },
           likes: post.likes.length,
@@ -776,7 +855,7 @@ app.post('/api/posts', isAuthenticated, async (req, res) => {
 
     const post = new Post(newPostData);
     await post.save();
-    await post.populate('author', 'name profilePicture');
+    await post.populate('author', 'username displayName profilePicture');
     await createNotificationsForMentions(content, post._id, null, req.user._id);
 
     const responsePost = {
@@ -787,7 +866,8 @@ app.post('/api/posts', isAuthenticated, async (req, res) => {
       pollOptions: post.pollOptions, // Ensure pollOptions are returned
       author: {
         id: post.author._id,
-        name: post.author.name,
+        username: post.author.username,
+        displayName: post.author.displayName,
         photo: post.author.profilePicture.path || '/default-profile.png'
       },
       likes: [], // Initialize likes
@@ -832,7 +912,7 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
     });
 
     await comment.save();
-    await comment.populate('author', 'name profilePicture');
+    await comment.populate('author', 'username displayName profilePicture');
     await createNotificationsForMentions(content, postId, comment._id, req.user._id);
 
     const responseComment = {
@@ -840,7 +920,8 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
       content: comment.content,
       author: {
         id: comment.author._id,
-        name: comment.author.name,
+        username: comment.author.username,
+        displayName: comment.author.displayName,
         photo: comment.author.profilePicture.path || '/default-profile.png'
       },
       createdAt: comment.createdAt.toISOString()
@@ -880,7 +961,7 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
     });
 
     await reply.save();
-    await reply.populate('author', 'name profilePicture');
+    await reply.populate('author', 'username displayName profilePicture');
     await createNotificationsForMentions(content, parentComment.post, reply._id, req.user._id);
 
     const responseReply = {
@@ -888,7 +969,8 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
       content: reply.content,
       author: {
         id: reply.author._id,
-        name: reply.author.name,
+        username: reply.author.username,
+        displayName: reply.author.displayName,
         photo: reply.author.profilePicture.path || '/default-profile.png'
       },
       post: reply.post,
@@ -910,10 +992,10 @@ async function createNotificationsForMentions(text, postId, commentId, senderId)
     const mentions = text.match(mentionRegex);
 
     if (mentions) {
-        const mentionedUsernames = [...new Set(mentions.map(mention => mention.substring(1)))];
+        const mentionedUsernames = [...new Set(mentions.map(mention => mention.substring(1).toLowerCase()))];
 
         for (const username of mentionedUsernames) {
-            const user = await User.findOne({ name: username });
+            const user = await User.findOne({ username: username });
             if (user && user._id.toString() !== senderId.toString()) {
                 const notification = new Notification({
                     user: user._id,
@@ -992,6 +1074,30 @@ app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
     console.error('Error liking/unliking comment:', error);
     res.status(500).json({ error: 'Failed to update comment like status.' });
   }
+});
+
+// Get a single post
+app.get('/api/posts/:postId', async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.postId)
+            .populate('author', 'username displayName profilePicture');
+
+        if (!post) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+        
+        const comments = await Comment.find({ post: req.params.postId })
+            .populate('author', 'username displayName profilePicture')
+            .sort({ createdAt: 'asc' });
+
+        const postWithComments = post.toObject();
+        postWithComments.comments = comments;
+
+        res.json(postWithComments);
+    } catch (error) {
+        console.error('Error fetching post:', error);
+        res.status(500).json({ error: 'Failed to fetch post' });
+    }
 });
 
 // Delete a post and its associated comments/replies

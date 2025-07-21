@@ -371,7 +371,7 @@
 
         // Create profile image element with fallback
         // Added borderClass parameter for optional borders (e.g., for modal profile image)
-        function createProfileImage(photoUrl, name, size = "w-10 h-10", textClass = "text-sm", borderClass = "") {
+        function createProfileImage(photoUrl, displayName, size = "w-10 h-10", textClass = "text-sm", borderClass = "") {
             const container = document.createElement('div');
             // Ensured all necessary classes for layout and appearance are here.
             container.className = `profile-img ${size} ${borderClass} rounded-full flex items-center justify-center overflow-hidden`;
@@ -387,12 +387,12 @@
                 // Image fills container, object-fit ensures aspect ratio is maintained.
                 // rounded-full on img is not strictly necessary if parent container clips, but doesn't harm.
                 img.className = 'w-full h-full object-cover'; 
-                img.alt = name || 'Profile';
+                img.alt = displayName || 'Profile';
                 
                 img.onerror = function() {
                     // console.log('Image failed to load, falling back to initials:', photoUrl);
                     // Fallback to initials if image fails to load
-                    container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
+                    container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(displayName)}</span>`;
                 };
                 
                 // img.onload = function() { /* console.log('Image loaded successfully:', photoUrl); */ };
@@ -401,16 +401,16 @@
                 container.appendChild(img);
             } else {
                 // Display initials if no photoUrl or it's the default placeholder.
-                container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
+                container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(displayName)}</span>`;
             }
             
             return container;
         }
 
         // Get initials from name
-        function getInitials(name) {
-            if (!name) return '?';
-            return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+        function getInitials(displayName) {
+            if (!displayName) return '?';
+            return displayName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
         }
 
         // Cropper related functions (initializeCropper, handleProfilePictureSelect, uploadCroppedImage)
@@ -447,12 +447,12 @@
             const userProfile = document.getElementById('user-profile');
 
             if (currentUser) {
-                const navProfileImg = createProfileImage(currentUser.photo, currentUser.name, "w-8 h-8", "text-xs");
+                const navProfileImg = createProfileImage(currentUser.photo, currentUser.displayName, "w-8 h-8", "text-xs");
 
                 authSection.innerHTML = `
                     <button onclick="toggleUserProfile()" class="nav-profile-button-hover flex items-center p-1 rounded-lg transition-colors">
                     <div id="nav-profile-container" class="mr-1"></div>  <!-- Use margin-right instead of space-x -->
-                    <span class="font-medium text-sm truncate max-w-[150px]">${escapeHtml(currentUser.name)}</span>
+                    <span class="font-medium text-sm truncate max-w-[150px]">${escapeHtml(currentUser.displayName)}</span>
                     </button>
                 `;
                 document.getElementById('nav-profile-container').appendChild(navProfileImg);
@@ -461,9 +461,9 @@
                 const modalProfileImgContainer = document.getElementById('modal-profile-img-container');
                 modalProfileImgContainer.innerHTML = ''; // Clear previous
                 // Pass "border-2" class for the modal profile image
-                modalProfileImgContainer.appendChild(createProfileImage(currentUser.photo, currentUser.name, "w-10 h-10", "text-base", "border-2"));
+                modalProfileImgContainer.appendChild(createProfileImage(currentUser.photo, currentUser.displayName, "w-10 h-10", "text-base", "border-2"));
 
-                document.getElementById('user-name').textContent = currentUser.name;
+                document.getElementById('user-name').textContent = currentUser.displayName;
 
                 // For email, add styles to allow wrapping and constrain width so it doesn’t overflow
                 const userEmailElem = document.getElementById('user-email');
@@ -587,12 +587,12 @@
                 authorProfileLink.href = `/profile.html?id=${post.author.id}`;
                 authorProfileLink.className = "flex items-center space-x-3 group flex-grow"; 
 
-                const postProfileImg = createProfileImage(post.author.photo, post.author.name, "w-10 h-10");
+                const postProfileImg = createProfileImage(post.author.photo, post.author.displayName, "w-10 h-10");
                 authorProfileLink.appendChild(postProfileImg);
                 
                 const postHeaderInfo = document.createElement('div');
                 postHeaderInfo.innerHTML = `
-                    <div class="font-medium text-gray-800 group-hover:underline">${escapeHtml(post.author.name)}</div>
+                    <div class="font-medium text-gray-800 group-hover:underline">${escapeHtml(post.author.displayName)}</div>
                     <div class="text-sm text-gray-500">${formatDate(post.createdAt)}</div>
                 `;
                 authorProfileLink.appendChild(postHeaderInfo);
@@ -868,14 +868,14 @@
                 commentAuthorProfileLink.href = `/profile.html?id=${comment.author.id}`;
                 commentAuthorProfileLink.className = "shrink-0 group";
 
-                const commentProfileImg = createProfileImage(comment.author.photo, comment.author.name, "w-8 h-8");
+                const commentProfileImg = createProfileImage(comment.author.photo, comment.author.displayName, "w-8 h-8");
                 commentAuthorProfileLink.appendChild(commentProfileImg);
                 commentDiv.appendChild(commentAuthorProfileLink);
             
                 const commentAuthorNameLink = document.createElement('a');
                 commentAuthorNameLink.href = `/profile.html?id=${comment.author.id}`;
                 commentAuthorNameLink.className = "font-medium text-gray-800 hover:underline";
-                commentAuthorNameLink.textContent = escapeHtml(comment.author.name);
+                commentAuthorNameLink.textContent = escapeHtml(comment.author.displayName);
 
                 const commentHeader = document.createElement('div');
                 commentHeader.className = 'flex items-center space-x-2 mb-1';
@@ -888,17 +888,17 @@
                 commentBody.appendChild(commentHeader);
 
                 // Add "Replying to" text if it's a reply
-                if (comment.replyingTo && comment.replyingTo.name) {
+                if (comment.replyingTo && comment.replyingTo.username) {
                     const replyingToText = document.createElement('p');
                     replyingToText.className = 'text-xs text-gray-500 mb-1';
                     // Check if replying to a deleted reply placeholder
-                    if (comment.replyingTo.name === "Reply deleted") { // Updated condition
-                         replyingToText.innerHTML = `Replying to: <span class="font-medium text-gray-600 italic">${escapeHtml(comment.replyingTo.name)}</span>`;
+                    if (comment.replyingTo.username === "Reply deleted") { // Updated condition
+                         replyingToText.innerHTML = `Replying to: <span class="font-medium text-gray-600 italic">${escapeHtml(comment.replyingTo.username)}</span>`;
                     } else {
                          replyingToText.innerHTML = `
                             Replying to: 
                             <a href="/profile.html?id=${comment.replyingTo.id}" class="text-blue-600 hover:underline font-medium">
-                                @${escapeHtml(comment.replyingTo.name)}
+                                @${escapeHtml(comment.replyingTo.username)}
                             </a>
                         `;
                     }
@@ -1028,7 +1028,7 @@
                     <p class="text-xs text-gray-500 mb-1">
                         Replying to: 
                         <a href="/profile.html?id=${commentData.author.id}" class="text-blue-600 hover:underline font-medium">
-                            ${escapeHtml(commentData.author.name)}
+                            ${escapeHtml(commentData.author.displayName)}
                         </a>
                     </p>
                     <textarea id="reply-textarea-${commentId}" placeholder="Write a reply..." rows="2" maxlength="1000"
@@ -1547,7 +1547,10 @@
 
             mentionSuggestions.forEach((user, index) => {
                 const div = document.createElement('div');
-                div.textContent = user.name;
+                div.innerHTML = `
+                    <div class="font-bold">${user.displayName}</div>
+                    <div class="text-sm text-gray-500">@${user.username}</div>
+                `;
                 div.onclick = () => selectSuggestion(index);
                 suggestionsBox.appendChild(div);
             });
@@ -1582,7 +1585,7 @@
             const before = text.substring(0, mentionStartIndex);
             const after = text.substring(currentTextarea.selectionStart);
             
-            currentTextarea.value = `${before}@${user.name} ${after}`;
+            currentTextarea.value = `${before}@${user.username} ${after}`;
             hideSuggestions();
             currentTextarea.focus();
         }
@@ -1649,7 +1652,7 @@
                 // Convert @-mentions to clickable links
                 const mentionRegex = /@(\w+)/g;
                 escapedText = escapedText.replace(mentionRegex, function(match, username) {
-                    return `<a href="/profile.html?name=${username}" class="mention-link">${match}</a>`;
+                    return `<a href="/profile.html?username=${username}" class="mention-link">${match}</a>`;
                 });
             }
             return escapedText;
