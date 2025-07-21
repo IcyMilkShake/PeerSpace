@@ -37,6 +37,25 @@
 
         /* Styles for .like-button and .like-button-active are in themes.css */
 
+        .mentions-suggestions {
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-elevated);
+            color: var(--text-primary);
+            position: absolute;
+            z-index: 50;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .mentions-suggestions div {
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        .mentions-suggestions div:hover {
+            background-color: var(--bg-hover);
+        }
+
         /* Poll theming */
         .selected-poll-option {
             background-color: var(--accent-color-subtle);
@@ -103,6 +122,11 @@
         <a href="#" class="nav-item">
           <i class="fas fa-comments" style="color: var(--notification-info-bg);"></i>
           <span class="nav-text">Communities (Aint Done)</span>
+        </a>
+        <a href="/inbox" class="nav-item">
+            <i class="fas fa-inbox" style="color: var(--notification-info-bg);"></i>
+            <span class="nav-text">Inbox</span>
+            <span id="notification-count" class="notification-badge hidden"></span>
         </a>
         <div class="nav-item dropdown" style="color: var(--notification-info-bg);">
           <i class="fas fa-ellipsis-h" style="color: var(--notification-info-bg);"></i>
@@ -179,7 +203,7 @@
                         <span id="content-char-count" class="text-sm text-gray-500">0 / 2500</span>
                     </div>
                     <textarea id="post-content" placeholder="What's on your mind?" rows="4" maxlength="2500"
-                              class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"></textarea> <!-- Removed border border-gray-300 -->
+                              class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" onkeyup="handleMention(this)"></textarea> <!-- Removed border border-gray-300 -->
                 </div>
                 <div class="mb-4">
                     <label for="post-type" class="block text-sm font-medium mb-1">Post Type:</label>
@@ -748,6 +772,7 @@
                     textarea.rows = 2;
                     textarea.maxLength = 1000;
                     textarea.className = "w-full px-3 py-2 rounded-lg resize-none focus:outline-none focus:ring-2";
+                    textarea.onkeyup = () => handleMention(textarea);
 
                     const charCountSpan = document.createElement('span');
                     charCountSpan.className = 'text-sm text-gray-500';
@@ -1007,7 +1032,7 @@
                         </a>
                     </p>
                     <textarea id="reply-textarea-${commentId}" placeholder="Write a reply..." rows="2" maxlength="1000"
-                              class="w-full px-3 py-2 text-sm rounded-lg resize-none focus:outline-none focus:ring-1"></textarea> 
+                              class="w-full px-3 py-2 text-sm rounded-lg resize-none focus:outline-none focus:ring-1" onkeyup="handleMention(this)"></textarea> 
                               <!-- Removed: border, border-gray-300, focus:ring-blue-500. CSS rules will handle. -->
                     <div class="flex justify-between items-center mt-1">
                         <span class="text-xs text-gray-500">0 / 1000</span>
@@ -1471,6 +1496,125 @@
             );
         }
 
+        // --- @-mention functions ---
+        let mentionQuery = '';
+        let mentionSuggestions = [];
+        let activeSuggestionIndex = -1;
+        let mentionStartIndex = -1;
+        let currentTextarea = null;
+
+        function handleMention(textarea) {
+            currentTextarea = textarea;
+            const text = textarea.value;
+            const cursorPos = textarea.selectionStart;
+            const atIndex = text.lastIndexOf('@', cursorPos - 1);
+
+            if (atIndex === -1) {
+                hideSuggestions();
+                return;
+            }
+
+            mentionStartIndex = atIndex;
+            mentionQuery = text.substring(atIndex + 1, cursorPos);
+
+            if (mentionQuery.includes(' ')) {
+                hideSuggestions();
+                return;
+            }
+            
+            fetchUsers(mentionQuery);
+        }
+
+        async function fetchUsers(query) {
+            try {
+                const response = await fetch(`/api/users/search?query=${query}`);
+                mentionSuggestions = await response.json();
+                showSuggestions();
+            } catch (error) {
+                console.error('Error fetching users:', error);
+                hideSuggestions();
+            }
+        }
+
+        function showSuggestions() {
+            const suggestionsBox = document.getElementById('mentions-suggestions') || createSuggestionsBox();
+            suggestionsBox.innerHTML = '';
+
+            if (mentionSuggestions.length === 0) {
+                hideSuggestions();
+                return;
+            }
+
+            mentionSuggestions.forEach((user, index) => {
+                const div = document.createElement('div');
+                div.textContent = user.name;
+                div.onclick = () => selectSuggestion(index);
+                suggestionsBox.appendChild(div);
+            });
+
+            const rect = currentTextarea.getBoundingClientRect();
+            suggestionsBox.style.top = `${rect.bottom + window.scrollY}px`;
+            suggestionsBox.style.left = `${rect.left + window.scrollX}px`;
+            suggestionsBox.style.display = 'block';
+            activeSuggestionIndex = -1;
+        }
+
+        function hideSuggestions() {
+            const suggestionsBox = document.getElementById('mentions-suggestions');
+            if (suggestionsBox) {
+                suggestionsBox.style.display = 'none';
+            }
+        }
+
+        function createSuggestionsBox() {
+            const suggestionsBox = document.createElement('div');
+            suggestionsBox.id = 'mentions-suggestions';
+            suggestionsBox.className = 'mentions-suggestions';
+            document.body.appendChild(suggestionsBox);
+            return suggestionsBox;
+        }
+
+        function selectSuggestion(index) {
+            if (index < 0 || index >= mentionSuggestions.length) return;
+
+            const user = mentionSuggestions[index];
+            const text = currentTextarea.value;
+            const before = text.substring(0, mentionStartIndex);
+            const after = text.substring(currentTextarea.selectionStart);
+            
+            currentTextarea.value = `${before}@${user.name} ${after}`;
+            hideSuggestions();
+            currentTextarea.focus();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const suggestionsBox = document.getElementById('mentions-suggestions');
+            if (!suggestionsBox || suggestionsBox.style.display === 'none') return;
+        
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeSuggestionIndex = (activeSuggestionIndex + 1) % mentionSuggestions.length;
+                updateActiveSuggestion();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeSuggestionIndex = (activeSuggestionIndex - 1 + mentionSuggestions.length) % mentionSuggestions.length;
+                updateActiveSuggestion();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                selectSuggestion(activeSuggestionIndex);
+            } else if (e.key === 'Escape') {
+                hideSuggestions();
+            }
+        });
+
+        function updateActiveSuggestion() {
+            const suggestionsBox = document.getElementById('mentions-suggestions');
+            const suggestions = suggestionsBox.children;
+            for (let i = 0; i < suggestions.length; i++) {
+                suggestions[i].style.backgroundColor = i === activeSuggestionIndex ? 'var(--bg-hover)' : '';
+            }
+        }
+
         // Utility functions
         function formatDate(dateString) {
             const date = new Date(dateString);
@@ -1490,18 +1634,22 @@
 
             if (allowLinks) {
                 // Convert URLs to clickable links
-                // Regex to find URLs (simplified version, can be improved for more complex cases)
                 const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
                 escapedText = escapedText.replace(urlRegex, function(url) {
                     let fullUrl = url;
                     if (!url.match(/^[a-zA-Z]+:\/\//)) {
                         fullUrl = 'http://' + url;
                     }
-                    // Ensure the href attribute is also properly escaped for security in case of malformed URLs
                     const safeHref = fullUrl.replace(/[&<>"']/g, function (match) {
                         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
                     });
                     return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+                });
+
+                // Convert @-mentions to clickable links
+                const mentionRegex = /@(\w+)/g;
+                escapedText = escapedText.replace(mentionRegex, function(match, username) {
+                    return `<a href="/profile.html?name=${username}" class="mention-link">${match}</a>`;
                 });
             }
             return escapedText;
@@ -1684,11 +1832,33 @@
         // document.getElementById('crop-cancel-btn').addEventListener('click', ...);
         // window.addEventListener('resize', ...); // For cropper
 
+        async function fetchUnreadNotificationCount() {
+            if (!currentUser) return;
+
+            try {
+                const response = await fetch('/api/notifications/unread-count');
+                if (response.ok) {
+                    const data = await response.json();
+                    const count = data.count;
+                    const notificationBadge = document.getElementById('notification-count');
+                    if (count > 0) {
+                        notificationBadge.textContent = count;
+                        notificationBadge.classList.remove('hidden');
+                    } else {
+                        notificationBadge.classList.add('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch unread notification count:', error);
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM loaded, initializing...');
             checkAuth();
             loadPosts();
+            fetchUnreadNotificationCount();
 
             // Filter button event listeners
             const filterButtons = document.querySelectorAll('#filter-bar .filter-btn');

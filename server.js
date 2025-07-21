@@ -12,7 +12,7 @@ const { v4: uuidv4 } = require('uuid');
 const AWS = require('aws-sdk');
 require('dotenv').config();
 
-const { User, Post, Comment } = require('./schema');
+const { User, Post, Comment, Notification } = require('./schema');
 
 const app = express();
 const PORT = process.env.PORT || 8082;
@@ -223,6 +223,60 @@ app.get('/profile', (req, res) => {
   res.sendFile(path.join(__dirname, 'profile.html'));
 });
 
+app.get('/inbox', isAuthenticated, (req, res) => {
+  res.sendFile(path.join(__dirname, 'inbox.html'));
+});
+
+app.get('/api/notifications', isAuthenticated, async (req, res) => {
+  try {
+    const notifications = await Notification.find({ user: req.user._id })
+      .populate('sender', 'name')
+      .sort({ createdAt: -1 });
+
+    const responseNotifications = notifications.map(n => ({
+        _id: n._id,
+        message: `<strong>${n.sender.name}</strong> mentioned you in a post.`,
+        link: `/profile.html?id=${n.post}#comment-${n.comment}`,
+        read: n.read,
+        createdAt: n.createdAt
+    }));
+    res.json(responseNotifications);
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+app.get('/api/notifications/unread-count', isAuthenticated, async (req, res) => {
+    try {
+        const count = await Notification.countDocuments({ user: req.user._id, read: false });
+        res.json({ count });
+    } catch (error) {
+        console.error('Error fetching unread notification count:', error);
+        res.status(500).json({ error: 'Failed to fetch unread notification count' });
+    }
+});
+
+app.post('/api/notifications/:notificationId/read', isAuthenticated, async (req, res) => {
+    try {
+        const { notificationId } = req.params;
+        const notification = await Notification.findOneAndUpdate(
+            { _id: notificationId, user: req.user._id },
+            { read: true },
+            { new: true }
+        );
+
+        if (!notification) {
+            return res.status(404).json({ error: 'Notification not found' });
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
+        res.status(500).json({ error: 'Failed to mark notification as read' });
+    }
+});
+
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
@@ -260,6 +314,23 @@ app.get('/api/user', (req, res) => {
     });
   } else {
     return res.status(401).json({ error: 'Not authenticated' });
+  }
+});
+
+// User search for @-mentions
+app.get('/api/users/search', isAuthenticated, async (req, res) => {
+  try {
+    const { query } = req.query;
+    if (!query) {
+      return res.json([]);
+    }
+    const users = await User.find({
+      name: { $regex: query, $options: 'i' }
+    }).select('name').limit(10);
+    res.json(users);
+  } catch (error) {
+    console.error('Error searching users:', error);
+    res.status(500).json({ error: 'Failed to search users' });
   }
 });
 
@@ -706,6 +777,7 @@ app.post('/api/posts', isAuthenticated, async (req, res) => {
     const post = new Post(newPostData);
     await post.save();
     await post.populate('author', 'name profilePicture');
+    await createNotificationsForMentions(content, post._id, null, req.user._id);
 
     const responsePost = {
       id: post._id,
@@ -761,6 +833,7 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
 
     await comment.save();
     await comment.populate('author', 'name profilePicture');
+    await createNotificationsForMentions(content, postId, comment._id, req.user._id);
 
     const responseComment = {
       id: comment._id,
@@ -808,6 +881,7 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
 
     await reply.save();
     await reply.populate('author', 'name profilePicture');
+    await createNotificationsForMentions(content, parentComment.post, reply._id, req.user._id);
 
     const responseReply = {
       id: reply._id,
@@ -829,6 +903,30 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
     res.status(500).json({ error: 'Failed to create reply.' });
   }
 });
+
+// Helper function to parse mentions and create notifications
+async function createNotificationsForMentions(text, postId, commentId, senderId) {
+    const mentionRegex = /@(\w+)/g;
+    const mentions = text.match(mentionRegex);
+
+    if (mentions) {
+        const mentionedUsernames = [...new Set(mentions.map(mention => mention.substring(1)))];
+
+        for (const username of mentionedUsernames) {
+            const user = await User.findOne({ name: username });
+            if (user && user._id.toString() !== senderId.toString()) {
+                const notification = new Notification({
+                    user: user._id,
+                    sender: senderId,
+                    type: 'mention',
+                    post: postId,
+                    comment: commentId,
+                });
+                await notification.save();
+            }
+        }
+    }
+}
 
 // Like/Unlike a post
 app.post('/api/posts/:postId/like', isAuthenticated, async (req, res) => {

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inbox - Forum</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="themes.css">
+    <link rel="stylesheet" href="inbox.css">
+</head>
+<body class="min-h-screen">
+    <div id="notification-container" class="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm sm:max-w-md p-4 space-y-3 z-[100]">
+    </div>
+
+    <nav class="shadow-md border-b">
+        <div class="max-w-4xl mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <a href="/" class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-lg">F</span>
+                    </div>
+                    <h1 class="text-2xl font-bold">Forum</h1>
+                </a>
+                <div id="auth-section-inbox">
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-3xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-6">Inbox</h1>
+        <div id="inbox-container" class="space-y-4">
+            <!-- Notifications will be loaded here -->
+        </div>
+        <div id="inbox-loading" class="text-center py-12">
+            <p>Loading notifications...</p>
+        </div>
+        <div id="inbox-empty" class="hidden text-center py-12">
+            <p>You have no notifications.</p>
+        </div>
+        <div id="inbox-error" class="hidden text-center py-12">
+            <p>Could not load notifications. Please try again later.</p>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkAuthStatusForInbox();
+            await loadNotifications();
+        });
+
+        async function checkAuthStatusForInbox() {
+            try {
+                const response = await fetch('/api/user', { credentials: 'include' });
+                if (!response.ok) {
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Auth check failed on inbox page:', error);
+                window.location.href = '/';
+            }
+        }
+
+        async function loadNotifications() {
+            const loadingEl = document.getElementById('inbox-loading');
+            const emptyEl = document.getElementById('inbox-empty');
+            const errorEl = document.getElementById('inbox-error');
+            const containerEl = document.getElementById('inbox-container');
+
+            try {
+                const response = await fetch('/api/notifications');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch notifications');
+                }
+                const notifications = await response.json();
+
+                loadingEl.classList.add('hidden');
+
+                if (notifications.length === 0) {
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                containerEl.innerHTML = '';
+                notifications.forEach(notification => {
+                    const notificationEl = document.createElement('div');
+                    notificationEl.className = 'notification-item p-4 border rounded-lg';
+                    if (!notification.read) {
+                        notificationEl.classList.add('font-bold');
+                    }
+                    notificationEl.innerHTML = `
+                        <a href="${notification.link}" class="block" target="_blank" rel="noopener noreferrer">
+                            <p>${notification.message}</p>
+                            <span class="text-sm text-gray-500">${new Date(notification.createdAt).toLocaleString()}</span>
+                        </a>
+                    `;
+                    notificationEl.addEventListener('click', async () => {
+                        await fetch('/api/notifications/' + notification._id + '/read', { method: 'POST' });
+                        notificationEl.classList.remove('font-bold');
+                    });
+                    containerEl.appendChild(notificationEl);
+                });
+
+            } catch (error) {
+                console.error('Failed to load notifications:', error);
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

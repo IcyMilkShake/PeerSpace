@@ -127,8 +127,47 @@ const User = mongoose.model('User', userSchema);
 const Post = mongoose.model('Post', postSchema);
 const Comment = mongoose.model('Comment', commentSchema);
 
+// Notification Schema
+const notificationSchema = new mongoose.Schema({
+  user: { // The user who receives the notification
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  sender: { // The user who triggered the notification
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  type: { // e.g., 'mention', 'like', 'comment'
+    type: String,
+    required: true,
+    enum: ['mention']
+  },
+  post: { // The post where the event happened
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Post',
+    required: true
+  },
+  comment: { // Optional: The comment where the event happened
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Comment'
+  },
+  read: {
+    type: Boolean,
+    default: false
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+const Notification = mongoose.model('Notification', notificationSchema);
+
 module.exports = {
   User,
   Post,
-  Comment
+  Comment,
+  Notification
 };

@@ -491,7 +491,7 @@
 
         function getUserIdFromUrl() {
             const params = new URLSearchParams(window.location.search);
-            return params.get('id');
+            return params.get('id') || params.get('name');
         }
 
         function formatDate(dateString) {
@@ -501,9 +501,9 @@
         }
 
         async function loadProfileData() {
-            profileUserId = getUserIdFromUrl();
-            if (!profileUserId) {
-                displayProfileError("No user ID provided in the URL.");
+            const profileIdentifier = getUserIdFromUrl();
+            if (!profileIdentifier) {
+                displayProfileError("No user ID or name provided in the URL.");
                 return;
             }
 
@@ -512,7 +512,9 @@
             document.getElementById('profile-error').classList.add('hidden');
 
             try {
-                const response = await fetch(`/api/users/${profileUserId}`);
+                const params = new URLSearchParams(window.location.search);
+                const url = params.has('id') ? `/api/users/${profileIdentifier}` : `/api/users/by-name/${profileIdentifier}`;
+                const response = await fetch(url);
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ message: `Error ${response.status}` }));
                     throw new Error(errorData.error || errorData.message || `Failed to load profile: ${response.status}`);

@@ -272,6 +272,16 @@
     --filter-bar-bg: #110f21;
 }
 
+.mention-link {
+    color: var(--accent-color);
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.mention-link:hover {
+    text-decoration: underline;
+}
+
 /* --- Apply Theme Variables --- */
 /* Resetting some Tailwind text colors to use theme variables */
 .text-gray-800 { color: var(--text-primary); }
