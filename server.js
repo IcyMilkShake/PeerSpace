@@ -92,9 +92,9 @@ const sessionConfig = {
 if (!development) {
   sessionConfig.cookie.secure = true;
   sessionConfig.cookie.domain = '.ipo-servers.net';
-  sessionConfig.cookie.sameSite = 'lax';
-} else {
   sessionConfig.cookie.sameSite = 'none';
+} else {
+  sessionConfig.cookie.sameSite = 'lax';
 }
 
 app.use(session(sessionConfig));
