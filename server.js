@@ -91,7 +91,7 @@ const sessionConfig = {
 if (!development) {
   sessionConfig.cookie.secure = true;
   sessionConfig.cookie.domain = '.ipo-servers.net';
-  sessionConfig.cookie.sameSite = 'none';
+  sessionConfig.cookie.sameSite = 'lax';
 } else {
   sessionConfig.cookie.sameSite = 'lax';
 }
