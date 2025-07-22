@@ -67,7 +67,7 @@ async function deleteCommentAndChildren(commentId) {
 }
 
 // Middleware
-app.set('trust proxy', 1); // Trust first proxy - IMPORTANT for HTTPS
+app.set('trust proxy', true);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
@@ -104,12 +104,13 @@ console.log('Session config:', sessionConfig); // Debug log
 
 app.use(session(sessionConfig));
 app.use((req, res, next) => {
-  console.log('=== SESSION DEBUG ===');
-  console.log('Session ID:', req.sessionID);
-  console.log('Session exists:', !!req.session);
-  console.log('Session data:', req.session);
-  console.log('Cookies received:', req.headers.cookie);
-  console.log('====================');
+  console.log('=== PROXY HEADERS DEBUG ===');
+  console.log('x-forwarded-proto:', req.headers['x-forwarded-proto']);
+  console.log('x-forwarded-for:', req.headers['x-forwarded-for']);
+  console.log('x-real-ip:', req.headers['x-real-ip']);
+  console.log('req.secure:', req.secure);
+  console.log('req.protocol:', req.protocol);
+  console.log('===========================');
   next();
 });
 // Passport configuration
