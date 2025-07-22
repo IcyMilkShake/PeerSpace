@@ -230,15 +230,17 @@ passport.serializeUser((user, done) => {
 });
 
 passport.deserializeUser(async (id, done) => {
+  console.log('>>> DESERIALIZE USER CALLED WITH ID:', id);
   try {
-    console.log('Deserializing user with ID:', id);
     const user = await User.findById(id);
-    console.log('Found user:', user);
+    console.log('>>> USER FOUND:', user);
     done(null, user);
-  } catch (error) {
-    done(error, null);
+  } catch (err) {
+    console.error('>>> DESERIALIZE ERROR:', err);
+    done(err, null);
   }
 });
+
 
 // Authentication middleware
 const isAuthenticated = (req, res, next) => {
