@@ -90,7 +90,7 @@ const sessionConfig = {
 };
 
 if (!development) {
-  sessionConfig.cookie.secure = false;
+  sessionConfig.cookie.secure = true;
   sessionConfig.cookie.domain = '.ipo-servers.net';
   sessionConfig.cookie.sameSite = 'lax';
 } else {
