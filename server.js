@@ -94,7 +94,7 @@ if (!development) {
   sessionConfig.cookie.domain = '.ipo-servers.net';
   sessionConfig.cookie.sameSite = 'lax';
 } else {
-  sessionConfig.cookie.sameSite = 'lax';
+  sessionConfig.cookie.sameSite = 'none';
 }
 
 app.use(session(sessionConfig));
