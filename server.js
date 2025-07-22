@@ -83,7 +83,6 @@ const sessionConfig = {
     touchAfter: 24 * 3600,
   }),
   cookie: {
-    secure: false,
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 1 day
   },
