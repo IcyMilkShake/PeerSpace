@@ -75,8 +75,9 @@ app.use(express.static(__dirname));
 
 // Session configuration with MongoDB store
 const sessionConfig = {
+  name: 'peerspace.sid',
   secret: process.env.SESSION_SECRET,
-  resave: false,
+  resave: true,
   saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
