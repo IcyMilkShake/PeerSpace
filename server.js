@@ -74,21 +74,30 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
 // Session configuration with MongoDB store
-app.use(session({
+const sessionConfig = {
   secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
-    touchAfter: 24 * 3600
+    touchAfter: 24 * 3600,
   }),
   cookie: {
     secure: false,
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000,  // Cookie expiration: 1 day
-    sameSite: 'lax' // Use 'lax' for both dev and prod to avoid issues with 'none'
-  }
-}));
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+  },
+};
+
+if (!development) {
+  sessionConfig.cookie.secure = true;
+  sessionConfig.cookie.domain = '.ipo-servers.net';
+  sessionConfig.cookie.sameSite = 'lax';
+} else {
+  sessionConfig.cookie.sameSite = 'lax';
+}
+
+app.use(session(sessionConfig));
 
 // Passport configuration
 app.use(passport.initialize());
@@ -231,9 +240,13 @@ passport.deserializeUser(async (id, done) => {
 
 // Authentication middleware
 const isAuthenticated = (req, res, next) => {
+  console.log('isAuthenticated middleware called. Session:', req.session);
+  console.log('User:', req.user);
   if (req.isAuthenticated()) {
+    console.log('User is authenticated.');
     return next();
   }
+  console.log('User is NOT authenticated.');
   res.status(401).json({ error: 'Not authenticated' });
 };
 // Routes
@@ -306,8 +319,14 @@ app.get('/auth/google',
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
-    console.log('Google auth callback successful:', req.user);
-    req.session.save(() => {
+    console.log('Google auth callback successful. User:', req.user);
+    console.log('Session before save:', req.session);
+    req.session.save((err) => {
+      if (err) {
+        console.error('Error saving session:', err);
+        return res.redirect('/');
+      }
+      console.log('Session after save:', req.session);
       res.redirect('/');
     });
   }
@@ -324,7 +343,10 @@ app.post('/auth/logout', (req, res) => {
 });
 
 app.get('/api/user', (req, res) => {
+  console.log('/api/user endpoint called. Session:', req.session);
+  console.log('User:', req.user);
   if (req.isAuthenticated() && req.user) {
+    console.log('User is authenticated, sending user data.');
     const { _id, username, displayName, email, profilePicture, description, createdAt } = req.user;
     return res.json({
       id: _id,
@@ -336,6 +358,7 @@ app.get('/api/user', (req, res) => {
       createdAt: createdAt
     });
   } else {
+    console.log('User is not authenticated, sending 401.');
     return res.status(401).json({ error: 'Not authenticated' });
   }
 });
