@@ -94,7 +94,6 @@ if (!development) {
   // For HTTPS production
   sessionConfig.cookie.secure = true; // Keep true for HTTPS
   sessionConfig.cookie.sameSite = 'lax'; // Changed from 'none' to 'lax' - this is key!
-  sessionConfig.cookie.domain = '.ipo-servers.net'; // Set your domain
 } else {
   // For local development
   sessionConfig.cookie.secure = false;
@@ -104,7 +103,15 @@ if (!development) {
 console.log('Session config:', sessionConfig); // Debug log
 
 app.use(session(sessionConfig));
-
+app.use((req, res, next) => {
+  console.log('=== SESSION DEBUG ===');
+  console.log('Session ID:', req.sessionID);
+  console.log('Session exists:', !!req.session);
+  console.log('Session data:', req.session);
+  console.log('Cookies received:', req.headers.cookie);
+  console.log('====================');
+  next();
+});
 // Passport configuration
 app.use(passport.initialize());
 app.use(passport.session());
