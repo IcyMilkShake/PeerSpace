@@ -72,6 +72,26 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
+app.use((req, res, next) => {
+  // Check if the referer or host indicates HTTPS
+  const referer = req.headers.referer || '';
+  const host = req.headers.host || '';
+  
+  if (referer.startsWith('https://') || 
+      host === 'peerspace.ipo-servers.net' ||
+      req.headers['x-forwarded-for']) { // Your proxy sends this header
+    req.secure = true;
+    req.protocol = 'https';
+  }
+  
+  console.log('=== HTTPS DETECTION ===');
+  console.log('Detected as secure:', req.secure);
+  console.log('Protocol:', req.protocol);
+  console.log('=======================');
+  
+  next();
+});
+
 // FIXED Session configuration with MongoDB store
 const sessionConfig = {
   name: 'peerspace.sid',
