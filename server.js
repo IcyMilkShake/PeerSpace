@@ -91,7 +91,6 @@ const sessionConfig = {
 
 if (!development) {
   sessionConfig.cookie.secure = true;
-  sessionConfig.cookie.domain = '.ipo-servers.net';
   sessionConfig.cookie.sameSite = 'none';
 } else {
   sessionConfig.cookie.sameSite = 'lax';
@@ -347,6 +346,10 @@ app.post('/auth/logout', (req, res) => {
 });
 
 app.get('/api/user', (req, res) => {
+  console.log('--- Incoming Request ---');
+  console.log('Cookies:', req.headers.cookie);
+  console.log('Session:', req.session);
+  console.log('User:', req.user);
   console.log('/api/user endpoint called. Session:', req.session);
   console.log('User:', req.user);
   if (req.isAuthenticated() && req.user) {
