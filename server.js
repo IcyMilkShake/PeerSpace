@@ -68,7 +68,7 @@ async function deleteCommentAndChildren(commentId) {
 }
 
 // Middleware
-app.set('trust proxy', 1); // Trust first proxy
+app.set('trust proxy', true); // Trust first proxy
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
