@@ -96,6 +96,14 @@ if (!development) {
   sessionConfig.cookie.sameSite = 'lax';
 }
 
+console.log('Session config:', sessionConfig);
+
+app.use((req, res, next) => {
+  console.log(`Request received for: ${req.method} ${req.url}`);
+  console.log('Request headers:', req.headers);
+  next();
+});
+
 app.use(session(sessionConfig));
 
 // Passport configuration
@@ -320,18 +328,38 @@ app.get('/auth/google',
 );
 
 app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/' }),
-  (req, res) => {
-    console.log('Google auth callback successful. User:', req.user);
-    console.log('Session before save:', req.session);
-    req.session.save((err) => {
+  (req, res, next) => {
+    console.log('--- Google Callback Initiated ---');
+    console.log('Request protocol:', req.protocol);
+    console.log('Request headers:', req.headers);
+    passport.authenticate('google', { failureRedirect: '/' }, (err, user, info) => {
       if (err) {
-        console.error('Error saving session:', err);
+        console.error('Error during google authentication:', err);
         return res.redirect('/');
       }
-      console.log('Session after save:', req.session);
-      res.redirect('/');
-    });
+      if (!user) {
+        console.log('Authentication failed, no user object returned.');
+        return res.redirect('/');
+      }
+      req.logIn(user, (err) => {
+        if (err) {
+          console.error('Error during req.logIn:', err);
+          return res.redirect('/');
+        }
+        console.log('User logged in successfully:', user.displayName);
+        console.log('Session object after login:', req.session);
+        
+        req.session.save((err) => {
+          if (err) {
+            console.error('Error saving session:', err);
+            return res.redirect('/');
+          }
+          console.log('Session saved successfully. Cookie:', req.session.cookie);
+          console.log('Redirecting to /');
+          res.redirect('/');
+        });
+      });
+    })(req, res, next);
   }
 );
 
@@ -346,16 +374,18 @@ app.post('/auth/logout', (req, res) => {
 });
 
 app.get('/api/user', (req, res) => {
-  console.log('--- Incoming Request ---');
-  console.log('Cookies:', req.headers.cookie);
+  console.log('--- /api/user endpoint ---');
+  console.log('Request protocol:', req.protocol);
+  console.log('Request headers:', req.headers);
+  console.log('Session ID:', req.sessionID);
   console.log('Session:', req.session);
+  console.log('req.isAuthenticated():', req.isAuthenticated());
   console.log('User:', req.user);
-  console.log('/api/user endpoint called. Session:', req.session);
-  console.log('User:', req.user);
+
   if (req.isAuthenticated() && req.user) {
-    console.log('User is authenticated, sending user data.');
+    console.log('User is authenticated. Sending user data.');
     const { _id, username, displayName, email, profilePicture, description, createdAt } = req.user;
-    return res.json({
+    res.json({
       id: _id,
       username,
       displayName,
@@ -365,8 +395,8 @@ app.get('/api/user', (req, res) => {
       createdAt: createdAt
     });
   } else {
-    console.log('User is not authenticated, sending 401.');
-    return res.status(401).json({ error: 'Not authenticated' });
+    console.log('User is not authenticated. Sending 401.');
+    res.status(401).json({ error: 'Not authenticated' });
   }
 });
 
