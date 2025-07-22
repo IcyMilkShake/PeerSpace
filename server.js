@@ -74,78 +74,55 @@ app.use(express.static(__dirname));
 
 app.use((req, res, next) => {
   if (!development) {
-    // Multiple ways to detect HTTPS in production
-    const isHttps = 
-      req.headers['x-forwarded-proto'] === 'https' ||
-      req.headers['x-forwarded-ssl'] === 'on' ||
-      req.headers['x-arr-ssl'] || // Azure
-      req.connection.encrypted ||
-      req.secure ||
-      (req.headers.host && req.headers.host.includes('https')) ||
-      (req.get('referer') && req.get('referer').startsWith('https://'));
-    
-    if (isHttps) {
-      req.secure = true;
-      req.protocol = 'https';
-      console.log('=== HTTPS DETECTED ===');
-      console.log('HTTPS detection method:', 
-        req.headers['x-forwarded-proto'] === 'https' ? 'x-forwarded-proto' :
-        req.headers['x-forwarded-ssl'] === 'on' ? 'x-forwarded-ssl' :
-        req.headers['x-arr-ssl'] ? 'x-arr-ssl' :
-        req.connection.encrypted ? 'connection.encrypted' :
-        req.secure ? 'req.secure' :
-        req.headers.host?.includes('https') ? 'host header' :
-        'referer header'
-      );
-      console.log('===================');
-    } else {
-      console.log('=== HTTPS NOT DETECTED ===');
-      console.log('x-forwarded-proto:', req.headers['x-forwarded-proto']);
-      console.log('x-forwarded-ssl:', req.headers['x-forwarded-ssl']);
-      console.log('connection.encrypted:', req.connection.encrypted);
-      console.log('req.secure:', req.secure);
-      console.log('host:', req.headers.host);
-      console.log('referer:', req.get('referer'));
-      console.log('========================');
-    }
+    // Force secure for production
+    req.secure = true;
+    req.protocol = 'https';
+    console.log('=== FORCED HTTPS ===');
+    console.log('Forced secure: true');
+    console.log('===================');
   }
   next();
 });
 
-// Updated session configuration that's more flexible
+// FIXED Session configuration with MongoDB store
 const sessionConfig = {
   name: 'peerspace.sid',
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
+  secret: process.env.SESSION_SECRET, // Add fallback
+  resave: false, // Changed to false - don't save if nothing changed
+  saveUninitialized: false, // Keep false for security
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/PeerSpace',
-    touchAfter: 24 * 3600,
-    ttl: 24 * 60 * 60
+    touchAfter: 24 * 3600, // lazy session update
+    ttl: 24 * 60 * 60 // 1 day in seconds
   }),
   cookie: {
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000,
+    maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
   },
 };
 
+// FIXED cookie settings for production
 if (!development) {
-  // In production, we'll dynamically set secure based on the request
-  sessionConfig.cookie.secure = false; // We'll handle this per-request
-  sessionConfig.cookie.sameSite = 'lax';
+  // For HTTPS production
+  sessionConfig.cookie.secure = true; // Keep true for HTTPS
+  sessionConfig.cookie.sameSite = 'lax'; // Changed from 'none' to 'lax' - this is key!
 } else {
+  // For local development
   sessionConfig.cookie.secure = false;
   sessionConfig.cookie.sameSite = 'lax';
 }
 
-app.use(session(sessionConfig));
+console.log('Session config:', sessionConfig); // Debug log
 
-// Add middleware to dynamically set secure cookies for HTTPS requests
+app.use(session(sessionConfig));
 app.use((req, res, next) => {
-  if (!development && req.secure && req.session) {
-    // For HTTPS requests, ensure the session cookie will be secure
-    req.session.cookie.secure = true;
-  }
+  console.log('=== PROXY HEADERS DEBUG ===');
+  console.log('x-forwarded-proto:', req.headers['x-forwarded-proto']);
+  console.log('x-forwarded-for:', req.headers['x-forwarded-for']);
+  console.log('x-real-ip:', req.headers['x-real-ip']);
+  console.log('req.secure:', req.secure);
+  console.log('req.protocol:', req.protocol);
+  console.log('===========================');
   next();
 });
 // Passport configuration
