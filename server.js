@@ -83,7 +83,7 @@ app.use(session({
     touchAfter: 24 * 3600
   }),
   cookie: {
-    secure: !development,
+    secure: false,
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000,  // Cookie expiration: 1 day
     sameSite: 'lax' // Use 'lax' for both dev and prod to avoid issues with 'none'
