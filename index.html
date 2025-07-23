@@ -289,6 +289,11 @@
             <!-- Posts will be loaded here -->
         </div>
 
+        <!-- Single Post Container (hidden by default) -->
+        <div id="single-post-container" class="hidden">
+            <!-- Single post will be loaded here -->
+        </div>
+
         <!-- Empty State -->
         <div id="empty-state" class="text-center py-16">
             <div class="text-gray-400 text-6xl mb-4">📝</div>
@@ -576,7 +581,8 @@
             filteredPosts.forEach(post => {
                 const article = document.createElement('article');
                 // Removed 'bg-white' class, themes.css will handle background via 'article' tag selector
-                article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in'; 
+                article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in cursor-pointer';
+                article.onclick = () => renderSinglePost(post.id);
                 
                 // Create post header with profile image
                 const postHeader = document.createElement('div');
@@ -672,35 +678,8 @@
 
                 const postTextParagraph = document.createElement('p');
                 postTextParagraph.className = "text-gray-700 mb-4 whitespace-pre-wrap";
-                
-                if (post.content.length > 500) {
-                    const seeMoreContainer = document.createElement('div');
-                    seeMoreContainer.className = 'see-more-container post-see-more';
-
-                    const fullContent = document.createElement('p');
-                    fullContent.className = 'text-gray-700 mb-4 whitespace-pre-wrap';
-                    fullContent.innerHTML = escapeHtml(post.content, true);
-
-                    seeMoreContainer.appendChild(fullContent);
-
-                    const seeMoreBtn = document.createElement('button');
-                    seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
-                    seeMoreBtn.textContent = 'See More';
-                    seeMoreBtn.onclick = () => {
-                        if (seeMoreContainer.classList.contains('expanded')) {
-                            seeMoreContainer.classList.remove('expanded');
-                            seeMoreBtn.textContent = 'See More';
-                        } else {
-                            seeMoreContainer.classList.add('expanded');
-                            seeMoreBtn.textContent = 'See Less';
-                        }
-                    };
-                    postContentElement.appendChild(seeMoreContainer);
-                    postContentElement.appendChild(seeMoreBtn);
-                } else {
-                    postTextParagraph.innerHTML = escapeHtml(post.content, true);
-                    postContentElement.appendChild(postTextParagraph);
-                }
+                postTextParagraph.innerHTML = escapeHtml(post.content);
+                postContentElement.appendChild(postTextParagraph);
 
                 // Poll Display and Voting
                 if (post.postType === 'poll' && post.pollOptions && post.pollOptions.length > 0) {
@@ -751,65 +730,6 @@
                     postContentElement.appendChild(pollContainer);
                 }
                 
-                // Create comments section
-                const commentsSection = document.createElement('div');
-                commentsSection.className = 'border-t pt-4';
-                
-                const commentsHeader = document.createElement('h3');
-                commentsHeader.className = 'font-semibold mb-3';
-                commentsHeader.style = 'color: var(--bg-primary)'
-                commentsHeader.textContent = `Comments (${post.comments.length})`; // This will need adjustment for replies
-                commentsSection.appendChild(commentsHeader);
-
-                // Add top-level comment form if user is authenticated
-                if (currentUser) {
-                    const commentFormContainer = document.createElement('div');
-                    commentFormContainer.className = 'mb-4';
-                    const textarea = document.createElement('textarea');
-                    textarea.id = `comment-textarea-${post.id}`;
-                    textarea.placeholder = "Add a comment...";
-                    textarea.rows = 2;
-                    textarea.maxLength = 1000;
-                    textarea.className = "w-full px-3 py-2 rounded-lg resize-none focus:outline-none focus:ring-2";
-                    textarea.onkeyup = () => handleMention(textarea);
-
-                    const charCountSpan = document.createElement('span');
-                    charCountSpan.className = 'text-sm text-gray-500';
-                    charCountSpan.textContent = '0 / 1000';
-
-                    const button = document.createElement('button');
-                    button.onclick = () => addCommentOrReply(post.id);
-                    button.className = "button-submit-comment mt-2 px-4 py-2 rounded-lg font-medium transition-colors";
-                    button.textContent = "Add Comment";
-
-                    textarea.addEventListener('input', () => {
-                        const currentLength = textarea.value.length;
-                        const maxLength = textarea.maxLength;
-                        charCountSpan.textContent = `${currentLength} / ${maxLength}`;
-                        if (currentLength >= maxLength) {
-                            charCountSpan.classList.add('text-red-500');
-                        } else {
-                            charCountSpan.classList.remove('text-red-500');
-                        }
-                    });
-                    
-                    const bottomDiv = document.createElement('div');
-                    bottomDiv.className = 'flex justify-between items-center';
-                    bottomDiv.appendChild(charCountSpan);
-                    bottomDiv.appendChild(button);
-
-                    commentFormContainer.appendChild(textarea);
-                    commentFormContainer.appendChild(bottomDiv);
-                    commentsSection.appendChild(commentFormContainer);
-                }
-                
-                // Render comments and their replies
-                const commentsContainer = document.createElement('div');
-                commentsContainer.className = 'space-y-3';
-                renderCommentTree(post.comments, commentsContainer, post.id, 0); // Initial depth 0
-                
-                commentsSection.appendChild(commentsContainer);
-                
                 // Assemble the article
                 article.appendChild(postHeader);
                 if (postTagsContainer.hasChildNodes()) { // Only append if there are tags
@@ -817,9 +737,8 @@
                 }
                 article.appendChild(postContentElement);
                 
-                // Post Actions (Like button)
+                // Post Actions (Like and Comment counts)
                 const postActionsDiv = document.createElement('div');
-                // Removed 'border-b'
                 postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
                 
                 const likeButtonPost = document.createElement('button');
@@ -830,11 +749,21 @@
                     </svg>
                 <span id="post-like-count-${post.id}">${post.likes || 0} Likes</span>
                 `;
-                likeButtonPost.onclick = () => toggleLike('post', post.id);
+                likeButtonPost.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleLike('post', post.id);
+                };
                 postActionsDiv.appendChild(likeButtonPost);
+
+                const commentCountSpan = document.createElement('span');
+                commentCountSpan.className = 'flex items-center space-x-1';
+                commentCountSpan.innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    <span>${post.comments.length} Comments</span>
+                `;
+                postActionsDiv.appendChild(commentCountSpan);
                 
                 article.appendChild(postActionsDiv);
-                article.appendChild(commentsSection);
                 
                 container.appendChild(article);
             });
@@ -1137,18 +1066,38 @@
                 });
 
                 if (response.ok) {
-                    // Instead of trying to manually insert, just reload all posts for simplicity
-                    // This ensures the entire comment tree with likes etc. is correctly updated
-                    await loadPosts(); 
-                    textarea.value = ''; // Clear textarea
-                    if (parentCommentId) {
-                        // Hide the reply form after successful submission
-                        const replyFormContainer = document.getElementById(`reply-form-container-${parentCommentId}`);
-                        if (replyFormContainer) {
-                            replyFormContainer.classList.add('hidden');
-                            replyFormContainer.innerHTML = ''; // Clear the form
+                    const newComment = await response.json();
+                    // Manually add the new comment to the local 'posts' array
+                    const postIndex = posts.findIndex(p => p.id === postId);
+                    if (postIndex !== -1) {
+                        if (parentCommentId) {
+                            // It's a reply, find the parent comment and add it to its replies
+                            const findAndAddReply = (comments) => {
+                                for (const comment of comments) {
+                                    if (comment.id === parentCommentId) {
+                                        if (!comment.replies) {
+                                            comment.replies = [];
+                                        }
+                                        comment.replies.push(newComment);
+                                        return true;
+                                    }
+                                    if (comment.replies && findAndAddReply(comment.replies)) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            };
+                            findAndAddReply(posts[postIndex].comments);
+                        } else {
+                            // It's a top-level comment
+                            posts[postIndex].comments.push(newComment);
                         }
                     }
+
+                    // Re-render the single post view to show the new comment
+                    renderSinglePost(postId);
+                    textarea.value = ''; // Clear textarea
+                    showNotification("Comment added successfully.", "success");
                 } else {
                     const errorData = await response.json();
                     showNotification(`Failed to add ${parentCommentId ? 'reply' : 'comment'}: ${errorData.error || 'Server error'}`, 'error');
@@ -1408,8 +1357,13 @@
                             likeButton.classList.remove('like-button-active');
                         }
                     }
-                    // No longer calling await loadPosts(); 
 
+                    // If we are in the single post view, re-render it to show the updated like count
+                    const singlePostContainer = document.getElementById('single-post-container');
+                    if (!singlePostContainer.classList.contains('hidden')) {
+                        const postId = singlePostContainer.querySelector('article').id.split('-')[2];
+                        renderSinglePost(postId);
+                    }
                 } else {
                     const errorData = await response.json().catch(() => ({error: "Unknown error"}));
                     showNotification(`Failed to update like for ${type}: ${errorData.error}`, 'error');
@@ -1474,7 +1428,27 @@
                         });
 
                         if (response.ok) {
-                            await loadPosts(); // Reload posts to reflect the change
+                            // Find the post that the comment belongs to
+                            const post = posts.find(p => p.comments.some(c => c.id === commentId) || 
+                                                     p.comments.some(c => c.replies && c.replies.some(r => r.id === commentId)));
+
+                            if (post) {
+                                // Find and remove the comment from the local 'posts' array
+                                const removeComment = (comments) => {
+                                    for (let i = 0; i < comments.length; i++) {
+                                        if (comments[i].id === commentId) {
+                                            comments.splice(i, 1);
+                                            return true;
+                                        }
+                                        if (comments[i].replies && removeComment(comments[i].replies)) {
+                                            return true;
+                                        }
+                                    }
+                                    return false;
+                                };
+                                removeComment(post.comments);
+                                renderSinglePost(post.id);
+                            }
                             showNotification("Comment/reply deleted successfully.", "success");
                         } else {
                             const errorData = await response.json().catch(() => ({error: "Server error"}));
@@ -1889,6 +1863,295 @@
             console.log('Window focused, checking auth...');
             checkAuth();
         });
+
+        function renderSinglePost(postId) {
+            const post = posts.find(p => p.id === postId);
+            if (!post) return;
+
+            document.getElementById('posts-container').classList.add('hidden');
+            document.getElementById('create-post-form').classList.add('hidden');
+            document.getElementById('filter-bar').classList.add('hidden');
+            
+            const container = document.getElementById('single-post-container');
+            container.innerHTML = '';
+            container.classList.remove('hidden');
+
+            const article = document.createElement('article');
+            article.className = 'rounded-lg shadow-md p-6';
+
+            const backButton = document.createElement('button');
+            backButton.className = 'text-blue-600 hover:underline mb-4';
+            backButton.innerHTML = '&larr; Back to all posts';
+            backButton.onclick = () => {
+                container.classList.add('hidden');
+                document.getElementById('posts-container').classList.remove('hidden');
+                if (currentUser) {
+                    document.getElementById('create-post-form').classList.remove('hidden');
+                }
+                document.getElementById('filter-bar').classList.remove('hidden');
+            };
+            container.appendChild(backButton);
+
+            // Create post header with profile image
+            const postHeader = document.createElement('div');
+            postHeader.className = 'flex items-center space-x-3 mb-4';
+
+            const authorProfileLink = document.createElement('a');
+            authorProfileLink.href = `/profile.html?id=${post.author.id}`;
+            authorProfileLink.className = "flex items-center space-x-3 group flex-grow"; 
+
+            const postProfileImg = createProfileImage(post.author.photo, post.author.displayName, "w-10 h-10");
+            authorProfileLink.appendChild(postProfileImg);
+            
+            const postHeaderInfo = document.createElement('div');
+            postHeaderInfo.innerHTML = `
+                <div class="font-medium text-gray-800 group-hover:underline">${escapeHtml(post.author.displayName)}</div>
+                <div class="text-sm text-gray-500">${formatDate(post.createdAt)}</div>
+            `;
+            authorProfileLink.appendChild(postHeaderInfo);
+            postHeader.appendChild(authorProfileLink);
+
+            // Post Actions Menu (Delete, Report)
+            const postActionsMenu = document.createElement('div');
+            postActionsMenu.className = 'ml-auto relative';
+
+            const menuButton = document.createElement('button');
+            menuButton.className = 'text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
+            menuButton.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
+            menuButton.onclick = (e) => {
+                e.stopPropagation(); // Prevent post click if menu is part of header link
+                togglePostActionMenu(post.id);
+            };
+            postActionsMenu.appendChild(menuButton);
+
+            const dropdownMenu = document.createElement('div');
+            dropdownMenu.id = `post-action-menu-${post.id}`;
+            dropdownMenu.className = 'hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-20 post-action-menu'; // bg-white removed
+
+            if (currentUser && currentUser.id === post.author.id) {
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'block w-full text-left px-4 py-2 text-sm profile-menu-item profile-menu-item-danger';
+                deleteButton.innerHTML = `
+                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    Delete Post
+                `;
+                deleteButton.onclick = () => {
+                    confirmDeletePost(post.id);
+                    closeAllPostActionMenus();
+                };
+                dropdownMenu.appendChild(deleteButton);
+            }
+
+            if (currentUser && currentUser.id !== post.author.id) { // Users cannot report their own posts
+                const reportButton = document.createElement('button');
+                reportButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100'; // text-gray-700 removed
+                reportButton.innerHTML = `
+                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4.25L16.25 3.5a2.121 2.121 0 013 3L6.25 19H3zm9-13l3 3"></path></svg>
+                    Report Post
+                `;
+                reportButton.onclick = () => {
+                    openReportModal(post.id);
+                    closeAllPostActionMenus();
+                };
+                dropdownMenu.appendChild(reportButton);
+            }
+            
+            if (dropdownMenu.hasChildNodes()) { // Only add menu if it has items
+                postActionsMenu.appendChild(dropdownMenu);
+                postHeader.appendChild(postActionsMenu);
+            }
+            
+            // Create post content
+            const postTagsContainer = document.createElement('div');
+            postTagsContainer.className = 'mb-2'; // Add some margin below the tag
+
+            // Post Type Badge
+            if (post.postType && post.postType !== 'normal') {
+                const typeBadge = document.createElement('span');
+                // Tailwind classes for the badge styling
+                typeBadge.className = `inline-block rounded-full px-3 py-1 text-xs font-semibold`; 
+                let badgeColor = 'bg-gray-200 text-gray-700'; // Default
+                if (post.postType === 'question') badgeColor = 'bg-blue-100 text-blue-700';
+                else if (post.postType === 'guide') badgeColor = 'bg-green-100 text-green-700';
+                else if (post.postType === 'poll') badgeColor = 'bg-purple-100 text-purple-700';
+                typeBadge.classList.add(...badgeColor.split(' '));
+                typeBadge.textContent = post.postType.charAt(0).toUpperCase() + post.postType.slice(1);
+                postTagsContainer.appendChild(typeBadge);
+            }
+
+            const postContentElement = document.createElement('div');
+            // Removed inline class from h2 as the tag is now separate
+            const postTitleHtml = `<h2 class="text-xl font-bold mb-3">${escapeHtml(post.title)}</h2>`;
+            postContentElement.innerHTML = postTitleHtml;
+
+            const postTextParagraph = document.createElement('p');
+            postTextParagraph.className = "text-gray-700 mb-4 whitespace-pre-wrap";
+            
+            if (post.content.length > 500) {
+                const seeMoreContainer = document.createElement('div');
+                seeMoreContainer.className = 'see-more-container post-see-more';
+
+                const fullContent = document.createElement('p');
+                fullContent.className = 'text-gray-700 mb-4 whitespace-pre-wrap';
+                fullContent.innerHTML = escapeHtml(post.content, true);
+
+                seeMoreContainer.appendChild(fullContent);
+
+                const seeMoreBtn = document.createElement('button');
+                seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
+                seeMoreBtn.textContent = 'See More';
+                seeMoreBtn.onclick = () => {
+                    if (seeMoreContainer.classList.contains('expanded')) {
+                        seeMoreContainer.classList.remove('expanded');
+                        seeMoreBtn.textContent = 'See More';
+                    } else {
+                        seeMoreContainer.classList.add('expanded');
+                        seeMoreBtn.textContent = 'See Less';
+                    }
+                };
+                postContentElement.appendChild(seeMoreContainer);
+                postContentElement.appendChild(seeMoreBtn);
+            } else {
+                postTextParagraph.innerHTML = escapeHtml(post.content, true);
+                postContentElement.appendChild(postTextParagraph);
+            }
+
+            // Poll Display and Voting
+            if (post.postType === 'poll' && post.pollOptions && post.pollOptions.length > 0) {
+                const pollContainer = document.createElement('div');
+                pollContainer.className = 'mb-4 p-4 border rounded-lg'; // border-gray-200 removed
+                pollContainer.id = `poll-${post.id}`;
+
+                const currentUserVote = post.usersWhoVoted && currentUser ? post.usersWhoVoted.find(vote => vote.userId === currentUser.id) : null;
+                
+                post.pollOptions.forEach((option, index) => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'mb-2';
+                    
+                    const totalVotes = post.pollOptions.reduce((sum, opt) => sum + (opt.votes || 0), 0);
+                    const percentage = totalVotes > 0 ? ((option.votes || 0) / totalVotes * 100).toFixed(1) : 0;
+
+                    let buttonClass = "w-full text-left p-2 rounded-md transition-colors flex justify-between items-center text-sm";
+                    let votedIndicator = '';
+                    // User can always click if logged in, to change their vote.
+                    // Button is disabled only if not logged in.
+                    let isDisabled = !currentUser; 
+
+                    if (currentUserVote && currentUserVote.optionIndex === index) {
+                        buttonClass += ' selected-poll-option'; // Will be styled with theme variables
+                        votedIndicator = '<span class="text-xs font-semibold ml-2">(Your Vote)</span>';
+                    }
+                    
+                    if (currentUser) { // Add hover effect if user is logged in (i.e., button is not disabled)
+                         buttonClass += ' themed-hover-bg';
+                    }
+
+
+                    optionDiv.innerHTML = `
+                        <button 
+                            onclick="voteInPoll('${post.id}', ${index})" 
+                            class="${buttonClass}"
+                            ${isDisabled ? 'disabled' : ''} 
+                            ${!currentUser ? 'title="Sign in to vote"' : 'title="Click to vote or change your vote"'} >
+                            <span>${escapeHtml(option.option)} ${votedIndicator}</span>
+                            <span class="text-xs text-gray-500" id="percent">${option.votes || 0} votes (${percentage}%)</span>
+                        </button>
+                        <div class="h-2 rounded-full mt-1 overflow-hidden poll-progress-track">
+                            <div class="h-full transition-all duration-300 poll-progress-fill" style="width: ${percentage}%;"></div>
+                        </div>
+                    `;
+                    pollContainer.appendChild(optionDiv);
+                });
+                postContentElement.appendChild(pollContainer);
+            }
+            
+            // Create comments section
+            const commentsSection = document.createElement('div');
+            commentsSection.className = 'border-t pt-4';
+            
+            const commentsHeader = document.createElement('h3');
+            commentsHeader.className = 'font-semibold mb-3';
+            commentsHeader.style = 'color: var(--bg-primary)'
+            commentsHeader.textContent = `Comments (${post.comments.length})`; // This will need adjustment for replies
+            commentsSection.appendChild(commentsHeader);
+
+            // Add top-level comment form if user is authenticated
+            if (currentUser) {
+                const commentFormContainer = document.createElement('div');
+                commentFormContainer.className = 'mb-4';
+                const textarea = document.createElement('textarea');
+                textarea.id = `comment-textarea-${post.id}`;
+                textarea.placeholder = "Add a comment...";
+                textarea.rows = 2;
+                textarea.maxLength = 1000;
+                textarea.className = "w-full px-3 py-2 rounded-lg resize-none focus:outline-none focus:ring-2";
+                textarea.onkeyup = () => handleMention(textarea);
+
+                const charCountSpan = document.createElement('span');
+                charCountSpan.className = 'text-sm text-gray-500';
+                charCountSpan.textContent = '0 / 1000';
+
+                const button = document.createElement('button');
+                button.onclick = () => addCommentOrReply(post.id);
+                button.className = "button-submit-comment mt-2 px-4 py-2 rounded-lg font-medium transition-colors";
+                button.textContent = "Add Comment";
+
+                textarea.addEventListener('input', () => {
+                    const currentLength = textarea.value.length;
+                    const maxLength = textarea.maxLength;
+                    charCountSpan.textContent = `${currentLength} / ${maxLength}`;
+                    if (currentLength >= maxLength) {
+                        charCountSpan.classList.add('text-red-500');
+                    } else {
+                        charCountSpan.classList.remove('text-red-500');
+                    }
+                });
+                
+                const bottomDiv = document.createElement('div');
+                bottomDiv.className = 'flex justify-between items-center';
+                bottomDiv.appendChild(charCountSpan);
+                bottomDiv.appendChild(button);
+
+                commentFormContainer.appendChild(textarea);
+                commentFormContainer.appendChild(bottomDiv);
+                commentsSection.appendChild(commentFormContainer);
+            }
+            
+            // Render comments and their replies
+            const commentsContainer = document.createElement('div');
+            commentsContainer.className = 'space-y-3';
+            renderCommentTree(post.comments, commentsContainer, post.id, 0); // Initial depth 0
+            
+            commentsSection.appendChild(commentsContainer);
+            
+            // Assemble the article
+            article.appendChild(postHeader);
+            if (postTagsContainer.hasChildNodes()) { // Only append if there are tags
+                article.appendChild(postTagsContainer);
+            }
+            article.appendChild(postContentElement);
+            
+            // Post Actions (Like button)
+            const postActionsDiv = document.createElement('div');
+            // Removed 'border-b'
+            postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
+            
+            const likeButtonPost = document.createElement('button');
+            likeButtonPost.className = `like-button flex items-center space-x-1 ${post.isLiked ? 'like-button-active' : ''}`; // Added like-button base class
+            likeButtonPost.innerHTML = `
+                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+            <span id="post-like-count-${post.id}">${post.likes || 0} Likes</span>
+            `;
+            likeButtonPost.onclick = () => toggleLike('post', post.id);
+            postActionsDiv.appendChild(likeButtonPost);
+            
+            article.appendChild(postActionsDiv);
+            article.appendChild(commentsSection);
+            
+            container.appendChild(article);
+        }
 
         // --- Notification System ---
         const notificationContainer = document.getElementById('notification-container');
