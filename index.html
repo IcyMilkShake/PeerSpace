@@ -102,6 +102,10 @@
         /* #report-modal-cancel-btn { ... } */
         /* #report-modal-submit-btn { ... } */
 
+        .notification-item.font-bold {
+            background-color: var(--accent-color-subtle);
+        }
+
     </style>
 </head>
 <body class="min-h-screen">
@@ -123,7 +127,7 @@
           <i class="fas fa-comments" style="color: var(--notification-info-bg);"></i>
           <span class="nav-text">Communities (Aint Done)</span>
         </a>
-        <a href="/inbox" class="nav-item">
+        <a href="#" onclick="renderInbox()" class="nav-item">
             <i class="fas fa-inbox" style="color: var(--notification-info-bg);"></i>
             <span class="nav-text">Inbox</span>
             <span id="notification-count" class="notification-badge hidden"></span>
@@ -299,6 +303,24 @@
             <div class="text-gray-400 text-6xl mb-4">📝</div>
             <h3 class="text-xl font-semibold text-gray-600 mb-2">No posts yet</h3>
             <p class="text-gray-500">Be the first to start a discussion!</p>
+        </div>
+
+        <!-- Inbox Container -->
+        <div id="inbox-container-main" class="hidden">
+            <button class="text-blue-600 hover:underline mb-4" onclick="showMainFeed()">&larr; Back to all posts</button>
+            <h1 class="text-3xl font-bold mb-6">Inbox</h1>
+            <div id="inbox-content" class="space-y-4">
+                <!-- Notifications will be loaded here -->
+            </div>
+            <div id="inbox-loading" class="text-center py-12">
+                <p>Loading notifications...</p>
+            </div>
+            <div id="inbox-empty" class="hidden text-center py-12">
+                <p>You have no notifications.</p>
+            </div>
+            <div id="inbox-error" class="hidden text-center py-12">
+                <p>Could not load notifications. Please try again later.</p>
+            </div>
         </div>
     </main>
 
@@ -678,7 +700,7 @@
 
                 const postTextParagraph = document.createElement('p');
                 postTextParagraph.className = "text-gray-700 mb-4 whitespace-pre-wrap";
-                postTextParagraph.innerHTML = escapeHtml(post.content);
+                postTextParagraph.innerHTML = escapeHtml(post.content, true);
                 postContentElement.appendChild(postTextParagraph);
 
                 // Poll Display and Voting
@@ -757,9 +779,10 @@
 
                 const commentCountSpan = document.createElement('span');
                 commentCountSpan.className = 'flex items-center space-x-1';
+                const totalComments = countAllComments(post.comments);
                 commentCountSpan.innerHTML = `
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                    <span>${post.comments.length} Comments</span>
+                    <span class="comment-count">${totalComments} Comments</span>
                 `;
                 postActionsDiv.appendChild(commentCountSpan);
                 
@@ -1071,13 +1094,16 @@
                     const postIndex = posts.findIndex(p => p.id === postId);
                     if (postIndex !== -1) {
                         if (parentCommentId) {
-                            // It's a reply, find the parent comment and add it to its replies
                             const findAndAddReply = (comments) => {
                                 for (const comment of comments) {
                                     if (comment.id === parentCommentId) {
                                         if (!comment.replies) {
                                             comment.replies = [];
                                         }
+                                        newComment.replyingTo = {
+                                            id: comment.author.id,
+                                            username: comment.author.username
+                                        };
                                         comment.replies.push(newComment);
                                         return true;
                                     }
@@ -1098,6 +1124,15 @@
                     renderSinglePost(postId);
                     textarea.value = ''; // Clear textarea
                     showNotification("Comment added successfully.", "success");
+
+                    // Update comment count on the main page
+                    const post = posts.find(p => p.id === postId);
+                    if (post) {
+                        const commentCountSpan = document.querySelector(`#post-${postId} .comment-count`);
+                        if (commentCountSpan) {
+                            commentCountSpan.textContent = `${post.comments.length} Comments`;
+                        }
+                    }
                 } else {
                     const errorData = await response.json();
                     showNotification(`Failed to add ${parentCommentId ? 'reply' : 'comment'}: ${errorData.error || 'Server error'}`, 'error');
@@ -1448,6 +1483,11 @@
                                 };
                                 removeComment(post.comments);
                                 renderSinglePost(post.id);
+                                const commentCountSpan = document.querySelector(`#post-${post.id} .comment-count`);
+                                if (commentCountSpan) {
+                                    const totalComments = countAllComments(post.comments);
+                                    commentCountSpan.textContent = `${totalComments} Comments`;
+                                }
                             }
                             showNotification("Comment/reply deleted successfully.", "success");
                         } else {
@@ -1871,6 +1911,7 @@
             document.getElementById('posts-container').classList.add('hidden');
             document.getElementById('create-post-form').classList.add('hidden');
             document.getElementById('filter-bar').classList.add('hidden');
+            document.getElementById('inbox-container-main').classList.add('hidden');
             
             const container = document.getElementById('single-post-container');
             container.innerHTML = '';
@@ -2072,7 +2113,8 @@
             const commentsHeader = document.createElement('h3');
             commentsHeader.className = 'font-semibold mb-3';
             commentsHeader.style = 'color: var(--bg-primary)'
-            commentsHeader.textContent = `Comments (${post.comments.length})`; // This will need adjustment for replies
+            const totalComments = countAllComments(post.comments);
+            commentsHeader.textContent = `Comments (${totalComments})`;
             commentsSection.appendChild(commentsHeader);
 
             // Add top-level comment form if user is authenticated
@@ -2263,9 +2305,88 @@
         });
 
 
+        function showMainFeed() {
+            document.getElementById('posts-container').classList.remove('hidden');
+            document.getElementById('create-post-form').classList.remove('hidden');
+            document.getElementById('filter-bar').classList.remove('hidden');
+            document.getElementById('single-post-container').classList.add('hidden');
+            document.getElementById('inbox-container-main').classList.add('hidden');
+        }
+
+        function countAllComments(comments) {
+            let count = comments.length;
+            for (const comment of comments) {
+                if (comment.replies) {
+                    count += countAllComments(comment.replies);
+                }
+            }
+            return count;
+        }
+
         // Initial check
         checkAuth();
         loadPosts();
+
+        async function renderInbox() {
+            document.getElementById('posts-container').classList.add('hidden');
+            document.getElementById('create-post-form').classList.add('hidden');
+            document.getElementById('filter-bar').classList.add('hidden');
+            document.getElementById('single-post-container').classList.add('hidden');
+            const inboxContainer = document.getElementById('inbox-container-main');
+            inboxContainer.classList.remove('hidden');
+
+            const loadingEl = document.getElementById('inbox-loading');
+            const emptyEl = document.getElementById('inbox-empty');
+            const errorEl = document.getElementById('inbox-error');
+            const containerEl = document.getElementById('inbox-content');
+
+            loadingEl.classList.remove('hidden');
+            emptyEl.classList.add('hidden');
+            errorEl.classList.add('hidden');
+            containerEl.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/notifications');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch notifications');
+                }
+                const notifications = await response.json();
+
+                loadingEl.classList.add('hidden');
+
+                if (notifications.length === 0) {
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                notifications.forEach(notification => {
+                    const notificationEl = document.createElement('div');
+                    notificationEl.className = 'notification-item p-4 border rounded-lg';
+                    if (!notification.read) {
+                        notificationEl.classList.add('font-bold');
+                    }
+                    notificationEl.innerHTML = `
+                        <a href="${notification.link}" class="block" target="_blank" rel="noopener noreferrer">
+                            <p>${notification.message}</p>
+                            <span class="text-sm text-gray-500">${new Date(notification.createdAt).toLocaleString()}</span>
+                        </a>
+                    `;
+                    notificationEl.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        await fetch('/api/notifications/' + notification._id + '/read', { method: 'POST' });
+                        notificationEl.classList.remove('font-bold');
+                        window.location.hash = notification.link.split('#')[1];
+                        renderSinglePost(notification.post);
+                    });
+                    containerEl.appendChild(notificationEl);
+                });
+
+            } catch (error) {
+                console.error('Failed to load notifications:', error);
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+            }
+        }
     </script>
 </body>
 </html>
