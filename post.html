@@ -106,6 +106,16 @@
             }
         }
 
+        function countAllComments(comments) {
+            let count = comments.length;
+            for (const comment of comments) {
+                if (comment.replies && comment.replies.length > 0) {
+                    count += countAllComments(comment.replies);
+                }
+            }
+            return count;
+        }
+
         function renderPost(post) {
             const container = document.getElementById('post-container');
             container.innerHTML = '';
@@ -144,7 +154,8 @@
             
             const commentsHeader = document.createElement('h3');
             commentsHeader.className = 'font-semibold mb-3';
-            commentsHeader.textContent = `Comments (${post.comments.length})`;
+            const totalComments = countAllComments(post.comments);
+            commentsHeader.textContent = `Comments (${totalComments})`;
             commentsSection.appendChild(commentsHeader);
 
             if (currentUser) {
@@ -190,7 +201,7 @@
 
             const commentsContainer = document.createElement('div');
             commentsContainer.className = 'space-y-3';
-            renderCommentTree(buildCommentTree(post.comments, null), commentsContainer, post.id, 0);
+            renderCommentTree(buildCommentTree(post.comments, null), commentsContainer, post.id, 0, post.comments);
             commentsSection.appendChild(commentsContainer);
 
             article.appendChild(postHeader);
@@ -220,88 +231,95 @@
                 }));
         }
 
-        function renderCommentTree(comments, parentElement, postId, depth) {
+        function renderCommentTree(comments, parentElement, postId, depth, postComments) {
             comments.forEach(comment => {
-                const commentWrapper = document.createElement('div');
-                commentWrapper.id = `comment-${comment._id}`;
-                commentWrapper.className = `comment-wrapper mt-3 pl-${depth * 2}`; 
-
-                const commentDiv = document.createElement('div');
-                commentDiv.className = 'flex items-start space-x-3 bg-gray-50 p-3 rounded-lg shadow-sm'; 
-
-                const commentBody = document.createElement('div');
-                commentBody.className = 'flex-1';
-
-                const commentAuthorProfileLink = document.createElement('a');
-                commentAuthorProfileLink.href = `/profile.html?id=${comment.author._id}`;
-                commentAuthorProfileLink.className = "shrink-0 group";
-
-                const commentProfileImg = createProfileImage(comment.author.profilePicture.path, comment.author.displayName, "w-8 h-8");
-                commentAuthorProfileLink.appendChild(commentProfileImg);
-                commentDiv.appendChild(commentAuthorProfileLink);
-            
-                const commentAuthorNameLink = document.createElement('a');
-                commentAuthorNameLink.href = `/profile.html?id=${comment.author._id}`;
-                commentAuthorNameLink.className = "font-medium text-gray-800 hover:underline";
-                commentAuthorNameLink.textContent = escapeHtml(comment.author.displayName);
-
-                const commentHeader = document.createElement('div');
-                commentHeader.className = 'flex items-center space-x-2 mb-1';
-                commentHeader.appendChild(commentAuthorNameLink);
-                
-                const commentTimestamp = document.createElement('span');
-                commentTimestamp.className = "text-sm text-gray-500";
-                commentTimestamp.textContent = formatDate(comment.createdAt);
-                commentHeader.appendChild(commentTimestamp);
-                commentBody.appendChild(commentHeader);
-
-                if (comment.parentComment) {
-                    const parentComment = post.comments.find(c => c._id === comment.parentComment);
-                    if (parentComment) {
-                        const replyingToText = document.createElement('p');
-                        replyingToText.className = 'text-xs text-gray-500 mb-1';
-                        replyingToText.innerHTML = `
-                                Replying to: 
-                                <a href="/profile.html?id=${parentComment.author._id}" class="text-blue-600 hover:underline font-medium">
-                                    @${escapeHtml(parentComment.author.username)}
-                                </a>
-                            `;
-                        commentBody.appendChild(replyingToText);
-                    }
-                }
-
-                const commentText = document.createElement('p');
-                commentText.className = "text-gray-700 whitespace-pre-wrap";
-                commentText.innerHTML = escapeHtml(comment.content, true);
-                commentBody.appendChild(commentText);
-
-                const commentActionsDiv = document.createElement('div');
-                commentActionsDiv.className = 'comment-actions flex items-center space-x-3 text-xs text-gray-500 mt-2';
-
-                if (currentUser) {
-                    const replyButton = document.createElement('button');
-                    replyButton.className = 'hover:text-blue-600 font-medium';
-                    replyButton.textContent = 'Reply';
-                    replyButton.onclick = () => toggleReplyForm(comment._id, postId);
-                    commentActionsDiv.appendChild(replyButton);
-                }
-                commentBody.appendChild(commentActionsDiv);
-                
-                const replyFormContainerId = `reply-form-container-${comment._id}`;
-                const replyFormContainer = document.createElement('div');
-                replyFormContainer.id = replyFormContainerId;
-                replyFormContainer.className = 'reply-form hidden mt-2';
-                commentBody.appendChild(replyFormContainer);
-                
-                commentDiv.appendChild(commentBody);
-                commentWrapper.appendChild(commentDiv);
+                const commentWrapper = createCommentElement(comment, postId, depth, postComments);
+                parentElement.appendChild(commentWrapper);
 
                 if (comment.replies && comment.replies.length > 0) {
-                    renderCommentTree(comment.replies, commentWrapper, postId, depth + 1);
+                    const nestedContainer = commentWrapper.querySelector('.comment-wrapper');
+                    renderCommentTree(comment.replies, nestedContainer, postId, depth + 1, postComments);
                 }
-                
-                parentElement.appendChild(commentWrapper);
             });
+        }
+
+        function createCommentElement(comment, postId, depth, postComments) {
+            const commentWrapper = document.createElement('div');
+            commentWrapper.id = `comment-${comment._id}`;
+            commentWrapper.className = `comment-wrapper mt-3 pl-${depth * 2}`;
+
+            const commentDiv = document.createElement('div');
+            commentDiv.className = 'flex items-start space-x-3 bg-gray-50 p-3 rounded-lg shadow-sm';
+
+            const commentBody = document.createElement('div');
+            commentBody.className = 'flex-1';
+
+            const commentAuthorProfileLink = document.createElement('a');
+            commentAuthorProfileLink.href = `/profile.html?id=${comment.author._id}`;
+            commentAuthorProfileLink.className = "shrink-0 group";
+
+            const commentProfileImg = createProfileImage(comment.author.profilePicture ? comment.author.profilePicture.path : (comment.author.photo || '/default-profile.png'), comment.author.displayName, "w-8 h-8");
+            commentAuthorProfileLink.appendChild(commentProfileImg);
+            commentDiv.appendChild(commentAuthorProfileLink);
+
+            const commentAuthorNameLink = document.createElement('a');
+            commentAuthorNameLink.href = `/profile.html?id=${comment.author._id}`;
+            commentAuthorNameLink.className = "font-medium text-gray-800 hover:underline";
+            commentAuthorNameLink.textContent = escapeHtml(comment.author.displayName);
+
+            const commentHeader = document.createElement('div');
+            commentHeader.className = 'flex items-center space-x-2 mb-1';
+            commentHeader.appendChild(commentAuthorNameLink);
+
+            const commentTimestamp = document.createElement('span');
+            commentTimestamp.className = "text-sm text-gray-500";
+            commentTimestamp.textContent = formatDate(comment.createdAt);
+            commentHeader.appendChild(commentTimestamp);
+            commentBody.appendChild(commentHeader);
+
+            if (comment.parentComment) {
+                const allComments = postComments || [];
+                const parentComment = allComments.find(c => c._id === comment.parentComment);
+                if (parentComment) {
+                    const replyingToText = document.createElement('p');
+                    replyingToText.className = 'text-xs text-gray-500 mb-1';
+                    replyingToText.innerHTML = `
+                            Replying to: 
+                            <a href="/profile.html?id=${parentComment.author._id}" class="text-blue-600 hover:underline font-medium">
+                                @${escapeHtml(parentComment.author.username)}
+                            </a>
+                        `;
+                    commentBody.appendChild(replyingToText);
+                }
+            }
+
+            const commentText = document.createElement('p');
+            commentText.className = "text-gray-700 whitespace-pre-wrap";
+            commentText.innerHTML = escapeHtml(comment.content, true);
+            commentBody.appendChild(commentText);
+
+            const commentActionsDiv = document.createElement('div');
+            commentActionsDiv.className = 'comment-actions flex items-center space-x-3 text-xs text-gray-500 mt-2';
+
+            if (currentUser) {
+                const replyButton = document.createElement('button');
+                replyButton.className = 'hover:text-blue-600 font-medium';
+                replyButton.textContent = 'Reply';
+                replyButton.onclick = () => toggleReplyForm(comment._id, postId);
+                commentActionsDiv.appendChild(replyButton);
+            }
+            commentBody.appendChild(commentActionsDiv);
+
+            const replyFormContainerId = `reply-form-container-${comment._id}`;
+            const replyFormContainer = document.createElement('div');
+            replyFormContainer.id = replyFormContainerId;
+            replyFormContainer.className = 'reply-form hidden mt-2';
+            commentBody.appendChild(replyFormContainer);
+
+            commentDiv.appendChild(commentBody);
+            commentWrapper.appendChild(commentDiv);
+
+            return commentWrapper;
         }
         
         function createProfileImage(photoUrl, displayName, size = "w-10 h-10", textClass = "text-sm", borderClass = "") {
@@ -445,7 +463,28 @@
                 });
 
                 if (response.ok) {
-                    await loadPost(); 
+                    const newComment = await response.json();
+                    
+                    const postRes = await fetch(`/api/posts/${postId}`);
+                    const post = await postRes.json();
+                    const allComments = post.comments;
+
+                    const postContainer = document.getElementById('post-container');
+                    const commentsHeader = postContainer.querySelector('h3.font-semibold');
+                    const totalComments = countAllComments(buildCommentTree(allComments, null));
+                    commentsHeader.textContent = `Comments (${totalComments + 1})`;
+
+                    if (parentCommentId) {
+                        const parentCommentWrapper = document.getElementById(`comment-${parentCommentId}`);
+                        const depth = (parentCommentWrapper.className.match(/pl-(\d+)/)?.[1] || 0) / 2 + 1;
+                        const newCommentElement = createCommentElement(newComment, postId, depth, allComments);
+                        parentCommentWrapper.appendChild(newCommentElement);
+                    } else {
+                        const commentsContainer = postContainer.querySelector('.space-y-3');
+                        const newCommentElement = createCommentElement(newComment, postId, 0, allComments);
+                        commentsContainer.appendChild(newCommentElement);
+                    }
+
                     textarea.value = '';
                     if (parentCommentId) {
                         const replyFormContainer = document.getElementById(`reply-form-container-${parentCommentId}`);
@@ -454,6 +493,7 @@
                             replyFormContainer.innerHTML = '';
                         }
                     }
+
                 } else {
                     const errorData = await response.json();
                     showNotification(`Failed to add ${parentCommentId ? 'reply' : 'comment'}: ${errorData.error || 'Server error'}`, 'error');
