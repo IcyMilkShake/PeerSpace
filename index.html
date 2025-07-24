@@ -128,11 +128,11 @@
           <i class="fas fa-comments" style="color: var(--notification-info-bg);"></i>
           <span class="nav-text">Communities (Aint Done)</span>
         </a>
-        <a href="#" onclick="renderInbox()" class="nav-item">
+        <button onclick="renderInbox()" class="nav-item">
             <i class="fas fa-inbox" style="color: var(--notification-info-bg);"></i>
             <span class="nav-text">Inbox</span>
             <span id="notification-count" class="notification-badge hidden"></span>
-        </a>
+        </button>
         <div class="nav-item dropdown" style="color: var(--notification-info-bg);">
           <i class="fas fa-ellipsis-h" style="color: var(--notification-info-bg);"></i>
           <div class="dropdown-content">
@@ -305,23 +305,23 @@
             <h3 class="text-xl font-semibold text-gray-600 mb-2">No posts yet</h3>
             <p class="text-gray-500">Be the first to start a discussion!</p>
         </div>
-
-        <main class="max-w-3xl mx-auto px-4 py-8">
-            <h1 class="text-3xl font-bold mb-6">Inbox</h1>
-            <div id="inbox-container" class="space-y-4">
-                <!-- Notifications will be loaded here -->
-            </div>
-            <div id="inbox-loading" class="text-center py-12">
-                <p>Loading notifications...</p>
-            </div>
-            <div id="inbox-empty" class="hidden text-center py-12">
-                <p>You have no notifications.</p>
-            </div>
-            <div id="inbox-error" class="hidden text-center py-12">
-                <p>Could not load notifications. Please try again later.</p>
-            </div>
-        </main>
     </main>
+
+    <div id="inbox-container-main" class="hidden max-w-3xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-6">Inbox</h1>
+        <div id="inbox-container" class="space-y-4">
+            <!-- Notifications will be loaded here -->
+        </div>
+        <div id="inbox-loading" class="text-center py-12">
+            <p>Loading notifications...</p>
+        </div>
+        <div id="inbox-empty" class="hidden text-center py-12">
+            <p>You have no notifications.</p>
+        </div>
+        <div id="inbox-error" class="hidden text-center py-12">
+            <p>Could not load notifications. Please try again later.</p>
+        </div>
+    </div>
 
     <!-- User Profile Modal -->
     <div id="user-profile" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-2 border z-50 w-60" style="border-color: var(--border-color);"> <!-- Themed border -->
@@ -2083,7 +2083,8 @@
             backButton.innerHTML = '&larr; Back to all posts';
             backButton.onclick = () => {
                 history.pushState({ postId: null }, "", "/");
-                showMainFeed()
+                showMainFeed();
+                loadPosts(); // Refresh the posts
             };
             container.appendChild(backButton);
 
@@ -2392,6 +2393,20 @@
             const inboxContainer = document.getElementById('inbox-container-main');
             inboxContainer.classList.remove('hidden');
 
+            // Add back button if it doesn't exist
+            if (!document.getElementById('inbox-back-button')) {
+                const backButton = document.createElement('button');
+                backButton.id = 'inbox-back-button';
+                backButton.className = 'text-blue-600 hover:underline mb-4';
+                backButton.innerHTML = '&larr; Back to posts';
+                backButton.onclick = () => {
+                    history.pushState({ postId: null }, "", "/");
+                    showMainFeed();
+                    loadPosts(); // Refresh the posts
+                };
+                inboxContainer.insertBefore(backButton, inboxContainer.firstChild.nextSibling);
+            }
+
             const loadingEl = document.getElementById('inbox-loading');
             const emptyEl = document.getElementById('inbox-empty');
             const errorEl = document.getElementById('inbox-error');
@@ -2423,14 +2438,32 @@
                         notificationEl.classList.add('font-bold');
                     }
                     notificationEl.innerHTML = `
-                        <a href="${notification.link}" class="block" target="_blank" rel="noopener noreferrer">
-                            <p>${notification.message}</p>
-                            <span class="text-sm text-gray-500">${new Date(notification.createdAt).toLocaleString()}</span>
-                        </a>
+                        <p>${notification.message}</p>
+                        <span class="text-sm text-gray-500">${new Date(notification.createdAt).toLocaleString()}</span>
                     `;
                     notificationEl.addEventListener('click', async () => {
-                        await fetch('/api/notifications/' + notification._id + '/read', { method: 'POST' });
-                        notificationEl.classList.remove('font-bold');
+                        // Mark as read
+                        if (!notification.read) {
+                            await fetch('/api/notifications/' + notification.id + '/read', { method: 'POST' });
+                            notificationEl.classList.remove('font-bold');
+                            // Update notification count
+                            fetchUnreadNotificationCount();
+                        }
+                        
+                        // Navigate to the post if link exists
+                        if (notification.link) {
+                            // Extract post ID from link (assuming format like "/post/123" or "?post=123")
+                            const postIdMatch = notification.link.match(/\/post\/(\w+)/) || notification.link.match(/post=(\w+)/);
+                            if (postIdMatch) {
+                                const postId = postIdMatch[1];
+                                // Update URL and render single post
+                                history.pushState({ postId: postId }, "", `?post=${postId}`);
+                                renderSinglePost(postId);
+                            } else {
+                                // Fallback: open in new tab if we can't extract post ID
+                                window.open(notification.link, '_blank');
+                            }
+                        }
                     });
                     containerEl.appendChild(notificationEl);
                 });
