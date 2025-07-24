@@ -454,9 +454,16 @@
                     console.log('User photo URL:', currentUser.photo);
                     updateUI();
                 } else {
-                    console.log('User not authenticated');
-                    currentUser = null;
-                    updateUI();
+                    if (response.status === 401 && currentUser) {
+                        // If the server says we're unauthorized, but we have a user object,
+                        // it means the session has expired.
+                        console.log('Session expired, logging out.');
+                        logout(); // This will clear currentUser and update the UI
+                    } else {
+                        console.log('User not authenticated');
+                        currentUser = null;
+                        updateUI();
+                    }
                 }
             } catch (error) {
                 console.error('Auth check failed:', error);
@@ -708,6 +715,7 @@
                     const pollContainer = document.createElement('div');
                     pollContainer.className = 'mb-4 p-4 border rounded-lg'; // border-gray-200 removed
                     pollContainer.id = `poll-${post.id}`;
+                    pollContainer.onclick = (e) => e.stopPropagation();
 
                     const currentUserVote = post.usersWhoVoted && currentUser ? post.usersWhoVoted.find(vote => vote.userId === currentUser.id) : null;
                     
@@ -736,12 +744,13 @@
 
                         optionDiv.innerHTML = `
                             <button 
-                                onclick="voteInPoll('${post.id}', ${index})" 
+                                onclick="event.stopPropagation(); voteInPoll('${post.id}', ${index})" 
                                 class="${buttonClass}"
+                                data-option-index="${index}"
                                 ${isDisabled ? 'disabled' : ''} 
                                 ${!currentUser ? 'title="Sign in to vote"' : 'title="Click to vote or change your vote"'} >
                                 <span>${escapeHtml(option.option)} ${votedIndicator}</span>
-                                <span class="text-xs text-gray-500" id="percent">${option.votes || 0} votes (${percentage}%)</span>
+                                <span class="text-xs text-gray-500 vote-count">${option.votes || 0} votes (${percentage}%)</span>
                             </button>
                             <div class="h-2 rounded-full mt-1 overflow-hidden poll-progress-track">
                                 <div class="h-full transition-all duration-300 poll-progress-fill" style="width: ${percentage}%;"></div>
@@ -1248,6 +1257,7 @@
 
         // --- Poll Voting Function ---
         async function voteInPoll(postId, optionIndex) {
+            event.stopPropagation();
             if (!currentUser) {
                 showNotification("Please sign in to vote.", "warning");
                 return;
@@ -1277,35 +1287,32 @@
                         const totalVotes = localPost.pollOptions.reduce((sum, opt) => sum + (opt.votes || 0), 0);
 
                         localPost.pollOptions.forEach((option, index) => {
-                            const optionButton = pollContainer.querySelector(`button[onclick="voteInPoll('${postId}', ${index})"]`);
+                            const optionButton = pollContainer.querySelector(`button[data-option-index="${index}"]`);
                             if (optionButton) {
-                                let buttonClass = "w-full text-left p-2 rounded-md transition-colors flex justify-between items-center text-sm";
+                                // Remove selected class from all buttons first
+                                pollContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('selected-poll-option'));
+
+                                let buttonClass = "w-full text-left p-2 rounded-md transition-colors flex justify-between items-center text-sm themed-hover-bg";
                                 let votedIndicator = '';
                                 
                                 if (currentUserVote && currentUserVote.optionIndex === index) {
                                     buttonClass += ' selected-poll-option';
                                     votedIndicator = '<span class="text-xs font-semibold ml-2">(Your Vote)</span>';
                                 }
-                                if (currentUser) {
-                                     buttonClass += ' themed-hover-bg';
-                                }
-
-                                optionButton.className = buttonClass; // Reset class and apply new one
+                                
+                                optionButton.className = buttonClass;
 
                                 const optionTextSpan = optionButton.querySelector('span:first-child');
                                 if (optionTextSpan) {
                                     optionTextSpan.innerHTML = `${escapeHtml(option.option)} ${votedIndicator}`;
                                 }
 
-                                const voteCountSpan = optionButton.querySelector('span:last-child');
+                                const voteCountSpan = optionButton.querySelector('.vote-count');
                                 const percentage = totalVotes > 0 ? ((option.votes || 0) / totalVotes * 100).toFixed(1) : 0;
                                 if (voteCountSpan) {
                                     voteCountSpan.textContent = `${option.votes || 0} votes (${percentage}%)`;
                                 }
-                                const percent = optionButton.querySelector('#percent');
-                                if (percent) {
-                                    percent.innerHTML = `${option.votes || 0} votes (${percentage}%)`
-                                }
+                                
                                 const progressBarFill = optionButton.nextElementSibling.querySelector('.poll-progress-fill');
                                 if (progressBarFill) {
                                     progressBarFill.style.width = `${percentage}%`;
@@ -2062,6 +2069,7 @@
                 const pollContainer = document.createElement('div');
                 pollContainer.className = 'mb-4 p-4 border rounded-lg'; // border-gray-200 removed
                 pollContainer.id = `poll-${post.id}`;
+                pollContainer.onclick = (e) => e.stopPropagation();
 
                 const currentUserVote = post.usersWhoVoted && currentUser ? post.usersWhoVoted.find(vote => vote.userId === currentUser.id) : null;
                 
@@ -2090,12 +2098,13 @@
 
                     optionDiv.innerHTML = `
                         <button 
-                            onclick="voteInPoll('${post.id}', ${index})" 
+                            onclick="event.stopPropagation(); voteInPoll('${post.id}', ${index})" 
                             class="${buttonClass}"
+                            data-option-index="${index}"
                             ${isDisabled ? 'disabled' : ''} 
                             ${!currentUser ? 'title="Sign in to vote"' : 'title="Click to vote or change your vote"'} >
                             <span>${escapeHtml(option.option)} ${votedIndicator}</span>
-                            <span class="text-xs text-gray-500" id="percent">${option.votes || 0} votes (${percentage}%)</span>
+                            <span class="text-xs text-gray-500 vote-count">${option.votes || 0} votes (${percentage}%)</span>
                         </button>
                         <div class="h-2 rounded-full mt-1 overflow-hidden poll-progress-track">
                             <div class="h-full transition-all duration-300 poll-progress-fill" style="width: ${percentage}%;"></div>
