@@ -294,7 +294,7 @@
         </div>
 
         <!-- Single Post Container (hidden by default) -->
-        <div id="single-post-container" class="hidden">
+        <div id="single-post-container" class="hidden space-y-6">
             <!-- Single post will be loaded here -->
         </div>
 
@@ -611,7 +611,10 @@
                 const article = document.createElement('article');
                 // Removed 'bg-white' class, themes.css will handle background via 'article' tag selector
                 article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in cursor-pointer';
-                article.onclick = () => renderSinglePost(post.id);
+                article.onclick = () => {
+                    history.pushState({ postId: post.id }, "", `?post=${post.id}`);
+                    renderSinglePost(post.id);
+                };
                 
                 // Create post header with profile image
                 const postHeader = document.createElement('div');
@@ -1399,13 +1402,26 @@
                             likeButton.classList.remove('like-button-active');
                         }
                     }
-
-                    // If we are in the single post view, re-render it to show the updated like count
+                    
                     const singlePostContainer = document.getElementById('single-post-container');
                     if (!singlePostContainer.classList.contains('hidden')) {
-                        const postId = singlePostContainer.querySelector('article').id.split('-')[2];
-                        renderSinglePost(postId);
+                        const post = posts.find(p => p.id === id);
+                        const likeCountSpan = document.querySelector(`#single-post-container #post-like-count-${id}`);
+                        const likeButton = likeCountSpan ? likeCountSpan.parentElement : null;
+
+                        if (likeCountSpan) {
+                            likeCountSpan.textContent = `${post.likes} Likes`;
+                        }
+
+                        if (likeButton) {
+                            if (post.isLiked) {
+                                likeButton.classList.add('like-button-active');
+                            } else {
+                                likeButton.classList.remove('like-button-active');
+                            }
+                        }
                     }
+
                 } else {
                     const errorData = await response.json().catch(() => ({error: "Unknown error"}));
                     showNotification(`Failed to update like for ${type}: ${errorData.error}`, 'error');
@@ -1911,9 +1927,141 @@
             checkAuth();
         });
 
+
+        // --- Notification System ---
+        const notificationContainer = document.getElementById('notification-container');
+
+        function showNotification(message, type = 'info', duration = 3000) {
+            if (!notificationContainer) return;
+
+            const notificationId = `notif-${Date.now()}`;
+            const notification = document.createElement('div');
+            notification.id = notificationId;
+            notification.className = `notification notification-${type}`;
+            
+            const messageSpan = document.createElement('span');
+            messageSpan.textContent = message;
+            notification.appendChild(messageSpan);
+
+            const closeButton = document.createElement('button');
+            closeButton.className = 'notification-close-btn';
+            closeButton.innerHTML = '&times;';
+            closeButton.onclick = () => {
+                notification.classList.remove('notification-visible');
+                setTimeout(() => notification.remove(), 300); // Allow fade out
+            };
+            notification.appendChild(closeButton);
+
+            notificationContainer.appendChild(notification);
+
+            // Trigger fade-in and slide-in
+            setTimeout(() => {
+                notification.classList.add('notification-visible');
+            }, 50); // Small delay to ensure transition occurs
+
+            // Auto-dismiss
+            if (duration > 0) {
+                setTimeout(() => {
+                    // Check if notification still exists (wasn't manually closed)
+                    if (document.getElementById(notificationId)) {
+                        notification.classList.remove('notification-visible');
+                        setTimeout(() => notification.remove(), 300);
+                    }
+                }, duration);
+            }
+        }
+
+        // --- Confirmation Modal System ---
+        const confirmationModalOverlay = document.getElementById('confirmation-modal-overlay');
+        const confirmationModalElement = document.getElementById('confirmation-modal');
+        const confirmationModalMessage = document.getElementById('confirmation-modal-message');
+        const confirmationModalTitle = document.getElementById('confirmation-modal-title');
+        const confirmBtn = document.getElementById('confirmation-modal-confirm-btn');
+        const cancelBtn = document.getElementById('confirmation-modal-cancel-btn');
+
+        let currentOnConfirm = null;
+        let currentOnCancel = null;
+
+        function showConfirmationDialog(message, onConfirmCallback, onCancelCallback, title = "Confirm Action", confirmText = "Confirm", cancelText = "Cancel") {
+            if (!confirmationModalOverlay || !confirmationModalMessage || !confirmBtn || !cancelBtn || !confirmationModalTitle) {
+                console.error("Confirmation modal elements not found.");
+                // Fallback to native confirm if modal elements are missing
+                if (confirm(message)) {
+                    if (onConfirmCallback) onConfirmCallback();
+                } else {
+                    if (onCancelCallback) onCancelCallback();
+                }
+                return;
+            }
+
+            confirmationModalMessage.textContent = message;
+            confirmationModalTitle.textContent = title;
+            confirmBtn.textContent = confirmText;
+            cancelBtn.textContent = cancelText;
+
+            currentOnConfirm = onConfirmCallback;
+            currentOnCancel = onCancelCallback;
+
+            confirmationModalOverlay.classList.remove('hidden');
+            // Add class for animation if desired, e.g., confirmationModalElement.classList.add('modal-open-animation');
+        }
+
+        function closeConfirmationDialog() {
+            confirmationModalOverlay.classList.add('hidden');
+            // Add class for animation if desired, e.g., confirmationModalElement.classList.remove('modal-open-animation');
+            currentOnConfirm = null;
+            currentOnCancel = null;
+        }
+
+        confirmBtn.addEventListener('click', () => {
+            if (currentOnConfirm) {
+                currentOnConfirm();
+            }
+            closeConfirmationDialog();
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            if (currentOnCancel) {
+                currentOnCancel();
+            }
+            closeConfirmationDialog();
+        });
+        
+        // Close modal if overlay is clicked (optional)
+        confirmationModalOverlay.addEventListener('click', (event) => {
+            if (event.target === confirmationModalOverlay) {
+                 if (currentOnCancel) { // Treat overlay click as cancel
+                    currentOnCancel();
+                }
+                closeConfirmationDialog();
+            }
+        });
+
+
+        function showMainFeed() {
+            document.getElementById('posts-container').classList.remove('hidden');
+            document.getElementById('create-post-form').classList.remove('hidden');
+            document.getElementById('filter-bar').classList.remove('hidden');
+            document.getElementById('single-post-container').classList.add('hidden');
+            document.getElementById('inbox-container-main').classList.add('hidden');
+        }
+
+        function countAllComments(comments) {
+            let count = comments.length;
+            for (const comment of comments) {
+                if (comment.replies) {
+                    count += countAllComments(comment.replies);
+                }
+            }
+            return count;
+        }
+
         function renderSinglePost(postId) {
             const post = posts.find(p => p.id === postId);
-            if (!post) return;
+            if (!post) {
+                showMainFeed();
+                return;
+            }
 
             document.getElementById('posts-container').classList.add('hidden');
             document.getElementById('create-post-form').classList.add('hidden');
@@ -1931,12 +2079,8 @@
             backButton.className = 'text-blue-600 hover:underline mb-4';
             backButton.innerHTML = '&larr; Back to all posts';
             backButton.onclick = () => {
-                container.classList.add('hidden');
-                document.getElementById('posts-container').classList.remove('hidden');
-                if (currentUser) {
-                    document.getElementById('create-post-form').classList.remove('hidden');
-                }
-                document.getElementById('filter-bar').classList.remove('hidden');
+                history.pushState({ postId: null }, "", "/");
+                showMainFeed()
             };
             container.appendChild(backButton);
 
@@ -2204,115 +2348,17 @@
             container.appendChild(article);
         }
 
-        // --- Notification System ---
-        const notificationContainer = document.getElementById('notification-container');
+        // Initial check
+        checkAuth();
+        loadPosts();
 
-        function showNotification(message, type = 'info', duration = 3000) {
-            if (!notificationContainer) return;
-
-            const notificationId = `notif-${Date.now()}`;
-            const notification = document.createElement('div');
-            notification.id = notificationId;
-            notification.className = `notification notification-${type}`;
-            
-            const messageSpan = document.createElement('span');
-            messageSpan.textContent = message;
-            notification.appendChild(messageSpan);
-
-            const closeButton = document.createElement('button');
-            closeButton.className = 'notification-close-btn';
-            closeButton.innerHTML = '&times;';
-            closeButton.onclick = () => {
-                notification.classList.remove('notification-visible');
-                setTimeout(() => notification.remove(), 300); // Allow fade out
-            };
-            notification.appendChild(closeButton);
-
-            notificationContainer.appendChild(notification);
-
-            // Trigger fade-in and slide-in
-            setTimeout(() => {
-                notification.classList.add('notification-visible');
-            }, 50); // Small delay to ensure transition occurs
-
-            // Auto-dismiss
-            if (duration > 0) {
-                setTimeout(() => {
-                    // Check if notification still exists (wasn't manually closed)
-                    if (document.getElementById(notificationId)) {
-                        notification.classList.remove('notification-visible');
-                        setTimeout(() => notification.remove(), 300);
-                    }
-                }, duration);
+        window.onpopstate = function(event) {
+            if (event.state && event.state.postId) {
+                renderSinglePost(event.state.postId);
+            } else {
+                showMainFeed();
             }
-        }
-
-        // --- Confirmation Modal System ---
-        const confirmationModalOverlay = document.getElementById('confirmation-modal-overlay');
-        const confirmationModalElement = document.getElementById('confirmation-modal');
-        const confirmationModalMessage = document.getElementById('confirmation-modal-message');
-        const confirmationModalTitle = document.getElementById('confirmation-modal-title');
-        const confirmBtn = document.getElementById('confirmation-modal-confirm-btn');
-        const cancelBtn = document.getElementById('confirmation-modal-cancel-btn');
-
-        let currentOnConfirm = null;
-        let currentOnCancel = null;
-
-        function showConfirmationDialog(message, onConfirmCallback, onCancelCallback, title = "Confirm Action", confirmText = "Confirm", cancelText = "Cancel") {
-            if (!confirmationModalOverlay || !confirmationModalMessage || !confirmBtn || !cancelBtn || !confirmationModalTitle) {
-                console.error("Confirmation modal elements not found.");
-                // Fallback to native confirm if modal elements are missing
-                if (confirm(message)) {
-                    if (onConfirmCallback) onConfirmCallback();
-                } else {
-                    if (onCancelCallback) onCancelCallback();
-                }
-                return;
-            }
-
-            confirmationModalMessage.textContent = message;
-            confirmationModalTitle.textContent = title;
-            confirmBtn.textContent = confirmText;
-            cancelBtn.textContent = cancelText;
-
-            currentOnConfirm = onConfirmCallback;
-            currentOnCancel = onCancelCallback;
-
-            confirmationModalOverlay.classList.remove('hidden');
-            // Add class for animation if desired, e.g., confirmationModalElement.classList.add('modal-open-animation');
-        }
-
-        function closeConfirmationDialog() {
-            confirmationModalOverlay.classList.add('hidden');
-            // Add class for animation if desired, e.g., confirmationModalElement.classList.remove('modal-open-animation');
-            currentOnConfirm = null;
-            currentOnCancel = null;
-        }
-
-        confirmBtn.addEventListener('click', () => {
-            if (currentOnConfirm) {
-                currentOnConfirm();
-            }
-            closeConfirmationDialog();
-        });
-
-        cancelBtn.addEventListener('click', () => {
-            if (currentOnCancel) {
-                currentOnCancel();
-            }
-            closeConfirmationDialog();
-        });
-        
-        // Close modal if overlay is clicked (optional)
-        confirmationModalOverlay.addEventListener('click', (event) => {
-            if (event.target === confirmationModalOverlay) {
-                 if (currentOnCancel) { // Treat overlay click as cancel
-                    currentOnCancel();
-                }
-                closeConfirmationDialog();
-            }
-        });
-
+        };
 
         function showMainFeed() {
             document.getElementById('posts-container').classList.remove('hidden');
@@ -2322,19 +2368,18 @@
             document.getElementById('inbox-container-main').classList.add('hidden');
         }
 
-        function countAllComments(comments) {
-            let count = comments.length;
-            for (const comment of comments) {
-                if (comment.replies) {
-                    count += countAllComments(comment.replies);
+        // Check for post ID in URL on initial load
+        const urlParams = new URLSearchParams(window.location.search);
+        const postId = urlParams.get('post');
+        if (postId) {
+            // We need to wait for posts to be loaded before rendering the single post
+            const interval = setInterval(() => {
+                if (posts.length > 0) {
+                    clearInterval(interval);
+                    renderSinglePost(postId);
                 }
-            }
-            return count;
+            }, 100);
         }
-
-        // Initial check
-        checkAuth();
-        loadPosts();
 
         async function renderInbox() {
             document.getElementById('posts-container').classList.add('hidden');
