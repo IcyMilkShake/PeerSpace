@@ -45,6 +45,7 @@
             z-index: 50;
             max-height: 200px;
             overflow-y: auto;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
 
         .mentions-suggestions div {
@@ -305,11 +306,9 @@
             <p class="text-gray-500">Be the first to start a discussion!</p>
         </div>
 
-        <!-- Inbox Container -->
-        <div id="inbox-container-main" class="hidden">
-            <button class="text-blue-600 hover:underline mb-4" onclick="showMainFeed()">&larr; Back to all posts</button>
+        <main class="max-w-3xl mx-auto px-4 py-8">
             <h1 class="text-3xl font-bold mb-6">Inbox</h1>
-            <div id="inbox-content" class="space-y-4">
+            <div id="inbox-container" class="space-y-4">
                 <!-- Notifications will be loaded here -->
             </div>
             <div id="inbox-loading" class="text-center py-12">
@@ -321,7 +320,7 @@
             <div id="inbox-error" class="hidden text-center py-12">
                 <p>Could not load notifications. Please try again later.</p>
             </div>
-        </div>
+        </main>
     </main>
 
     <!-- User Profile Modal -->
@@ -1646,6 +1645,10 @@
             }
         });
 
+        window.addEventListener('scroll', () => {
+            hideSuggestions();
+        });
+
         function updateActiveSuggestion() {
             const suggestionsBox = document.getElementById('mentions-suggestions');
             const suggestions = suggestionsBox.children;
@@ -2392,7 +2395,7 @@
             const loadingEl = document.getElementById('inbox-loading');
             const emptyEl = document.getElementById('inbox-empty');
             const errorEl = document.getElementById('inbox-error');
-            const containerEl = document.getElementById('inbox-content');
+            const containerEl = document.getElementById('inbox-container');
 
             loadingEl.classList.remove('hidden');
             emptyEl.classList.add('hidden');
@@ -2420,17 +2423,14 @@
                         notificationEl.classList.add('font-bold');
                     }
                     notificationEl.innerHTML = `
-                        <p>${notification.message}</p>
-                        <span class="text-sm text-gray-500">${new Date(notification.createdAt).toLocaleString()}</span>
+                        <a href="${notification.link}" class="block" target="_blank" rel="noopener noreferrer">
+                            <p>${notification.message}</p>
+                            <span class="text-sm text-gray-500">${new Date(notification.createdAt).toLocaleString()}</span>
+                        </a>
                     `;
                     notificationEl.addEventListener('click', async () => {
                         await fetch('/api/notifications/' + notification._id + '/read', { method: 'POST' });
                         notificationEl.classList.remove('font-bold');
-                        
-                        // Extract post ID from the notification link
-                        const postId = notification.link.split('/post/')[1].split('#')[0];
-                        
-                        renderSinglePost(postId);
                     });
                     containerEl.appendChild(notificationEl);
                 });
