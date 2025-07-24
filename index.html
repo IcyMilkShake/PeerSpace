@@ -2361,22 +2361,22 @@
 
                 notifications.forEach(notification => {
                     const notificationEl = document.createElement('div');
-                    notificationEl.className = 'notification-item p-4 border rounded-lg';
+                    notificationEl.className = 'notification-item p-4 border rounded-lg cursor-pointer';
                     if (!notification.read) {
                         notificationEl.classList.add('font-bold');
                     }
                     notificationEl.innerHTML = `
-                        <a href="${notification.link}" class="block" target="_blank" rel="noopener noreferrer">
-                            <p>${notification.message}</p>
-                            <span class="text-sm text-gray-500">${new Date(notification.createdAt).toLocaleString()}</span>
-                        </a>
+                        <p>${notification.message}</p>
+                        <span class="text-sm text-gray-500">${new Date(notification.createdAt).toLocaleString()}</span>
                     `;
-                    notificationEl.addEventListener('click', async (e) => {
-                        e.preventDefault();
+                    notificationEl.addEventListener('click', async () => {
                         await fetch('/api/notifications/' + notification._id + '/read', { method: 'POST' });
                         notificationEl.classList.remove('font-bold');
-                        window.location.hash = notification.link.split('#')[1];
-                        renderSinglePost(notification.post);
+                        
+                        // Extract post ID from the notification link
+                        const postId = notification.link.split('/post/')[1].split('#')[0];
+                        
+                        renderSinglePost(postId);
                     });
                     containerEl.appendChild(notificationEl);
                 });
