@@ -2470,8 +2470,9 @@
                     notificationEl.addEventListener('click', async () => {
                         // Mark as read
                         if (!notification.read) {
-                            await fetch('/api/notifications/' + notification.id + '/read', { method: 'POST' });
+                            await fetch('/api/notifications/' + notification._id + '/read', { method: 'POST' });
                             notificationEl.classList.remove('font-bold');
+                            notification.read = true;
                             // Update notification count
                             fetchUnreadNotificationCount();
                         }
