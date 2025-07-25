@@ -339,7 +339,9 @@ app.get('/api/notifications', isAuthenticated, async (req, res) => {
 
     console.log('Fetched notifications:', JSON.stringify(notifications, null, 2));
 
-    const responseNotifications = notifications.map(n => ({
+    const responseNotifications = notifications
+      .filter(n => n.post) // Filter out notifications where the post has been deleted
+      .map(n => ({
         _id: n._id,
         message: `<strong>${n.sender.displayName}</strong> mentioned you in <strong>${n.post.title}</strong>.`,
         link: `/#/post/${n.post._id}#comment-${n.comment}`,
