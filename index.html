@@ -2073,7 +2073,9 @@
 
         function showMainFeed() {
             document.getElementById('posts-container').classList.remove('hidden');
-            document.getElementById('create-post-form').classList.remove('hidden');
+            if (currentUser) {
+                document.getElementById('create-post-form').classList.remove('hidden');
+            }
             document.getElementById('filter-bar').classList.remove('hidden');
             document.getElementById('single-post-container').classList.add('hidden');
             document.getElementById('inbox-container-main').classList.add('hidden');
@@ -2395,7 +2397,9 @@
 
         function showMainFeed() {
             document.getElementById('posts-container').classList.remove('hidden');
-            document.getElementById('create-post-form').classList.remove('hidden');
+            if (currentUser) {
+                document.getElementById('create-post-form').classList.remove('hidden');
+            }
             document.getElementById('filter-bar').classList.remove('hidden');
             document.getElementById('single-post-container').classList.add('hidden');
             document.getElementById('inbox-container-main').classList.add('hidden');

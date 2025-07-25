@@ -334,11 +334,14 @@ app.get('/api/notifications', isAuthenticated, async (req, res) => {
   try {
     const notifications = await Notification.find({ user: req.user._id })
       .populate('sender', 'displayName')
+      .populate('post')
       .sort({ createdAt: -1 });
+
+    console.log('Fetched notifications:', JSON.stringify(notifications, null, 2));
 
     const responseNotifications = notifications.map(n => ({
         _id: n._id,
-        message: `<strong>${n.sender.displayName}</strong> mentioned you in a post.`,
+        message: `<strong>${n.sender.displayName}</strong> mentioned you in <strong>${n.post.title}</strong>.`,
         link: `/#/post/${n.post._id}#comment-${n.comment}`,
         read: n.read,
         createdAt: n.createdAt
