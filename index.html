@@ -709,8 +709,36 @@
 
                 const postTextParagraph = document.createElement('p');
                 postTextParagraph.className = "text-gray-700 mb-4 whitespace-pre-wrap";
-                postTextParagraph.innerHTML = escapeHtml(post.content, true);
-                postContentElement.appendChild(postTextParagraph);
+
+                if (post.content.length > 300) {
+                    const seeMoreContainer = document.createElement('div');
+                    seeMoreContainer.className = 'see-more-container post-see-more';
+
+                    const fullContent = document.createElement('p');
+                    fullContent.className = 'text-gray-700 mb-4 whitespace-pre-wrap';
+                    fullContent.innerHTML = escapeHtml(post.content, true);
+
+                    seeMoreContainer.appendChild(fullContent);
+
+                    const seeMoreBtn = document.createElement('button');
+                    seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
+                    seeMoreBtn.textContent = 'See More';
+                    seeMoreBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        if (seeMoreContainer.classList.contains('expanded')) {
+                            seeMoreContainer.classList.remove('expanded');
+                            seeMoreBtn.textContent = 'See More';
+                        } else {
+                            seeMoreContainer.classList.add('expanded');
+                            seeMoreBtn.textContent = 'See Less';
+                        }
+                    };
+                    postContentElement.appendChild(seeMoreContainer);
+                    postContentElement.appendChild(seeMoreBtn);
+                } else {
+                    postTextParagraph.innerHTML = escapeHtml(post.content, true);
+                    postContentElement.appendChild(postTextParagraph);
+                }
 
                 // Poll Display and Voting
                 if (post.postType === 'poll' && post.pollOptions && post.pollOptions.length > 0) {
