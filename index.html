@@ -2089,7 +2089,7 @@
             article.className = 'rounded-lg shadow-md p-6';
 
             const backButton = document.createElement('button');
-            backButton.className = 'text-blue-600 hover:underline mb-4';
+            backButton.className = 'back-to-posts-btn text-blue-600 hover:underline mb-4';
             backButton.innerHTML = '&larr; Back to all posts';
             backButton.onclick = () => {
                 history.pushState({ postId: null }, "", "/");
@@ -2408,8 +2408,8 @@
             if (!document.getElementById('inbox-back-button')) {
                 const backButton = document.createElement('button');
                 backButton.id = 'inbox-back-button';
-                backButton.className = 'text-blue-600 hover:underline mb-4';
-                backButton.innerHTML = '&larr; Back to posts';
+                backButton.className = 'text-blue-600 hover:underline mb-4 back-to-posts-btn';
+                backButton.innerHTML = '&larr; Back to all posts';
                 backButton.onclick = () => {
                     history.pushState({ postId: null }, "", "/");
                     showMainFeed();
@@ -2431,7 +2431,11 @@
             try {
                 const response = await fetch('/api/notifications');
                 if (!response.ok) {
-                    throw new Error('Failed to fetch notifications');
+                    if (response.statusText == "Unauthorized") {
+                        throw new Error('Unauthorized');
+                    }else{
+                        throw new Error('Failed to fetch notifications');
+                    }
                 }
                 const notifications = await response.json();
 
@@ -2483,7 +2487,15 @@
             } catch (error) {
                 console.error('Failed to load notifications:', error);
                 loadingEl.classList.add('hidden');
-                errorEl.classList.remove('hidden');
+                if (error == "Error: Unauthorized") {
+                    console.log("here")
+                    errorEl.textContent = "Please login to view notifications."
+                    errorEl.classList.remove('hidden');
+                }else{
+                    console.log("her")
+                    errorEl.textContent = "Could not load notifications. Please try again later."
+                    errorEl.classList.remove('hidden');
+                }
             }
         }
     </script>
