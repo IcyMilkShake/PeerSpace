@@ -416,6 +416,7 @@
         async function checkAuth() {
             try {
                 const response = await fetch('/api/user', {
+                    credentials: 'include'
                 });
                 if (response.ok) {
                     currentUser = await response.json();
@@ -527,7 +528,7 @@
         // Logout function
         async function logout() {
             try {
-                await fetch('/auth/logout', { method: 'POST' });
+                await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
                 currentUser = null;
                 updateUI();
                 loadPosts();

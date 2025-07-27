@@ -387,7 +387,7 @@ app.post('/api/notifications/:notificationId/read', isAuthenticated, async (req,
 
 // FIXED Google Auth routes with better error handling
 app.get('/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
+  passport.authenticate('google', { scope: ['profile', 'email'], prompt: 'select_account' })
 );
 
 app.get('/auth/google/callback',
@@ -426,7 +426,7 @@ app.post('/auth/logout', (req, res) => {
         console.error('Session destroy error:', err);
         return res.status(500).json({ error: 'Session destroy failed' });
       }
-      res.clearCookie('peerspace.sid'); // Clear the session cookie
+      res.clearCookie('peerspace.sid'); // Explicitly expire the cookie
       res.json({ success: true });
     });
   });
