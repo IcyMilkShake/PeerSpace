@@ -545,9 +545,13 @@ Constrain images and videos to the parent width and preserve their intrinsic asp
 img,
 video {
   max-width: 100%;
-  height: auto;
+  height: 100%;
   width: 100%;
   object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
 }
 
 /* Make elements with the HTML hidden attribute stay hidden by default */
