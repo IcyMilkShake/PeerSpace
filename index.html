@@ -766,7 +766,7 @@ Add Video +
                         } else if (attachment.fileType === 'video') {
                             const video = document.createElement('video');
                             video.src = attachment.url;
-                            video.className = 'w-full h-auto object-cover rounded';
+                            video.className = 'w-full h-full object-cover rounded';
                             video.controls = true;
                             attachmentsContainer.appendChild(video);
                         }
@@ -2422,7 +2422,7 @@ Add Video +
                     } else if (attachment.fileType === 'video') {
                         const video = document.createElement('video');
                         video.src = attachment.url;
-                        video.className = 'w-full h-auto object-cover rounded';
+                        video.className = 'w-full h-full object-cover rounded';
                         video.controls = true;
                         attachmentsContainer.appendChild(video);
                     }
