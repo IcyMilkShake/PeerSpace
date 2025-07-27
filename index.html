@@ -611,6 +611,7 @@ Add Video +
                 const article = document.createElement('article');
                 // Removed 'bg-white' class, themes.css will handle background via 'article' tag selector
                 article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in';
+                article.classList.add("cursor-pointer");
                 article.onclick = () => {
                     history.pushState({ postId: post.id }, "", `?post=${post.id}`);
                     renderSinglePost(post.id);
