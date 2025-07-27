@@ -447,7 +447,7 @@ app.get('/api/user', (req, res) => {
   
   if (req.isAuthenticated() && req.user) {
     console.log('✓ Sending user data for:', req.user.username);
-    const { _id, username, displayName, email, profilePicture, description, createdAt } = req.user;
+    const { _id, username, displayName, email, profilePicture, description, createdAt, theme } = req.user;
     return res.json({
       id: _id,
       username,
@@ -455,7 +455,8 @@ app.get('/api/user', (req, res) => {
       email,
       photo: profilePicture.path || '/default-profile.png',
       description: description || '',
-      createdAt: createdAt
+      createdAt: createdAt,
+      theme: theme
     });
   } else {
     console.log('✗ User not authenticated - sending 401');
@@ -746,6 +747,30 @@ app.put('/api/user/username', isAuthenticated, async (req, res) => {
 });
 
 // Upload profile picture endpoint
+app.put('/api/user/theme', isAuthenticated, async (req, res) => {
+  try {
+    const { theme } = req.body;
+    if (!theme || !['light', 'dark', 'midnight'].includes(theme)) {
+      return res.status(400).json({ error: 'Invalid theme' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.theme = theme;
+    await user.save();
+
+    req.user.theme = user.theme;
+
+    res.json({ success: true, theme: user.theme });
+  } catch (error) {
+    console.error('Error updating user theme:', error);
+    res.status(500).json({ error: 'Failed to update theme' });
+  }
+});
+
 app.post('/api/user/profile-picture', isAuthenticated, upload.single('profilePicture'), async (req, res) => {
   try {
     if (!req.file) {

@@ -163,9 +163,22 @@
 
     <script>
         // --- Theme Management ---
-        function applyTheme(theme) {
+        async function applyTheme(theme, fromEvent = false) {
             document.documentElement.className = 'theme-' + theme;
-            localStorage.setItem('forumTheme', theme);
+            
+            if (fromEvent) {
+                try {
+                    await fetch('/api/user/theme', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ theme }),
+                    });
+                } catch (error) {
+                    console.error('Failed to save theme:', error);
+                }
+            }
 
             // Update radio buttons
             const radioButtons = document.querySelectorAll('input[name="theme"]');
@@ -202,40 +215,40 @@
         }
 
 
-        function loadTheme() {
-            const preferredTheme = localStorage.getItem('forumTheme') || 'dark'; // Default to dark
-            applyTheme(preferredTheme);
-            return preferredTheme;
+        function loadTheme(theme) {
+            applyTheme(theme);
+            return theme;
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const currentTheme = loadTheme();
+            checkAuthStatusForSettingsPage().then(() => {
+                const currentTheme = currentLoggedInUserConfig ? currentLoggedInUserConfig.theme : 'dark';
+                loadTheme(currentTheme);
 
-            const themeRadios = document.querySelectorAll('input[name="theme"]');
-            themeRadios.forEach(radio => {
-                radio.addEventListener('change', (event) => {
-                    applyTheme(event.target.value);
+                const themeRadios = document.querySelectorAll('input[name="theme"]');
+                themeRadios.forEach(radio => {
+                    radio.addEventListener('change', (event) => {
+                        applyTheme(event.target.value, true);
+                    });
+                });
+                 // Initial and on-change toggle styling
+                document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', () => updateToggleStyles(currentLoggedInUserConfig ? currentLoggedInUserConfig.theme : 'dark'));
+                });
+                updateToggleStyles(currentTheme); // Initial call
+
+                // Placeholder toggles - just for looks, no actual functionality
+                document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', (event) => {
+                        const label = event.target.nextElementSibling;
+                        if (event.target.checked) {
+                            label.style.backgroundColor = (currentLoggedInUserConfig && (currentLoggedInUserConfig.theme === 'dark' || currentLoggedInUserConfig.theme === 'midnight')) ? 'var(--button-bg)' : '#3B82F6';
+                        } else {
+                            label.style.backgroundColor = (currentLoggedInUserConfig && (currentLoggedInUserConfig.theme === 'dark' || currentLoggedInUserConfig.theme === 'midnight')) ? 'var(--input-bg)' : '#CBD5E0';
+                        }
+                    });
                 });
             });
-             // Initial and on-change toggle styling
-            document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', () => updateToggleStyles(localStorage.getItem('forumTheme') || 'dark'));
-            });
-            updateToggleStyles(currentTheme); // Initial call
-
-            // Placeholder toggles - just for looks, no actual functionality
-            document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', (event) => {
-                    const label = event.target.nextElementSibling;
-                    if (event.target.checked) {
-                        label.style.backgroundColor = (localStorage.getItem('forumTheme') === 'dark' || localStorage.getItem('forumTheme') === 'midnight') ? 'var(--button-bg)' : '#3B82F6';
-                    } else {
-                        label.style.backgroundColor = (localStorage.getItem('forumTheme') === 'dark' || localStorage.getItem('forumTheme') === 'midnight') ? 'var(--input-bg)' : '#CBD5E0';
-                    }
-                });
-            });
-
-            checkAuthStatusForSettingsPage();
         });
 
         // --- Auth & Nav specific to settings.html (similar to profile.html) ---

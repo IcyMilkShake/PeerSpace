@@ -47,6 +47,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: '',
     maxlength: 500 // Optional: set a max length for the description
+  },
+  theme: {
+    type: String,
+    default: 'dark'
   }
 }, { collection: 'User' });
 
