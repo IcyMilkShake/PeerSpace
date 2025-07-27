@@ -243,8 +243,14 @@
                             Add Image +
                         </button>
                         <button type="button" id="add-video-btn" class="flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.55a1 1 0 01.45 1.732l-4.55 4.55a1 1 0 01-1.732-.45V10a1 1 0 011.732-.45zM4 6h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z"/></svg>
-                            Add Video +
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor"
+     viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+        d="M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+        d="M10 9.5l4 2.5-4 2.5v-5z" />
+</svg>
+Add Video +
                         </button>
                     </div>
                     <input id="attachment-input" name="attachments" type="file" class="hidden" multiple>
@@ -2010,7 +2016,7 @@
             const postType = postTypeSelect.value;
             let pollOptions = [];
 
-            if (!title || !content) {
+            if (!title) {
                 showNotification('Please fill in both title and content for the post.', 'warning');
                 return;
             }

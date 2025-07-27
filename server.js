@@ -946,6 +946,7 @@ app.get('/api/posts', async (req, res) => {
 // Create new post
 app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments', 15), async (req, res) => {
   try {
+    console.log("AaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
     const { title, content, postType } = req.body;
     let { pollOptions } = req.body;
 
@@ -953,8 +954,8 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       pollOptions = JSON.parse(pollOptions);
     }
 
-    if (!title || !content) {
-      return res.status(400).json({ error: 'Title and content are required' });
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
     }
 
     if (title.length > 75) {

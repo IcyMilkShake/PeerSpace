@@ -67,7 +67,7 @@ const postSchema = new mongoose.Schema({
   },
   content: {
     type: String,
-    required: true,
+    required: false,
     maxlength: 2500
   },
   author: {
