@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 
+function arrayLimit(val) {
+  return val.length <= 15;
+}
+
 // User Schema
 const userSchema = new mongoose.Schema({
   googleId: {
@@ -83,6 +87,13 @@ const postSchema = new mongoose.Schema({
     type: String,
     enum: ['normal', 'question', 'guide', 'poll'],
     default: 'normal'
+  },
+  attachments: {
+    type: [{
+      url: { type: String, required: true },
+      fileType: { type: String, required: true, enum: ['image', 'video'] }
+    }],
+    validate: [arrayLimit, '{PATH} exceeds the limit of 15']
   },
   pollOptions: [{
     option: { type: String, required: true, maxlength: 75 },

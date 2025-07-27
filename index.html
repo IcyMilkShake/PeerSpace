@@ -234,6 +234,23 @@
                     </div>
                     <button type="button" id="add-poll-option-btn" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Add Another Option</button>
                 </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Attachments</label>
+                    <div class="flex space-x-2 mt-2">
+                        <button type="button" id="add-image-btn" class="flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            Add Image +
+                        </button>
+                        <button type="button" id="add-video-btn" class="flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.55a1 1 0 01.45 1.732l-4.55 4.55a1 1 0 01-1.732-.45V10a1 1 0 011.732-.45zM4 6h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z"/></svg>
+                            Add Video +
+                        </button>
+                    </div>
+                    <input id="attachment-input" name="attachments" type="file" class="hidden" multiple>
+                    <div id="attachment-previews" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                </div>
+
                 <button type="submit" class="text-white px-6 py-3 rounded-lg font-medium transition-colors"> <!-- Removed bg-blue-600 hover:bg-blue-700 -->
                     Create Post
                 </button>
@@ -357,6 +374,13 @@
             </div>
             <p class="text-sm text-gray-600 text-center">Please wait...</p>
         </div>
+    </div>
+
+    <div id="lightbox-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[100]">
+        <span id="lightbox-close" class="absolute top-4 right-4 text-white text-3xl cursor-pointer">&times;</span>
+        <img id="lightbox-image" class="max-w-full max-h-full">
+        <button id="lightbox-prev" class="absolute left-4 text-white text-3xl">&#10094;</button>
+        <button id="lightbox-next" class="absolute right-4 text-white text-3xl">&#10095;</button>
     </div>
 
     <script>
@@ -712,6 +736,60 @@
                     postContentElement.appendChild(postTextParagraph);
                 }
 
+                // Attachment Display
+                if (post.attachments && post.attachments.length > 0) {
+                    const attachmentsContainer = document.createElement('div');
+                    attachmentsContainer.className = 'mt-4 mb-4 relative';
+
+                    if (post.attachments.length === 1) {
+                        const attachment = post.attachments[0];
+                        if (attachment.fileType === 'image') {
+                            const img = document.createElement('img');
+                            img.src = attachment.url;
+                            img.className = 'w-full h-auto object-cover rounded cursor-pointer';
+                            img.onclick = (e) => {
+                                e.stopPropagation();
+                                openLightbox([attachment.url], 0);
+                            };
+                            attachmentsContainer.appendChild(img);
+                        } else if (attachment.fileType === 'video') {
+                            const video = document.createElement('video');
+                            video.src = attachment.url;
+                            video.className = 'w-full h-auto object-cover rounded';
+                            video.controls = true;
+                            attachmentsContainer.appendChild(video);
+                        }
+                    } else if (post.attachments.length > 1) {
+                        attachmentsContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
+                        post.attachments.forEach((attachment, index) => {
+                            const attachmentWrapper = document.createElement('div');
+                            attachmentWrapper.className = 'w-1/2 flex-shrink-0';
+
+                            if (attachment.fileType === 'image') {
+                                const img = document.createElement('img');
+                                img.src = attachment.url;
+                                img.className = 'w-full h-full object-cover rounded cursor-pointer';
+                                img.onclick = (e) => {
+                                    e.stopPropagation();
+                                    const imageAttachments = post.attachments.filter(a => a.fileType === 'image').map(a => a.url);
+                                    const imageIndex = imageAttachments.indexOf(attachment.url);
+                                    openLightbox(imageAttachments, imageIndex);
+                                };
+                                attachmentWrapper.appendChild(img);
+                            } else if (attachment.fileType === 'video') {
+                                const video = document.createElement('video');
+                                video.src = attachment.url;
+                                video.className = 'w-full h-full object-cover rounded';
+                                video.controls = true;
+                                attachmentWrapper.appendChild(video);
+                            }
+                            attachmentsContainer.appendChild(attachmentWrapper);
+                        });
+                    }
+
+                    postContentElement.appendChild(attachmentsContainer);
+                }
+
                 // Poll Display and Voting
                 if (post.postType === 'poll' && post.pollOptions && post.pollOptions.length > 0) {
                     const pollContainer = document.createElement('div');
@@ -1025,19 +1103,24 @@
 
 
         // Create new post
-        async function createPost(title, content, postType = 'normal', pollOptions = []) {
+        async function createPost(title, content, postType, pollOptions, files) {
             try {
-                const payload = { title, content, postType };
+                const formData = new FormData();
+                formData.append('title', title);
+                formData.append('content', content);
+                formData.append('postType', postType);
+
                 if (postType === 'poll' && pollOptions.length > 0) {
-                    payload.pollOptions = pollOptions;
+                    formData.append('pollOptions', JSON.stringify(pollOptions));
                 }
+
+                files.forEach(file => {
+                    formData.append('attachments', file);
+                });
 
                 const response = await fetch('/api/posts', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
+                    body: formData
                 });
 
                 if (response.ok) {
@@ -1048,8 +1131,9 @@
                         isLiked: false,
                         comments: [],
                         // Initialize poll options on client if it's a poll post and options were provided
-                        pollOptions: (postType === 'poll' && newPost.pollOptions) ? newPost.pollOptions : [],
-                        postType: newPost.postType || 'normal' // Ensure postType is present
+                        pollOptions: (newPost.postType === 'poll' && newPost.pollOptions) ? newPost.pollOptions : [],
+                        postType: newPost.postType || 'normal', // Ensure postType is present
+                        attachments: newPost.attachments || []
                         // reports: [] // Reports are not typically sent back on creation to all users
                     };
                     posts.unshift({ ...defaultPostFields, ...newPost });
@@ -1835,6 +1919,90 @@
 
         updateDeleteButtons();
 
+        let attachedFiles = [];
+
+        const attachmentInput = document.getElementById('attachment-input');
+        const addImageBtn = document.getElementById('add-image-btn');
+        const addVideoBtn = document.getElementById('add-video-btn');
+        const attachmentPreviews = document.getElementById('attachment-previews');
+
+        addImageBtn.addEventListener('click', () => {
+            attachmentInput.accept = 'image/*';
+            attachmentInput.click();
+        });
+
+        addVideoBtn.addEventListener('click', () => {
+            attachmentInput.accept = 'video/*';
+            attachmentInput.click();
+        });
+
+        attachmentInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            for (const file of files) {
+                if (attachedFiles.length >= 15) {
+                    showNotification('You can upload a maximum of 15 files.', 'warning');
+                    break;
+                }
+
+                if (file.type.startsWith('image/')) {
+                    if (file.size > 10 * 1024 * 1024) {
+                        showNotification(`Image file ${file.name} is too large (max 10MB).`, 'warning');
+                        continue;
+                    }
+                    attachedFiles.push(file);
+                    createPreview(file);
+                } else if (file.type.startsWith('video/')) {
+                    if (file.size > 100 * 1024 * 1024) {
+                        showNotification(`Video file ${file.name} is too large (max 100MB).`, 'warning');
+                        continue;
+                    }
+                    attachedFiles.push(file);
+                    createPreview(file);
+                } else {
+                    showNotification(`File type not supported: ${file.name}`, 'warning');
+                }
+            }
+        }
+
+        function createPreview(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const previewWrapper = document.createElement('div');
+                previewWrapper.className = 'relative';
+
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'w-full h-auto object-cover rounded';
+                    previewWrapper.appendChild(img);
+                } else if (file.type.startsWith('video/')) {
+                    const video = document.createElement('video');
+                    video.src = e.target.result;
+                    video.className = 'w-full h-auto object-cover rounded';
+                    video.controls = true;
+                    previewWrapper.appendChild(video);
+                }
+
+                const removeButton = document.createElement('button');
+                removeButton.innerHTML = '&times;';
+                removeButton.className = 'absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center';
+                removeButton.onclick = () => {
+                    const index = attachedFiles.indexOf(file);
+                    if (index > -1) {
+                        attachedFiles.splice(index, 1);
+                    }
+                    previewWrapper.remove();
+                };
+                previewWrapper.appendChild(removeButton);
+
+                attachmentPreviews.appendChild(previewWrapper);
+            };
+            reader.readAsDataURL(file);
+        }
+
         postForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = document.getElementById('post-title').value.trim();
@@ -1860,8 +2028,8 @@
                 }
             }
 
-            // Pass postType and pollOptions to createPost function
-            const success = await createPost(title, content, postType, pollOptions);
+            // Pass formData to createPost function
+            const success = await createPost(title, content, postType, pollOptions, attachedFiles);
             if (success) {
                 document.getElementById('post-title').value = '';
                 document.getElementById('post-content').value = '';
@@ -1871,6 +2039,8 @@
                     <input type="text" name="pollOption[]" placeholder="Option 1" class="w-full px-4 py-2 mb-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <input type="text" name="pollOption[]" placeholder="Option 2" class="w-full px-4 py-2 mb-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                 `;
+                attachmentPreviews.innerHTML = '';
+                attachedFiles = [];
                 showNotification("Post created successfully!", "success");
                 titleCharCount.textContent = '0 / 75';
                 contentCharCount.textContent = '0 / 2500';
@@ -2222,6 +2392,60 @@
                 postContentElement.appendChild(postTextParagraph);
             }
 
+            // Attachment Display
+            if (post.attachments && post.attachments.length > 0) {
+                const attachmentsContainer = document.createElement('div');
+                attachmentsContainer.className = 'mt-4 mb-4 relative';
+
+                if (post.attachments.length === 1) {
+                    const attachment = post.attachments[0];
+                    if (attachment.fileType === 'image') {
+                        const img = document.createElement('img');
+                        img.src = attachment.url;
+                        img.className = 'w-full h-auto object-cover rounded cursor-pointer';
+                        img.onclick = (e) => {
+                            e.stopPropagation();
+                            openLightbox([attachment.url], 0);
+                        };
+                        attachmentsContainer.appendChild(img);
+                    } else if (attachment.fileType === 'video') {
+                        const video = document.createElement('video');
+                        video.src = attachment.url;
+                        video.className = 'w-full h-auto object-cover rounded';
+                        video.controls = true;
+                        attachmentsContainer.appendChild(video);
+                    }
+                } else if (post.attachments.length > 1) {
+                    attachmentsContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
+                    post.attachments.forEach((attachment, index) => {
+                        const attachmentWrapper = document.createElement('div');
+                        attachmentWrapper.className = 'w-1/2 flex-shrink-0';
+
+                        if (attachment.fileType === 'image') {
+                            const img = document.createElement('img');
+                            img.src = attachment.url;
+                            img.className = 'w-full h-full object-cover rounded cursor-pointer';
+                            img.onclick = (e) => {
+                                e.stopPropagation();
+                                const imageAttachments = post.attachments.filter(a => a.fileType === 'image').map(a => a.url);
+                                const imageIndex = imageAttachments.indexOf(attachment.url);
+                                openLightbox(imageAttachments, imageIndex);
+                            };
+                            attachmentWrapper.appendChild(img);
+                        } else if (attachment.fileType === 'video') {
+                            const video = document.createElement('video');
+                            video.src = attachment.url;
+                            video.className = 'w-full h-full object-cover rounded';
+                            video.controls = true;
+                            attachmentWrapper.appendChild(video);
+                        }
+                        attachmentsContainer.appendChild(attachmentWrapper);
+                    });
+                }
+
+                postContentElement.appendChild(attachmentsContainer);
+            }
+
             // Poll Display and Voting
             if (post.postType === 'poll' && post.pollOptions && post.pollOptions.length > 0) {
                 const pollContainer = document.createElement('div');
@@ -2499,6 +2723,52 @@
                 }
             }
         }
+
+        // Lightbox functionality
+        const lightboxModal = document.getElementById('lightbox-modal');
+        const lightboxImage = document.getElementById('lightbox-image');
+        const lightboxClose = document.getElementById('lightbox-close');
+        const lightboxPrev = document.getElementById('lightbox-prev');
+        const lightboxNext = document.getElementById('lightbox-next');
+
+        let currentImageIndex = 0;
+        let currentImageList = [];
+
+        function openLightbox(images, index) {
+            currentImageList = images;
+            currentImageIndex = index;
+            updateLightboxImage();
+            lightboxModal.classList.remove('hidden');
+        }
+
+        function closeLightbox() {
+            lightboxModal.classList.add('hidden');
+        }
+
+        function updateLightboxImage() {
+            lightboxImage.src = currentImageList[currentImageIndex];
+        }
+
+        function showPrevImage() {
+            currentImageIndex = (currentImageIndex - 1 + currentImageList.length) % currentImageList.length;
+            updateLightboxImage();
+        }
+
+        function showNextImage() {
+            currentImageIndex = (currentImageIndex + 1) % currentImageList.length;
+            updateLightboxImage();
+        }
+
+        lightboxClose.addEventListener('click', closeLightbox);
+        lightboxPrev.addEventListener('click', showPrevImage);
+        lightboxNext.addEventListener('click', showNextImage);
+
+        document.addEventListener('keydown', (e) => {
+            if (lightboxModal.classList.contains('hidden')) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') showPrevImage();
+            if (e.key === 'ArrowRight') showNextImage();
+        });
     </script>
 </body>
 </html>

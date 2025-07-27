@@ -55,6 +55,21 @@ const upload = multer({
   },
 });
 
+// Multer configuration for post attachments
+const postAttachmentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images and videos are allowed.'), false);
+    }
+  },
+});
+
 // Recursive helper function to delete a comment and all its children
 async function deleteCommentAndChildren(commentId) {
   // Find and delete children first
@@ -900,6 +915,7 @@ app.get('/api/posts', async (req, res) => {
           title: post.title,
           content: post.content,
           postType: post.postType, // Include postType
+          attachments: post.attachments,
           pollOptions: post.pollOptions ? post.pollOptions.map(opt => ({ // Include pollOptions
             option: opt.option,
             votes: opt.votes,
@@ -928,9 +944,14 @@ app.get('/api/posts', async (req, res) => {
 });
 
 // Create new post
-app.post('/api/posts', isAuthenticated, async (req, res) => {
+app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments', 15), async (req, res) => {
   try {
-    const { title, content, postType, pollOptions } = req.body;
+    const { title, content, postType } = req.body;
+    let { pollOptions } = req.body;
+
+    if (pollOptions) {
+      pollOptions = JSON.parse(pollOptions);
+    }
 
     if (!title || !content) {
       return res.status(400).json({ error: 'Title and content are required' });
@@ -948,8 +969,27 @@ app.post('/api/posts', isAuthenticated, async (req, res) => {
       title,
       content,
       author: req.user._id,
-      postType: postType || 'normal' // Default to 'normal' if not provided
+      postType: postType || 'normal', // Default to 'normal' if not provided
+      attachments: []
     };
+
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const key = `post_attachments/${uuidv4()}-${file.originalname}`;
+        const params = {
+          Bucket: BUCKET_NAME,
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+          ACL: 'public-read',
+        };
+        const result = await s3.upload(params).promise();
+        newPostData.attachments.push({
+          url: result.Location,
+          fileType: file.mimetype.startsWith('image/') ? 'image' : 'video'
+        });
+      }
+    }
 
     if (postType === 'poll') {
       if (!pollOptions || !Array.isArray(pollOptions) || pollOptions.length < 2) {
@@ -982,6 +1022,7 @@ app.post('/api/posts', isAuthenticated, async (req, res) => {
       title: post.title,
       content: post.content,
       postType: post.postType,
+      attachments: post.attachments,
       pollOptions: post.pollOptions, // Ensure pollOptions are returned
       author: {
         id: post.author._id,
