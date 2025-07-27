@@ -349,35 +349,6 @@
             </button>
         </nav>
     </div>
-
-    <!-- Image Cropper Modal - This will be moved to profile.html -->
-    <!-- For now, we comment it out from index.html to avoid issues if JS is not fully removed yet -->
-    <!--
-    <div id="crop-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-overlay flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg crop-modal-content max-w-4xl w-full max-h-[95vh] overflow-hidden">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold">Crop Profile Picture</h3>
-                    <button id="crop-cancel" class="text-gray-500 hover:text-gray-700">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-                <div class="crop-image-container mb-4">
-                    <img id="crop-image" />
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button id="crop-cancel-btn" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
-                        Cancel
-                    </button>
-                    <button id="crop-save" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
-                        Save Picture
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div> -->
     <div id="upload-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-50"> 
         <div class="rounded-lg p-6 max-w-sm w-full mx-4"> <!-- Removed bg-white -->
             <h3 class="text-lg font-semibold mb-4">Uploading Profile Picture</h3>
@@ -639,7 +610,7 @@
 
                 const menuButton = document.createElement('button');
                 menuButton.className = 'text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
-                menuButton.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
+                menuButton.innerHTML = `<svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
                 menuButton.onclick = (e) => {
                     e.stopPropagation(); // Prevent post click if menu is part of header link
                     togglePostActionMenu(post.id);
@@ -664,7 +635,6 @@
                     };
                     dropdownMenu.appendChild(deleteButton);
                 }
-
                 if (currentUser && currentUser.id !== post.author.id) { // Users cannot report their own posts
                     const reportButton = document.createElement('button');
                     reportButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100'; // text-gray-700 removed
@@ -1186,18 +1156,33 @@
         // --- Post Action Menu Functions ---
         function togglePostActionMenu(postId) {
             const menu = document.getElementById(`post-action-menu-${postId}`);
+            const singlePostContainer = document.getElementById('single-post-container');
+            if (!singlePostContainer.classList.contains('hidden')) {
+                console.log("single")
+                const isHidden = menu.classList.contains('hidden');
+                console.log(isHidden)
+                // Close all menus first
+                closeAllPostActionMenus();
+                // If the menu was hidden, show it
+                if (isHidden) {
+                    menu.classList.remove('hidden');
+                }
+            }
             if (menu) {
-                // Close other menus first
-                closeAllPostActionMenus(postId);
-                menu.classList.toggle('hidden');
+                const isHidden = menu.classList.contains('hidden');
+                console.log(isHidden)
+                // Close all menus first
+                closeAllPostActionMenus();
+                // If the menu was hidden, show it
+                if (isHidden) {
+                    menu.classList.remove('hidden');
+                }
             }
         }
 
-        function closeAllPostActionMenus(excludePostId = null) {
-            document.querySelectorAll('[id^="post-action-menu-"]').forEach(menu => {
-                if (!excludePostId || menu.id !== `post-action-menu-${excludePostId}`) {
-                    menu.classList.add('hidden');
-                }
+        function closeAllPostActionMenus() {
+            document.querySelectorAll('.post-action-menu').forEach(menu => {
+                menu.classList.add('hidden');
             });
         }
 
@@ -1433,6 +1418,7 @@
                     
                     const singlePostContainer = document.getElementById('single-post-container');
                     if (!singlePostContainer.classList.contains('hidden')) {
+                        console.log("single")
                         const post = posts.find(p => p.id === id);
                         const likeCountSpan = document.querySelector(`#single-post-container #post-like-count-${id}`);
                         const likeButton = likeCountSpan ? likeCountSpan.parentElement : null;
@@ -2138,7 +2124,7 @@
 
             const menuButton = document.createElement('button');
             menuButton.className = 'text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
-            menuButton.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
+            menuButton.innerHTML = `<svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
             menuButton.onclick = (e) => {
                 e.stopPropagation(); // Prevent post click if menu is part of header link
                 togglePostActionMenu(post.id);
