@@ -1155,25 +1155,21 @@
 
         // --- Post Action Menu Functions ---
         function togglePostActionMenu(postId) {
-            const menu = document.getElementById(`post-action-menu-${postId}`);
             const singlePostContainer = document.getElementById('single-post-container');
+            let menu;
             if (!singlePostContainer.classList.contains('hidden')) {
-                console.log("single")
-                const isHidden = menu.classList.contains('hidden');
-                console.log(isHidden)
-                // Close all menus first
-                closeAllPostActionMenus();
-                // If the menu was hidden, show it
-                if (isHidden) {
-                    menu.classList.remove('hidden');
-                }
+                menu = document.getElementById(`post-action-menu-single-${postId}`);
+            } else {
+                menu = document.getElementById(`post-action-menu-${postId}`);
             }
+            
             if (menu) {
                 const isHidden = menu.classList.contains('hidden');
-                console.log(isHidden)
-                // Close all menus first
+                
+                // Close all menus first to avoid multiple open menus.
                 closeAllPostActionMenus();
-                // If the menu was hidden, show it
+        
+                // If the menu was hidden, show it. This logic works as a toggle.
                 if (isHidden) {
                     menu.classList.remove('hidden');
                 }
@@ -1296,7 +1292,10 @@
                     // renderPosts(); // Re-render to show updated votes and disable button - REMOVED
 
                     // Directly update the DOM for the voted poll
-                    const pollContainer = document.getElementById(`poll-${postId}`);
+                    const singlePostContainer = document.getElementById('single-post-container');
+                    const container = singlePostContainer.classList.contains('hidden') ? document : singlePostContainer;
+                    const pollContainer = container.querySelector(`#poll-${postId}`);
+
                     if (pollContainer) {
                         const localPost = posts[postIndex]; // Get the updated post data
                         const currentUserVote = localPost.usersWhoVoted && currentUser ? localPost.usersWhoVoted.find(vote => vote.userId === currentUser.id) : null;
@@ -2132,7 +2131,7 @@
             postActionsMenu.appendChild(menuButton);
 
             const dropdownMenu = document.createElement('div');
-            dropdownMenu.id = `post-action-menu-${post.id}`;
+            dropdownMenu.id = `post-action-menu-single-${post.id}`;
             dropdownMenu.className = 'hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-20 post-action-menu'; // bg-white removed
 
             if (currentUser && currentUser.id === post.author.id) {
