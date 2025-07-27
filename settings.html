@@ -166,6 +166,9 @@
         async function applyTheme(theme, fromEvent = false) {
             document.documentElement.className = 'theme-' + theme;
             
+            // Save the theme to localStorage
+            localStorage.setItem('theme', theme);
+
             if (fromEvent) {
                 try {
                     await fetch('/api/user/theme', {
