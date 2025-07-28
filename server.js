@@ -333,14 +333,6 @@ passport.deserializeUser(async (id, done) => {
 
 // ENHANCED Authentication middleware with better logging
 const isAuthenticated = (req, res, next) => {
-  console.log('=== AUTH CHECK ===');
-  console.log('Session ID:', req.sessionID);
-  console.log('Session data:', req.session);
-  console.log('User authenticated?', req.isAuthenticated());
-  console.log('User object:', req.user ? { id: req.user._id, username: req.user.username } : 'null');
-  console.log('Cookies:', req.headers.cookie);
-  console.log('==================');
-  
   if (req.isAuthenticated() && req.user) {
     console.log('✓ User is authenticated:', req.user.username);
     return next();
@@ -467,17 +459,6 @@ app.post('/auth/logout', (req, res) => {
 
 // ENHANCED user endpoint with better logging
 app.get('/api/user', (req, res) => {
-  console.log('=== /api/user REQUEST ===');
-  console.log('Headers:', {
-    'user-agent': req.headers['user-agent'],
-    'cookie': req.headers.cookie,
-    'referer': req.headers.referer
-  });
-  console.log('Session ID:', req.sessionID);
-  console.log('Session:', req.session);
-  console.log('Is authenticated?', req.isAuthenticated());
-  console.log('User object:', req.user);
-  
   if (req.isAuthenticated() && req.user) {
     console.log('✓ Sending user data for:', req.user.username);
     const { _id, username, displayName, email, profilePicture, description, createdAt, theme } = req.user;
