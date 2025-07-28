@@ -980,10 +980,10 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
           await new Promise((resolve, reject) => {
             ffmpeg(file.path)
               .outputOptions([
-                '-vf', 'format=yuv420p,scale=1280:-2',
+                '-vf', 'scale=min(1280\\,iw):-2,format=yuv420p',
                 '-c:v', 'libx264',
-                '-pix_fmt', 'yuv420p',
-                '-r', '30',
+                '-preset', 'veryfast',
+                '-crf', '23',
                 '-movflags', '+faststart',
                 '-c:a', 'aac'
               ])
@@ -991,8 +991,10 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
                 console.log('✅ Transcode complete:', outputPath);
                 resolve(outputPath);
               })
-              .on('error', (err) => {
-                console.error('❌ FFmpeg error:', err);
+              .on('error', (err, stdout, stderr) => {
+                console.error('❌ FFmpeg error:', err.message);
+                console.error('FFmpeg stdout:', stdout);
+                console.error('FFmpeg stderr:', stderr);
                 reject(err);
               })
               .save(outputPath);

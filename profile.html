@@ -806,7 +806,7 @@
                     // Re-render the main profile avatar on this page
                     const avatarContainer = document.getElementById('profile-avatar-container');
                     avatarContainer.innerHTML = ''; // Clear previous
-                    const newAvatar = createProfileImage(result.photo, document.getElementById('profile-name').textContent, "profile-avatar", "text-5xl");
+                    const newAvatar = createProfileImage(result.photo, document.getElementById('profile-display-name').textContent, "profile-avatar", "text-5xl");
                     avatarContainer.appendChild(newAvatar);
                     
                     // Also update the avatar in the nav modal if it's the current user's profile
