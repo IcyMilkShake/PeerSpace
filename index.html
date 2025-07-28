@@ -764,11 +764,23 @@ Add Video +
                             };
                             attachmentsContainer.appendChild(img);
                         } else if (attachment.fileType === 'video') {
+                            const videoWrapper = document.createElement('div');
+                            videoWrapper.style.width = '100%';
+                            videoWrapper.style.overflow = 'hidden';
                             const video = document.createElement('video');
-                            video.src = attachment.url;
                             video.className = 'w-full h-auto object-cover rounded';
                             video.controls = true;
-                            attachmentsContainer.appendChild(video);
+                            video.setAttribute('playsinline', '');
+                            video.setAttribute('autoplay', '');
+                            video.setAttribute('loop', '');
+                            video.setAttribute('muted', '');
+                            const source = document.createElement('source');
+                            source.src = attachment.url;
+                            source.type = 'video/mp4';
+                            video.appendChild(source);
+                            video.innerHTML += 'Your browser does not support the video tag.';
+                            videoWrapper.appendChild(video);
+                            attachmentsContainer.appendChild(videoWrapper);
                         }
                     } else if (post.attachments.length > 1) {
                         attachmentsContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
@@ -788,11 +800,23 @@ Add Video +
                                 };
                                 attachmentWrapper.appendChild(img);
                             } else if (attachment.fileType === 'video') {
+                                const videoWrapper = document.createElement('div');
+                                videoWrapper.style.width = '100%';
+                                videoWrapper.style.overflow = 'hidden';
                                 const video = document.createElement('video');
-                                video.src = attachment.url;
                                 video.className = 'w-full h-full object-cover rounded';
                                 video.controls = true;
-                                attachmentWrapper.appendChild(video);
+                                video.setAttribute('playsinline', '');
+                                video.setAttribute('autoplay', '');
+                                video.setAttribute('loop', '');
+                                video.setAttribute('muted', '');
+                                const source = document.createElement('source');
+                                source.src = attachment.url;
+                                source.type = 'video/mp4';
+                                video.appendChild(source);
+                                video.innerHTML += 'Your browser does not support the video tag.';
+                                videoWrapper.appendChild(video)
+                                attachmentWrapper.appendChild(videoWrapper);
                             }
                             attachmentsContainer.appendChild(attachmentWrapper);
                         });
@@ -2420,11 +2444,23 @@ Add Video +
                         };
                         attachmentsContainer.appendChild(img);
                     } else if (attachment.fileType === 'video') {
+                        const videoWrapper = document.createElement('div');
+                        videoWrapper.style.width = '100%';
+                        videoWrapper.style.overflow = 'hidden';
                         const video = document.createElement('video');
-                        video.src = attachment.url;
                         video.className = 'w-full h-auto object-cover rounded';
                         video.controls = true;
-                        attachmentsContainer.appendChild(video);
+                        video.setAttribute('playsinline', '');
+                        video.setAttribute('autoplay', '');
+                        video.setAttribute('loop', '');
+                        video.setAttribute('muted', '');
+                        const source = document.createElement('source');
+                        source.src = attachment.url;
+                        source.type = 'video/mp4';
+                        video.appendChild(source);
+                        video.innerHTML += 'Your browser does not support the video tag.';
+                        videoWrapper.appendChild(video);
+                        attachmentsContainer.appendChild(videoWrapper);
                     }
                 } else if (post.attachments.length > 1) {
                     attachmentsContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
@@ -2444,11 +2480,23 @@ Add Video +
                             };
                             attachmentWrapper.appendChild(img);
                         } else if (attachment.fileType === 'video') {
+                            const videoWrapper = document.createElement('div');
+                            videoWrapper.style.width = '100%';
+                            videoWrapper.style.overflow = 'hidden';
                             const video = document.createElement('video');
-                            video.src = attachment.url;
                             video.className = 'w-full h-full object-cover rounded';
                             video.controls = true;
-                            attachmentWrapper.appendChild(video);
+                            video.setAttribute('playsinline', '');
+                            video.setAttribute('autoplay', '');
+                            video.setAttribute('loop', '');
+                            video.setAttribute('muted', '');
+                            const source = document.createElement('source');
+                            source.src = attachment.url;
+                            source.type = 'video/mp4';
+                            video.appendChild(source);
+                            video.innerHTML += 'Your browser does not support the video tag.';
+                            videoWrapper.appendChild(video)
+                            attachmentWrapper.appendChild(videoWrapper);
                         }
                         attachmentsContainer.appendChild(attachmentWrapper);
                     });
@@ -2783,3 +2831,4 @@ Add Video +
     </script>
 </body>
 </html>
+
