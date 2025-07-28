@@ -10,11 +10,22 @@ const fs = require('fs');
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
 const AWS = require('aws-sdk');
+const ffmpeg = require('fluent-ffmpeg');
 require('dotenv').config();
 
 const { User, Post, Comment, Notification } = require('./schema');
 
 const app = express();
+
+// Create temporary directories for video processing
+const uploadsDir = path.join(__dirname, 'uploads');
+const processedDir = path.join(__dirname, 'processed');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+if (!fs.existsSync(processedDir)) {
+  fs.mkdirSync(processedDir);
+}
 const PORT = process.env.PORT || 8082;
 
 const development = process.env.NODE_ENV !== 'production';
@@ -57,7 +68,14 @@ const upload = multer({
 
 // Multer configuration for post attachments
 const postAttachmentUpload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      cb(null, `${uuidv4()}-${file.originalname}`);
+    },
+  }),
   limits: {
     fileSize: 100 * 1024 * 1024, // 100MB limit
   },
@@ -976,19 +994,63 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
 
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        const key = `post_attachments/${uuidv4()}-${file.originalname}`;
-        const params = {
-          Bucket: BUCKET_NAME,
-          Key: key,
-          Body: file.buffer,
-          ContentType: file.mimetype,
-          ACL: 'public-read',
-        };
-        const result = await s3.upload(params).promise();
-        newPostData.attachments.push({
-          url: result.Location,
-          fileType: file.mimetype.startsWith('image/') ? 'image' : 'video'
-        });
+        if (file.mimetype.startsWith('video/')) {
+          const outputPath = path.join(processedDir, `${Date.now()}-output.mp4`);
+          await new Promise((resolve, reject) => {
+            ffmpeg(file.path)
+              .outputOptions([
+                '-vf', 'format=yuv420p,scale=1280:-2',
+                '-c:v', 'libx264',
+                '-pix_fmt', 'yuv420p',
+                '-r', '30',
+                '-movflags', '+faststart',
+                '-c:a', 'aac'
+              ])
+              .on('end', () => {
+                console.log('✅ Transcode complete:', outputPath);
+                resolve(outputPath);
+              })
+              .on('error', (err) => {
+                console.error('❌ FFmpeg error:', err);
+                reject(err);
+              })
+              .save(outputPath);
+          });
+
+          const fileContent = fs.readFileSync(outputPath);
+          const key = `post_attachments/${uuidv4()}-output.mp4`;
+          const params = {
+            Bucket: BUCKET_NAME,
+            Key: key,
+            Body: fileContent,
+            ContentType: 'video/mp4',
+            ACL: 'public-read',
+          };
+          const result = await s3.upload(params).promise();
+          newPostData.attachments.push({
+            url: result.Location,
+            fileType: 'video'
+          });
+
+          fs.unlinkSync(file.path); // Delete original file
+          fs.unlinkSync(outputPath); // Delete processed file
+        } else if (file.mimetype.startsWith('image/')) {
+          const fileContent = fs.readFileSync(file.path);
+          const key = `post_attachments/${uuidv4()}-${file.originalname}`;
+          const params = {
+            Bucket: BUCKET_NAME,
+            Key: key,
+            Body: fileContent,
+            ContentType: file.mimetype,
+            ACL: 'public-read',
+          };
+          const result = await s3.upload(params).promise();
+          newPostData.attachments.push({
+            url: result.Location,
+            fileType: 'image'
+          });
+          fs.unlinkSync(file.path); // Delete original file
+        }
       }
     }
 
