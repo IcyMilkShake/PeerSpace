@@ -10,10 +10,6 @@ const fs = require('fs');
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
 const AWS = require('aws-sdk');
-const ffmpeg = require('fluent-ffmpeg');
-const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
-ffmpeg.setFfmpegPath(ffmpegPath);
-const stream = require('stream');
 require('dotenv').config();
 
 const { User, Post, Comment, Notification } = require('./schema');
@@ -980,57 +976,18 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
 
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        let fileBuffer = file.buffer;
-        let contentType = file.mimetype;
-        let fileType = file.mimetype.startsWith('image/') ? 'image' : 'video';
-
-        if (fileType === 'video') {
-          const transcodedBuffer = await new Promise((resolve, reject) => {
-            const outputStream = new stream.PassThrough();
-            const chunks = [];
-            outputStream.on('data', (chunk) => chunks.push(chunk));
-            outputStream.on('end', () => resolve(Buffer.concat(chunks)));
-            outputStream.on('error', reject);
-
-            const readStream = new stream.PassThrough();
-            readStream.end(file.buffer);
-
-            ffmpeg(readStream)
-              .inputFormat(file.originalname.split('.').pop())
-              .videoCodec('libx264')
-              .audioCodec('aac')
-              .outputOptions([
-                '-pix_fmt yuv420p',
-                '-preset fast',
-                '-profile:v main',
-                '-level 3.1',
-                '-r 30',
-                '-movflags +faststart',
-                '-b:a 128k'
-              ])
-              .toFormat('mp4')
-              .on('error', (err) => {
-                console.error('Error transcoding video:', err);
-                reject(err);
-              })
-              .pipe(outputStream);
-          });
-          fileBuffer = transcodedBuffer;
-          contentType = 'video/mp4';
-        }
-
         const key = `post_attachments/${uuidv4()}-${file.originalname}`;
         const params = {
           Bucket: BUCKET_NAME,
           Key: key,
-          Body: fileBuffer,
-          ContentType: contentType,
+          Body: file.buffer,
+          ContentType: file.mimetype,
           ACL: 'public-read',
         };
         const result = await s3.upload(params).promise();
         newPostData.attachments.push({
           url: result.Location,
-          fileType: fileType
+          fileType: file.mimetype.startsWith('image/') ? 'image' : 'video'
         });
       }
     }
