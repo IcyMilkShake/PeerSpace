@@ -606,21 +606,19 @@ app.post('/api/posts/:postId/vote', isAuthenticated, async (req, res) => {
     if (existingVoteIndex > -1) {
       const previousVote = post.usersWhoVoted[existingVoteIndex];
       if (previousVote.optionIndex === optionIndex) {
-        return res.json({
-          message: 'You have already voted for this option.',
-          pollOptions: post.pollOptions.map(opt => ({ option: opt.option, votes: opt.votes })),
-          usersWhoVoted: post.usersWhoVoted
-        });
+        // User is clicking the same option again, so un-vote.
+        post.pollOptions[optionIndex].votes = Math.max(0, post.pollOptions[optionIndex].votes - 1);
+        post.usersWhoVoted.splice(existingVoteIndex, 1);
+      } else {
+        // User is changing their vote.
+        if (post.pollOptions[previousVote.optionIndex]) {
+          post.pollOptions[previousVote.optionIndex].votes = Math.max(0, post.pollOptions[previousVote.optionIndex].votes - 1);
+        }
+        post.usersWhoVoted[existingVoteIndex].optionIndex = optionIndex;
+        post.pollOptions[optionIndex].votes += 1;
       }
-
-      if (post.pollOptions[previousVote.optionIndex]) {
-        post.pollOptions[previousVote.optionIndex].votes = Math.max(0, post.pollOptions[previousVote.optionIndex].votes - 1);
-      }
-      
-      post.usersWhoVoted[existingVoteIndex].optionIndex = optionIndex;
-      post.pollOptions[optionIndex].votes += 1;
-
     } else {
+      // New vote.
       post.pollOptions[optionIndex].votes += 1;
       post.usersWhoVoted.push({ userId, optionIndex });
     }
