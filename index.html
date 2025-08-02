@@ -1208,10 +1208,16 @@ Add Video +
                     formData.append('attachments', file);
                 });
 
-                const response = await fetch('/api/posts', {
+                const fetchPromise = fetch('/api/posts', {
                     method: 'POST',
                     body: formData
                 });
+
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('timeout')), 30000) // 30 second timeout
+                );
+
+                const response = await Promise.race([fetchPromise, timeoutPromise]);
 
                 if (response.ok) {
                     const newPost = await response.json();
@@ -1235,6 +1241,11 @@ Add Video +
                     return false;
                 }
             } catch (error) {
+                if (error.message === 'timeout') {
+                    showNotification('Your post is being uploaded and will appear shortly.', 'info', 5000);
+                    loadPosts();
+                    return true; // Assume success and reset the form
+                }
                 console.error('Failed to create post:', error);
                 showNotification('An error occurred while creating the post.', 'error');
                 return false;
