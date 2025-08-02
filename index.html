@@ -880,34 +880,29 @@ Add Video +
                 }
                 article.appendChild(postContentElement);
                 
-                // Link Previews
-                if (post.linkPreview && post.linkPreview.length > 0) {
-                    const previewsContainer = document.createElement('div');
-                    previewsContainer.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 my-4';
+                // Link Preview
+                if (post.linkPreview && post.linkPreview.url) {
+                    const preview = post.linkPreview;
+                    const previewContainer = document.createElement('a');
+                    previewContainer.href = preview.url;
+                    previewContainer.target = '_blank';
+                    previewContainer.rel = 'noopener noreferrer';
+                    previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-4 text-sm';
+                    previewContainer.style.textDecoration = 'none';
 
-                    post.linkPreview.forEach(preview => {
-                        const previewContainer = document.createElement('a');
-                        previewContainer.href = preview.url;
-                        previewContainer.target = '_blank';
-                        previewContainer.rel = 'noopener noreferrer';
-                        previewContainer.className = 'flex flex-col border rounded-lg overflow-hidden text-sm';
-                        previewContainer.style.textDecoration = 'none';
+                    let imageHtml = '';
+                    if (preview.image) {
+                        imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-24 h-24 object-cover">`;
+                    }
 
-                        let imageHtml = '';
-                        if (preview.image) {
-                            imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-full h-32 object-cover">`;
-                        }
-
-                        previewContainer.innerHTML = `
-                            ${imageHtml}
-                            <div class="p-3 flex-grow flex flex-col">
-                            <div class="font-bold mb-1 flex-grow">${escapeHtml(preview.title || '')}</div>
-                            <div class="text-gray-600 text-xs">${escapeHtml(preview.description || '')}</div>
-                            </div>
-                        `;
-                        previewsContainer.appendChild(previewContainer);
-                    });
-                    article.appendChild(previewsContainer);
+                    previewContainer.innerHTML = `
+                        ${imageHtml}
+                        <div class="p-3">
+                        <div class="font-bold mb-1">${escapeHtml(preview.title || '')}</div>
+                        <div class="text-gray-600">${escapeHtml(preview.description || '')}</div>
+                        </div>
+                    `;
+                    article.appendChild(previewContainer);
                 }
 
                 // Post Actions (Like and Comment counts)
@@ -2649,34 +2644,29 @@ Add Video +
             }
             article.appendChild(postContentElement);
             
-            // Link Previews
-            if (post.linkPreview && post.linkPreview.length > 0) {
-                const previewsContainer = document.createElement('div');
-                previewsContainer.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 my-4';
+            // Link Preview
+            if (post.linkPreview && post.linkPreview.url) {
+                const preview = post.linkPreview;
+                const previewContainer = document.createElement('a');
+                previewContainer.href = preview.url;
+                previewContainer.target = '_blank';
+                previewContainer.rel = 'noopener noreferrer';
+                previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-4 text-sm';
+                previewContainer.style.textDecoration = 'none';
 
-                post.linkPreview.forEach(preview => {
-                    const previewContainer = document.createElement('a');
-                    previewContainer.href = preview.url;
-                    previewContainer.target = '_blank';
-                    previewContainer.rel = 'noopener noreferrer';
-                    previewContainer.className = 'flex flex-col border rounded-lg overflow-hidden text-sm';
-                    previewContainer.style.textDecoration = 'none';
+                let imageHtml = '';
+                if (preview.image) {
+                    imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-24 h-24 object-cover">`;
+                }
 
-                    let imageHtml = '';
-                    if (preview.image) {
-                        imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-full h-32 object-cover">`;
-                    }
-
-                    previewContainer.innerHTML = `
-                        ${imageHtml}
-                        <div class="p-3 flex-grow flex flex-col">
-                        <div class="font-bold mb-1 flex-grow">${escapeHtml(preview.title || '')}</div>
-                        <div class="text-gray-600 text-xs">${escapeHtml(preview.description || '')}</div>
-                        </div>
-                    `;
-                    previewsContainer.appendChild(previewContainer);
-                });
-                article.appendChild(previewsContainer);
+                previewContainer.innerHTML = `
+                    ${imageHtml}
+                    <div class="p-3">
+                    <div class="font-bold mb-1">${escapeHtml(preview.title || '')}</div>
+                    <div class="text-gray-600">${escapeHtml(preview.description || '')}</div>
+                    </div>
+                `;
+                article.appendChild(previewContainer);
             }
 
             // Post Actions (Like button)
