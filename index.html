@@ -767,6 +767,7 @@ Add Video +
                             const videoWrapper = document.createElement('div');
                             videoWrapper.style.width = '100%';
                             videoWrapper.style.overflow = 'hidden';
+                            videoWrapper.onclick = (e) => e.stopPropagation();
                             const video = document.createElement('video');
                             video.className = 'w-full h-auto object-cover rounded post-video';
                             video.controls = true;
@@ -801,6 +802,7 @@ Add Video +
                                 const videoWrapper = document.createElement('div');
                                 videoWrapper.style.width = '100%';
                                 videoWrapper.style.overflow = 'hidden';
+                                videoWrapper.onclick = (e) => e.stopPropagation();
                                 const video = document.createElement('video');
                                 video.className = 'w-full h-full object-cover rounded post-video';
                                 video.controls = true;
@@ -889,17 +891,18 @@ Add Video +
                     previewContainer.rel = 'noopener noreferrer';
                     previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-4 text-sm';
                     previewContainer.style.textDecoration = 'none';
+                    previewContainer.onclick = (e) => e.stopPropagation();
 
                     let imageHtml = '';
                     if (preview.image) {
-                        imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-24 h-24 object-cover">`;
+                        imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-16 h-16 sm:w-24 sm:h-24 object-cover flex-shrink-0">`;
                     }
 
                     previewContainer.innerHTML = `
                         ${imageHtml}
-                        <div class="p-3">
-                        <div class="font-bold mb-1">${escapeHtml(preview.title || '')}</div>
-                        <div class="text-gray-600">${escapeHtml(preview.description || '')}</div>
+                        <div class="p-3 overflow-hidden">
+                        <div class="font-bold mb-1 truncate">${escapeHtml(preview.title || '')}</div>
+                        <div class="text-gray-600 text-xs truncate">${(preview.description || '').substring(0, 100)}</div>
                         </div>
                     `;
                     article.appendChild(previewContainer);
@@ -1034,6 +1037,32 @@ Add Video +
                 } else {
                     commentText.innerHTML = escapeHtml(comment.content, true);
                     commentBody.appendChild(commentText);
+                }
+
+                // Link Preview for Comments
+                if (comment.linkPreview && comment.linkPreview.url) {
+                    const preview = comment.linkPreview;
+                    const previewContainer = document.createElement('a');
+                    previewContainer.href = preview.url;
+                    previewContainer.target = '_blank';
+                    previewContainer.rel = 'noopener noreferrer';
+                    previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-2 text-sm';
+                    previewContainer.style.textDecoration = 'none';
+                    previewContainer.onclick = (e) => e.stopPropagation(); // Prevent comment click-through
+
+                    let imageHtml = '';
+                    if (preview.image) {
+                        imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-16 h-16 sm:w-20 sm:h-20 object-cover flex-shrink-0">`;
+                    }
+
+                    previewContainer.innerHTML = `
+                        ${imageHtml}
+                        <div class="p-2 overflow-hidden">
+                            <div class="font-bold truncate">${escapeHtml(preview.title || '')}</div>
+                            <div class="text-gray-600 text-xs truncate">${escapeHtml(preview.description || '')}</div>
+                        </div>
+                    `;
+                    commentBody.appendChild(previewContainer);
                 }
 
                 // Comment Actions (Like, Reply, Delete)
@@ -1849,7 +1878,7 @@ Add Video +
                 // Convert @-mentions to clickable links
                 const mentionRegex = /@(\w+)/g;
                 escapedText = escapedText.replace(mentionRegex, function(match, username) {
-                    return `<a href="/profile.html?username=${username}" class="mention-link">${match}</a>`;
+                    return `<a href="/profile.html?username=${username}" class="mention-link" onclick="event.stopPropagation()">${match}</a>`;
                 });
             }
             return escapedText;
@@ -2471,6 +2500,7 @@ Add Video +
                         const videoWrapper = document.createElement('div');
                         videoWrapper.style.width = '100%';
                         videoWrapper.style.overflow = 'hidden';
+                        videoWrapper.onclick = (e) => e.stopPropagation();
                         const video = document.createElement('video');
                         video.className = 'w-full h-auto object-cover rounded post-video';
                         video.controls = true;
@@ -2506,6 +2536,7 @@ Add Video +
                             const videoWrapper = document.createElement('div');
                             videoWrapper.style.width = '100%';
                             videoWrapper.style.overflow = 'hidden';
+                            videoWrapper.onclick = (e) => e.stopPropagation();
                             const video = document.createElement('video');
                             video.className = 'w-full h-full object-cover rounded post-video';
                             video.controls = true;
@@ -2656,14 +2687,14 @@ Add Video +
 
                 let imageHtml = '';
                 if (preview.image) {
-                    imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-24 h-24 object-cover">`;
+                    imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-16 h-16 sm:w-24 sm:h-24 object-cover flex-shrink-0">`;
                 }
 
                 previewContainer.innerHTML = `
                     ${imageHtml}
-                    <div class="p-3">
-                    <div class="font-bold mb-1">${escapeHtml(preview.title || '')}</div>
-                    <div class="text-gray-600">${escapeHtml(preview.description || '')}</div>
+                    <div class="p-3 overflow-hidden">
+                    <div class="font-bold mb-1 truncate">${escapeHtml(preview.title || '')}</div>
+                    <div class="text-gray-600 text-xs truncate">${(preview.description || '').substring(0, 100)}</div>
                     </div>
                 `;
                 article.appendChild(previewContainer);

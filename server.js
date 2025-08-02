@@ -883,6 +883,7 @@ app.get('/api/posts', async (req, res) => {
                 createdAt: comment.createdAt.toISOString(),
                 parentComment: comment.parentComment,
                 replyingTo: replyingTo, // Updated logic here
+                linkPreview: comment.linkPreview,
                 replies: buildCommentTree(comment._id)
               };
             });
@@ -905,6 +906,7 @@ app.get('/api/posts', async (req, res) => {
                 createdAt: comment.createdAt.toISOString(),
                 parentComment: null, // Explicitly null for top-level
                 replyingTo: null,    // Top-level comments are not replying to anyone
+                linkPreview: comment.linkPreview,
                 replies: buildCommentTree(comment._id)
             }));
 
@@ -974,34 +976,9 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
     };
 
     // Link preview logic
-    const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
-    const urls = content.match(urlRegex);
-
-    if (urls && urls.length > 0) {
-      try {
-        const url = urls[0];
-        const { data } = await axios.get(url);
-        const $ = cheerio.load(data);
-
-        const getMetaTag = (name) => {
-          return (
-            $(`meta[property="og:${name}"]`).attr('content') ||
-            $(`meta[name="twitter:${name}"]`).attr('content') ||
-            $(`meta[name="${name}"]`).attr('content')
-          );
-        };
-
-        const preview = {
-          url: url,
-          title: getMetaTag('title') || $('title').first().text(),
-          description: getMetaTag('description') || $('p').first().text(),
-          image: getMetaTag('image'),
-        };
-        newPostData.linkPreview = preview;
-      } catch (previewError) {
-        console.error('Could not fetch link preview:', previewError.message);
-        // Dont do anything if preview fails
-      }
+    const linkPreview = await generateLinkPreview(content);
+    if (linkPreview) {
+        newPostData.linkPreview = linkPreview;
     }
 
 
@@ -1150,6 +1127,11 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
       post: postId
     });
 
+    const linkPreview = await generateLinkPreview(content);
+    if (linkPreview) {
+      comment.linkPreview = linkPreview;
+    }
+
     await comment.save();
     await comment.populate('author', 'username displayName profilePicture');
     await createNotificationsForMentions(content, postId, comment._id, req.user._id);
@@ -1163,7 +1145,13 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
         displayName: comment.author.displayName,
         photo: comment.author.profilePicture.path || '/default-profile.png'
       },
-      createdAt: comment.createdAt.toISOString()
+      likes: 0,
+      isLiked: false,
+      createdAt: comment.createdAt.toISOString(),
+      parentComment: null,
+      replyingTo: null,
+      linkPreview: comment.linkPreview,
+      replies: []
     };
 
     res.json(responseComment);
@@ -1187,7 +1175,7 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
       return res.status(400).json({ error: 'Reply cannot exceed 1000 characters.' });
     }
 
-    const parentComment = await Comment.findById(commentId);
+    const parentComment = await Comment.findById(commentId).populate('author', 'id username');
     if (!parentComment) {
       return res.status(404).json({ error: 'Parent comment not found.' });
     }
@@ -1198,6 +1186,11 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
       post: parentComment.post, // Associate reply with the same post
       parentComment: commentId
     });
+
+    const linkPreview = await generateLinkPreview(content);
+    if (linkPreview) {
+      reply.linkPreview = linkPreview;
+    }
 
     await reply.save();
     await reply.populate('author', 'username displayName profilePicture');
@@ -1212,10 +1205,16 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
         displayName: reply.author.displayName,
         photo: reply.author.profilePicture.path || '/default-profile.png'
       },
-      post: reply.post,
+      likes: 0,
+      isLiked: false,
+      createdAt: reply.createdAt.toISOString(),
       parentComment: reply.parentComment,
-      likes: [],
-      createdAt: reply.createdAt.toISOString()
+      replyingTo: {
+        id: parentComment.author._id,
+        username: parentComment.author.username
+      },
+      linkPreview: reply.linkPreview,
+      replies: []
     };
 
     res.status(201).json(responseReply);
@@ -1224,6 +1223,60 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
     res.status(500).json({ error: 'Failed to create reply.' });
   }
 });
+
+async function generateLinkPreview(content) {
+  const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+  const urls = content.match(urlRegex);
+
+  if (urls && urls.length > 0) {
+    try {
+      let url = urls[0];
+      // Prepend http:// if the URL doesn't have a protocol
+      if (!url.match(/^[a-zA-Z]+:\/\//)) {
+        url = 'http://' + url;
+      }
+
+      const { data } = await axios.get(url, { timeout: 5000 }); // Add a timeout
+      const $ = cheerio.load(data);
+
+      const getMetaTag = (name) => {
+        return (
+          $(`meta[property="og:${name}"]`).attr('content') ||
+          $(`meta[name="twitter:${name}"]`).attr('content') ||
+          $(`meta[name="${name}"]`).attr('content')
+        );
+      };
+
+      const title = getMetaTag('title') || $('title').first().text();
+      const description = getMetaTag('description') || $('p').first().text();
+      let image = getMetaTag('image');
+
+      // Make relative image URLs absolute
+      if (image && image.trim() && !image.startsWith('http')) {
+        try {
+            const urlObject = new URL(url);
+            image = new URL(image, urlObject.origin).href;
+        } catch (e) {
+            console.error(`Invalid image URL found for ${url}: ${image}`);
+            image = null; // Invalidate bad image URL
+        }
+      }
+
+      // Basic validation to ensure we have something to show
+      if (title || description) {
+          return {
+            url: url,
+            title: title ? title.trim() : '',
+            description: description ? description.trim().substring(0, 200) : '', // Trim and limit length
+            image: image,
+          };
+      }
+    } catch (previewError) {
+      // console.error(`Could not fetch link preview for ${urls[0]}:`, previewError.message);
+    }
+  }
+  return null; // Return null if no URL or if preview generation fails
+}
 
 // Helper function to parse mentions and create notifications
 async function createNotificationsForMentions(text, postId, commentId, senderId) {
