@@ -143,6 +143,12 @@ const commentSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  linkPreview: {
+    url: String,
+    title: String,
+    description: String,
+    image: String,
+  },
   createdAt: {
     type: Date,
     default: Date.now
