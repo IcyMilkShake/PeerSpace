@@ -768,12 +768,11 @@ Add Video +
                             videoWrapper.style.width = '100%';
                             videoWrapper.style.overflow = 'hidden';
                             const video = document.createElement('video');
-                            video.className = 'w-full h-auto object-cover rounded';
+                            video.className = 'w-full h-auto object-cover rounded post-video';
                             video.controls = true;
                             video.setAttribute('playsinline', '');
-                            video.setAttribute('autoplay', '');
                             video.setAttribute('loop', '');
-                            video.setAttribute('muted', '');
+                            video.muted = true;
                             const source = document.createElement('source');
                             source.src = attachment.url;
                             source.type = 'video/mp4';
@@ -804,12 +803,11 @@ Add Video +
                                 videoWrapper.style.width = '100%';
                                 videoWrapper.style.overflow = 'hidden';
                                 const video = document.createElement('video');
-                                video.className = 'w-full h-full object-cover rounded';
+                                video.className = 'w-full h-full object-cover rounded post-video';
                                 video.controls = true;
                                 video.setAttribute('playsinline', '');
-                                video.setAttribute('autoplay', '');
                                 video.setAttribute('loop', '');
-                                video.setAttribute('muted', '');
+                                video.muted = true;
                                 const source = document.createElement('source');
                                 source.src = attachment.url;
                                 source.type = 'video/mp4';
@@ -914,6 +912,8 @@ Add Video +
                 
                 container.appendChild(article);
             });
+
+            setupVideoObserver();
         }
 
         // Recursive function to render comments and their replies
@@ -2448,12 +2448,11 @@ Add Video +
                         videoWrapper.style.width = '100%';
                         videoWrapper.style.overflow = 'hidden';
                         const video = document.createElement('video');
-                        video.className = 'w-full h-auto object-cover rounded';
+                        video.className = 'w-full h-auto object-cover rounded post-video';
                         video.controls = true;
                         video.setAttribute('playsinline', '');
-                        video.setAttribute('autoplay', '');
                         video.setAttribute('loop', '');
-                        video.setAttribute('muted', '');
+                        video.muted = true;
                         const source = document.createElement('source');
                         source.src = attachment.url;
                         source.type = 'video/mp4';
@@ -2484,12 +2483,11 @@ Add Video +
                             videoWrapper.style.width = '100%';
                             videoWrapper.style.overflow = 'hidden';
                             const video = document.createElement('video');
-                            video.className = 'w-full h-full object-cover rounded';
+                            video.className = 'w-full h-full object-cover rounded post-video';
                             video.controls = true;
                             video.setAttribute('playsinline', '');
-                            video.setAttribute('autoplay', '');
                             video.setAttribute('loop', '');
-                            video.setAttribute('muted', '');
+                            video.muted = true;
                             const source = document.createElement('source');
                             source.src = attachment.url;
                             source.type = 'video/mp4';
@@ -2643,6 +2641,8 @@ Add Video +
             article.appendChild(commentsSection);
             
             container.appendChild(article);
+
+            setupVideoObserver();
         }
 
         // Initial check
@@ -2828,6 +2828,43 @@ Add Video +
             if (e.key === 'ArrowLeft') showPrevImage();
             if (e.key === 'ArrowRight') showNextImage();
         });
+
+        // --- Video Playback Control ---
+        let videoObserver;
+        let currentlyPlayingVideo = null;
+
+        function setupVideoObserver() {
+            const options = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.8, // Trigger when 80% of the video is visible
+            };
+
+            videoObserver = new IntersectionObserver(handleVideoIntersection, options);
+            const videos = document.querySelectorAll('.post-video');
+            videos.forEach(video => videoObserver.observe(video));
+        }
+
+        function handleVideoIntersection(entries, observer) {
+            entries.forEach(entry => {
+                const video = entry.target;
+                if (entry.isIntersecting) {
+                    // If another video is playing, pause it
+                    if (currentlyPlayingVideo && currentlyPlayingVideo !== video) {
+                        currentlyPlayingVideo.pause();
+                    }
+                    // Play this video
+                    video.play().catch(e => console.error("Video play failed:", e));
+                    currentlyPlayingVideo = video;
+                } else {
+                    // Video is out of view, pause it
+                    video.pause();
+                    if (currentlyPlayingVideo === video) {
+                        currentlyPlayingVideo = null;
+                    }
+                }
+            });
+        }
     </script>
 </body>
 </html>
