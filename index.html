@@ -963,7 +963,7 @@ Add Video +
                 // This means the themes.css rule for `.comment-wrapper .bg-gray-50` will apply `var(--bg-secondary)`.
 
                 const commentBody = document.createElement('div');
-                commentBody.className = 'flex-1';
+                commentBody.className = 'flex-1 overflow-hidden';
 
                 // Standard display for all comments (deleted ones won't be in the list from backend)
                 const commentAuthorProfileLink = document.createElement('a');
@@ -1008,14 +1008,14 @@ Add Video +
                 }
 
                 const commentText = document.createElement('p');
-                commentText.className = "text-gray-700 whitespace-pre-wrap";
+                commentText.className = "text-gray-700 whitespace-pre-wrap break-all";
                 
                 if (comment.content.length > 300) {
                     const seeMoreContainer = document.createElement('div');
                     seeMoreContainer.className = `see-more-container ${depth === 0 ? 'comment-see-more' : 'reply-see-more'}`;
 
                     const fullContent = document.createElement('p');
-                    fullContent.className = 'text-gray-700 whitespace-pre-wrap';
+                    fullContent.className = 'text-gray-700 whitespace-pre-wrap break-all';
                     fullContent.innerHTML = escapeHtml(comment.content, true);
 
                     seeMoreContainer.appendChild(fullContent);
