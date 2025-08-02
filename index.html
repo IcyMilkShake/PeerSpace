@@ -749,62 +749,55 @@ Add Video +
 
                 // Attachment Display
                 if (post.attachments && post.attachments.length > 0) {
-                    const attachmentsContainer = document.createElement('div');
-                    attachmentsContainer.className = 'mt-4 mb-4 relative';
+                    const imageAttachments = post.attachments.filter(a => a.fileType === 'image');
+                    const videoAttachments = post.attachments.filter(a => a.fileType === 'video');
 
-                    if (post.attachments.length === 1) {
-                        const attachment = post.attachments[0];
-                        if (attachment.fileType === 'image') {
-                            const img = document.createElement('img');
-                            img.src = attachment.url;
-                            img.className = 'w-full h-auto object-cover rounded cursor-pointer';
-                            img.onclick = (e) => {
-                                e.stopPropagation();
-                                openLightbox([attachment.url], 0);
-                            };
-                            attachmentsContainer.appendChild(img);
-                        } else if (attachment.fileType === 'video') {
-                            const videoWrapper = document.createElement('div');
-                            videoWrapper.style.width = '100%';
-                            videoWrapper.style.overflow = 'hidden';
-                            videoWrapper.onclick = (e) => e.stopPropagation();
-                            const video = document.createElement('video');
-                            video.className = 'w-full h-auto object-cover rounded post-video';
-                            video.controls = true;
-                            video.setAttribute('playsinline', '');
-                            video.setAttribute('loop', '');
-                            video.muted = true;
-                            const source = document.createElement('source');
-                            source.src = attachment.url;
-                            source.type = 'video/mp4';
-                            video.appendChild(source);
-                            video.innerHTML += 'Your browser does not support the video tag.';
-                            videoWrapper.appendChild(video);
-                            attachmentsContainer.appendChild(videoWrapper);
-                        }
-                    } else if (post.attachments.length > 1) {
-                        attachmentsContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
-                        post.attachments.forEach((attachment, index) => {
-                            const attachmentWrapper = document.createElement('div');
-                            attachmentWrapper.className = 'w-1/2 flex-shrink-0';
-                            if (attachment.fileType === 'image') {
+                    const firstImageIndex = post.attachments.findIndex(a => a.fileType === 'image');
+                    const firstVideoIndex = post.attachments.findIndex(a => a.fileType === 'video');
+
+                    const attachmentsContainer = document.createElement('div');
+
+                    const createImageSlideshow = () => {
+                        if (imageAttachments.length > 0) {
+                            const imageSlideshowContainer = document.createElement('div');
+                            imageSlideshowContainer.className = 'mt-4 mb-4 relative';
+                            if (imageAttachments.length > 1) {
+                                imageSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
+                            }
+                            imageAttachments.forEach((attachment, index) => {
+                                const attachmentWrapper = document.createElement('div');
+                                attachmentWrapper.className = imageAttachments.length > 1 ? 'w-1/2 flex-shrink-0' : 'w-full';
                                 const img = document.createElement('img');
                                 img.src = attachment.url;
                                 img.className = 'w-full h-full object-cover rounded cursor-pointer';
                                 img.onclick = (e) => {
                                     e.stopPropagation();
-                                    const imageAttachments = post.attachments.filter(a => a.fileType === 'image').map(a => a.url);
-                                    const imageIndex = imageAttachments.indexOf(attachment.url);
-                                    openLightbox(imageAttachments, imageIndex);
+                                    const imageUrls = imageAttachments.map(a => a.url);
+                                    openLightbox(imageUrls, index);
                                 };
                                 attachmentWrapper.appendChild(img);
-                            } else if (attachment.fileType === 'video') {
+                                imageSlideshowContainer.appendChild(attachmentWrapper);
+                            });
+                            attachmentsContainer.appendChild(imageSlideshowContainer);
+                        }
+                    };
+
+                    const createVideoSlideshow = () => {
+                        if (videoAttachments.length > 0) {
+                            const videoSlideshowContainer = document.createElement('div');
+                            videoSlideshowContainer.className = 'mt-4 mb-4 relative';
+                            if (videoAttachments.length > 1) {
+                                videoSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
+                            }
+                            videoAttachments.forEach(attachment => {
+                                const attachmentWrapper = document.createElement('div');
+                                attachmentWrapper.className = videoAttachments.length > 1 ? 'w-1/2 flex-shrink-0' : 'w-full';
                                 const videoWrapper = document.createElement('div');
                                 videoWrapper.style.width = '100%';
                                 videoWrapper.style.overflow = 'hidden';
                                 videoWrapper.onclick = (e) => e.stopPropagation();
                                 const video = document.createElement('video');
-                                video.className = 'w-full h-full object-cover rounded post-video';
+                                video.className = 'w-full h-auto object-cover rounded post-video';
                                 video.controls = true;
                                 video.setAttribute('playsinline', '');
                                 video.setAttribute('loop', '');
@@ -814,11 +807,20 @@ Add Video +
                                 source.type = 'video/mp4';
                                 video.appendChild(source);
                                 video.innerHTML += 'Your browser does not support the video tag.';
-                                videoWrapper.appendChild(video)
+                                videoWrapper.appendChild(video);
                                 attachmentWrapper.appendChild(videoWrapper);
-                            }
-                            attachmentsContainer.appendChild(attachmentWrapper);
-                        });
+                                videoSlideshowContainer.appendChild(attachmentWrapper);
+                            });
+                            attachmentsContainer.appendChild(videoSlideshowContainer);
+                        }
+                    };
+
+                    if (firstImageIndex !== -1 && (firstVideoIndex === -1 || firstImageIndex < firstVideoIndex)) {
+                        createImageSlideshow();
+                        createVideoSlideshow();
+                    } else {
+                        createVideoSlideshow();
+                        createImageSlideshow();
                     }
 
                     postContentElement.appendChild(attachmentsContainer);
@@ -2093,47 +2095,80 @@ Add Video +
 
         postForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const title = document.getElementById('post-title').value.trim();
-            const content = document.getElementById('post-content').value.trim();
-            const postType = postTypeSelect.value;
-            let pollOptions = [];
+            const submitButton = postForm.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
 
-            if (!title) {
-                showNotification('Please fill in both title and content for the post.', 'warning');
-                return;
-            }
+            submitButton.disabled = true;
+            submitButton.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Loading...
+            `;
 
-            if (postType === 'poll') {
-                const optionInputs = pollOptionsInputs.querySelectorAll('input[name="pollOption[]"]');
-                optionInputs.forEach(input => {
-                    if (input.value.trim()) {
-                        pollOptions.push({ option: input.value.trim(), votes: 0 });
-                    }
-                });
-                if (pollOptions.length < 2) {
-                    showNotification('Polls must have at least two options.', 'warning');
+            try {
+                const title = document.getElementById('post-title').value.trim();
+                const content = document.getElementById('post-content').value.trim();
+                const postType = postTypeSelect.value;
+                let pollOptions = [];
+
+                if (!title) {
+                    showNotification('Please fill in the title for the post.', 'warning');
                     return;
                 }
-            }
 
-            // Pass formData to createPost function
-            const success = await createPost(title, content, postType, pollOptions, attachedFiles);
-            if (success) {
-                document.getElementById('post-title').value = '';
-                document.getElementById('post-content').value = '';
-                postTypeSelect.value = 'normal';
-                pollOptionsContainer.classList.add('hidden');
-                pollOptionsInputs.innerHTML = `
-                    <input type="text" name="pollOption[]" placeholder="Option 1" class="w-full px-4 py-2 mb-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <input type="text" name="pollOption[]" placeholder="Option 2" class="w-full px-4 py-2 mb-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                `;
-                attachmentPreviews.innerHTML = '';
-                attachedFiles = [];
-                showNotification("Post created successfully!", "success");
-                titleCharCount.textContent = '0 / 75';
-                contentCharCount.textContent = '0 / 2500';
-                titleCharCount.classList.remove('text-red-500');
-                contentCharCount.classList.remove('text-red-500');
+                if (postType === 'poll') {
+                    const optionInputs = pollOptionsInputs.querySelectorAll('input[name="pollOption[]"]');
+                    optionInputs.forEach(input => {
+                        if (input.value.trim()) {
+                            pollOptions.push({ option: input.value.trim(), votes: 0 });
+                        }
+                    });
+                    if (pollOptions.length < 2) {
+                        showNotification('Polls must have at least two options.', 'warning');
+                        return;
+                    }
+                }
+
+                const success = await createPost(title, content, postType, pollOptions, attachedFiles);
+                if (success) {
+                    document.getElementById('post-title').value = '';
+                    document.getElementById('post-content').value = '';
+                    postTypeSelect.value = 'normal';
+                    pollOptionsContainer.classList.add('hidden');
+                    // Reset poll options more carefully
+                    const initialPollOptions = `
+                        <div class="flex items-center mb-2">
+                            <input type="text" name="pollOption[]" placeholder="Option 1" maxlength="75" class="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="text-sm text-gray-500 ml-2">0 / 75</span>
+                            <button type="button" class="ml-2 text-red-500 hover:text-red-700 hidden"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                        </div>
+                        <div class="flex items-center mb-2">
+                            <input type="text" name="pollOption[]" placeholder="Option 2" maxlength="75" class="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="text-sm text-gray-500 ml-2">0 / 75</span>
+                            <button type="button" class="ml-2 text-red-500 hover:text-red-700 hidden"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                        </div>
+                    `;
+                    pollOptionsInputs.innerHTML = initialPollOptions;
+                    // Re-add event listeners to the new poll option inputs
+                    document.querySelectorAll('#poll-options-inputs .flex').forEach(addPollOptionEventListeners);
+                    updateDeleteButtons();
+
+                    console.log("Before clearing attachments:", attachedFiles, attachmentPreviews.innerHTML);
+                    attachmentPreviews.innerHTML = '';
+                    attachedFiles = [];
+                    document.getElementById('attachment-input').value = null;
+                    console.log("After clearing attachments:", attachedFiles, attachmentPreviews.innerHTML);
+                    showNotification("Post created successfully!", "success");
+                    titleCharCount.textContent = '0 / 75';
+                    contentCharCount.textContent = '0 / 2500';
+                    titleCharCount.classList.remove('text-red-500');
+                    contentCharCount.classList.remove('text-red-500');
+                }
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
             }
         });
 
@@ -2482,63 +2517,55 @@ Add Video +
 
             // Attachment Display
             if (post.attachments && post.attachments.length > 0) {
+                const imageAttachments = post.attachments.filter(a => a.fileType === 'image');
+                const videoAttachments = post.attachments.filter(a => a.fileType === 'video');
+
+                const firstImageIndex = post.attachments.findIndex(a => a.fileType === 'image');
+                const firstVideoIndex = post.attachments.findIndex(a => a.fileType === 'video');
+
                 const attachmentsContainer = document.createElement('div');
-                attachmentsContainer.className = 'mt-4 mb-4 relative';
 
-                if (post.attachments.length === 1) {
-                    const attachment = post.attachments[0];
-                    if (attachment.fileType === 'image') {
-                        const img = document.createElement('img');
-                        img.src = attachment.url;
-                        img.className = 'w-full h-auto object-cover rounded cursor-pointer';
-                        img.onclick = (e) => {
-                            e.stopPropagation();
-                            openLightbox([attachment.url], 0);
-                        };
-                        attachmentsContainer.appendChild(img);
-                    } else if (attachment.fileType === 'video') {
-                        const videoWrapper = document.createElement('div');
-                        videoWrapper.style.width = '100%';
-                        videoWrapper.style.overflow = 'hidden';
-                        videoWrapper.onclick = (e) => e.stopPropagation();
-                        const video = document.createElement('video');
-                        video.className = 'w-full h-auto object-cover rounded post-video';
-                        video.controls = true;
-                        video.setAttribute('playsinline', '');
-                        video.setAttribute('loop', '');
-                        video.muted = true;
-                        const source = document.createElement('source');
-                        source.src = attachment.url;
-                        source.type = 'video/mp4';
-                        video.appendChild(source);
-                        video.innerHTML += 'Your browser does not support the video tag.';
-                        videoWrapper.appendChild(video);
-                        attachmentsContainer.appendChild(videoWrapper);
-                    }
-                } else if (post.attachments.length > 1) {
-                    attachmentsContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
-                    post.attachments.forEach((attachment, index) => {
-                        const attachmentWrapper = document.createElement('div');
-                        attachmentWrapper.className = 'w-1/2 flex-shrink-0';
-
-                        if (attachment.fileType === 'image') {
+                const createImageSlideshow = () => {
+                    if (imageAttachments.length > 0) {
+                        const imageSlideshowContainer = document.createElement('div');
+                        imageSlideshowContainer.className = 'mt-4 mb-4 relative';
+                        if (imageAttachments.length > 1) {
+                            imageSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
+                        }
+                        imageAttachments.forEach((attachment, index) => {
+                            const attachmentWrapper = document.createElement('div');
+                            attachmentWrapper.className = imageAttachments.length > 1 ? 'w-1/2 flex-shrink-0' : 'w-full';
                             const img = document.createElement('img');
                             img.src = attachment.url;
                             img.className = 'w-full h-full object-cover rounded cursor-pointer';
                             img.onclick = (e) => {
                                 e.stopPropagation();
-                                const imageAttachments = post.attachments.filter(a => a.fileType === 'image').map(a => a.url);
-                                const imageIndex = imageAttachments.indexOf(attachment.url);
-                                openLightbox(imageAttachments, imageIndex);
+                                const imageUrls = imageAttachments.map(a => a.url);
+                                openLightbox(imageUrls, index);
                             };
                             attachmentWrapper.appendChild(img);
-                        } else if (attachment.fileType === 'video') {
+                            imageSlideshowContainer.appendChild(attachmentWrapper);
+                        });
+                        attachmentsContainer.appendChild(imageSlideshowContainer);
+                    }
+                };
+
+                const createVideoSlideshow = () => {
+                    if (videoAttachments.length > 0) {
+                        const videoSlideshowContainer = document.createElement('div');
+                        videoSlideshowContainer.className = 'mt-4 mb-4 relative';
+                        if (videoAttachments.length > 1) {
+                            videoSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
+                        }
+                        videoAttachments.forEach(attachment => {
+                            const attachmentWrapper = document.createElement('div');
+                            attachmentWrapper.className = videoAttachments.length > 1 ? 'w-1/2 flex-shrink-0' : 'w-full';
                             const videoWrapper = document.createElement('div');
                             videoWrapper.style.width = '100%';
                             videoWrapper.style.overflow = 'hidden';
                             videoWrapper.onclick = (e) => e.stopPropagation();
                             const video = document.createElement('video');
-                            video.className = 'w-full h-full object-cover rounded post-video';
+                            video.className = 'w-full h-auto object-cover rounded post-video';
                             video.controls = true;
                             video.setAttribute('playsinline', '');
                             video.setAttribute('loop', '');
@@ -2548,11 +2575,20 @@ Add Video +
                             source.type = 'video/mp4';
                             video.appendChild(source);
                             video.innerHTML += 'Your browser does not support the video tag.';
-                            videoWrapper.appendChild(video)
+                            videoWrapper.appendChild(video);
                             attachmentWrapper.appendChild(videoWrapper);
-                        }
-                        attachmentsContainer.appendChild(attachmentWrapper);
-                    });
+                            videoSlideshowContainer.appendChild(attachmentWrapper);
+                        });
+                        attachmentsContainer.appendChild(videoSlideshowContainer);
+                    }
+                };
+
+                if (firstImageIndex !== -1 && (firstVideoIndex === -1 || firstImageIndex < firstVideoIndex)) {
+                    createImageSlideshow();
+                    createVideoSlideshow();
+                } else {
+                    createVideoSlideshow();
+                    createImageSlideshow();
                 }
 
                 postContentElement.appendChild(attachmentsContainer);
