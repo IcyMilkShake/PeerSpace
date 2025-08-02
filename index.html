@@ -47,6 +47,8 @@
             overflow-y: auto;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             border-radius: 0.5rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-secondary);
         }
 
         .mentions-suggestions div {
@@ -764,7 +766,7 @@ Add Video +
                             const imageSlideshowContainer = document.createElement('div');
                             imageSlideshowContainer.className = 'mt-4 mb-4 relative';
                             if (imageAttachments.length > 1) {
-                                imageSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
+                                imageSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4 slideshow-scrollbar';
                             }
                             imageAttachments.forEach((attachment, index) => {
                                 const attachmentWrapper = document.createElement('div');
@@ -789,7 +791,7 @@ Add Video +
                             const videoSlideshowContainer = document.createElement('div');
                             videoSlideshowContainer.className = 'mt-4 mb-4 relative';
                             if (videoAttachments.length > 1) {
-                                videoSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
+                                videoSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4 slideshow-scrollbar';
                             }
                             videoAttachments.forEach(attachment => {
                                 const attachmentWrapper = document.createElement('div');
@@ -2041,6 +2043,7 @@ Add Video +
 
         attachmentInput.addEventListener('change', (e) => {
             handleFiles(e.target.files);
+            e.target.value = null;
         });
 
         function handleFiles(files) {
@@ -2171,7 +2174,6 @@ Add Video +
                     console.log("Before clearing attachments:", attachedFiles, attachmentPreviews.innerHTML);
                     attachmentPreviews.innerHTML = '';
                     attachedFiles = [];
-                    document.getElementById('attachment-input').value = null;
                     console.log("After clearing attachments:", attachedFiles, attachmentPreviews.innerHTML);
                     showNotification("Post created successfully!", "success");
                     titleCharCount.textContent = '0 / 75';
@@ -2543,7 +2545,7 @@ Add Video +
                         const imageSlideshowContainer = document.createElement('div');
                         imageSlideshowContainer.className = 'mt-4 mb-4 relative';
                         if (imageAttachments.length > 1) {
-                            imageSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
+                            imageSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4 slideshow-scrollbar';
                         }
                         imageAttachments.forEach((attachment, index) => {
                             const attachmentWrapper = document.createElement('div');
@@ -2568,7 +2570,7 @@ Add Video +
                         const videoSlideshowContainer = document.createElement('div');
                         videoSlideshowContainer.className = 'mt-4 mb-4 relative';
                         if (videoAttachments.length > 1) {
-                            videoSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4';
+                            videoSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4 slideshow-scrollbar';
                         }
                         videoAttachments.forEach(attachment => {
                             const attachmentWrapper = document.createElement('div');

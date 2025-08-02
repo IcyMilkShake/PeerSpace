@@ -1088,3 +1088,23 @@ html {
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
     background-color: var(--text-secondary);
 }
+
+/* Custom Scrollbar for Slideshow */
+.slideshow-scrollbar::-webkit-scrollbar {
+    height: 8px;
+}
+
+.slideshow-scrollbar::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 10px;
+}
+
+.slideshow-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 10px;
+    border: 2px solid var(--bg-secondary);
+}
+
+.slideshow-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-secondary);
+}
