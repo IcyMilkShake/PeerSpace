@@ -11,6 +11,8 @@ const https = require('https');
 const { v4: uuidv4 } = require('uuid');
 const AWS = require('aws-sdk');
 const ffmpeg = require('fluent-ffmpeg');
+const axios = require('axios');
+const cheerio = require('cheerio');
 require('dotenv').config();
 
 const { User, Post, Comment, Notification } = require('./schema');
@@ -911,6 +913,7 @@ app.get('/api/posts', async (req, res) => {
           id: post._id,
           title: post.title,
           content: post.content,
+          linkPreview: post.linkPreview,
           postType: post.postType, // Include postType
           attachments: post.attachments,
           pollOptions: post.pollOptions ? post.pollOptions.map(opt => ({ // Include pollOptions
@@ -943,7 +946,6 @@ app.get('/api/posts', async (req, res) => {
 // Create new post
 app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments', 15), async (req, res) => {
   try {
-    console.log("AaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
     const { title, content, postType } = req.body;
     let { pollOptions } = req.body;
 
@@ -970,6 +972,38 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       postType: postType || 'normal', // Default to 'normal' if not provided
       attachments: []
     };
+
+    // Link preview logic
+    const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    const urls = content.match(urlRegex);
+
+    if (urls && urls.length > 0) {
+      try {
+        const url = urls[0];
+        const { data } = await axios.get(url);
+        const $ = cheerio.load(data);
+
+        const getMetaTag = (name) => {
+          return (
+            $(`meta[property="og:${name}"]`).attr('content') ||
+            $(`meta[name="twitter:${name}"]`).attr('content') ||
+            $(`meta[name="${name}"]`).attr('content')
+          );
+        };
+
+        const preview = {
+          url: url,
+          title: getMetaTag('title') || $('title').first().text(),
+          description: getMetaTag('description') || $('p').first().text(),
+          image: getMetaTag('image'),
+        };
+        newPostData.linkPreview = preview;
+      } catch (previewError) {
+        console.error('Could not fetch link preview:', previewError.message);
+        // Dont do anything if preview fails
+      }
+    }
+
 
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
@@ -1068,6 +1102,7 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       postType: post.postType,
       attachments: post.attachments,
       pollOptions: post.pollOptions, // Ensure pollOptions are returned
+      linkPreview: post.linkPreview, // Include linkPreview in the response
       author: {
         id: post.author._id,
         username: post.author.username,

@@ -75,6 +75,12 @@ const postSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  linkPreview: {
+    url: String,
+    title: String,
+    description: String,
+    image: String,
+  },
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

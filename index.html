@@ -872,7 +872,7 @@ Add Video +
                     });
                     postContentElement.appendChild(pollContainer);
                 }
-                
+
                 // Assemble the article
                 article.appendChild(postHeader);
                 if (postTagsContainer.hasChildNodes()) { // Only append if there are tags
@@ -880,6 +880,31 @@ Add Video +
                 }
                 article.appendChild(postContentElement);
                 
+                // Link Preview
+                if (post.linkPreview && post.linkPreview.url) {
+                    const preview = post.linkPreview;
+                    const previewContainer = document.createElement('a');
+                    previewContainer.href = preview.url;
+                    previewContainer.target = '_blank';
+                    previewContainer.rel = 'noopener noreferrer';
+                    previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-4 text-sm';
+                    previewContainer.style.textDecoration = 'none';
+
+                    let imageHtml = '';
+                    if (preview.image) {
+                        imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-24 h-24 object-cover">`;
+                    }
+
+                    previewContainer.innerHTML = `
+                        ${imageHtml}
+                        <div class="p-3">
+                        <div class="font-bold mb-1">${escapeHtml(preview.title || '')}</div>
+                        <div class="text-gray-600">${escapeHtml(preview.description || '')}</div>
+                        </div>
+                    `;
+                    article.appendChild(previewContainer);
+                }
+
                 // Post Actions (Like and Comment counts)
                 const postActionsDiv = document.createElement('div');
                 postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
@@ -2552,7 +2577,6 @@ Add Video +
                 });
                 postContentElement.appendChild(pollContainer);
             }
-            
             // Create comments section
             const commentsSection = document.createElement('div');
             commentsSection.className = 'border-t pt-4';
@@ -2620,6 +2644,31 @@ Add Video +
             }
             article.appendChild(postContentElement);
             
+            // Link Preview
+            if (post.linkPreview && post.linkPreview.url) {
+                const preview = post.linkPreview;
+                const previewContainer = document.createElement('a');
+                previewContainer.href = preview.url;
+                previewContainer.target = '_blank';
+                previewContainer.rel = 'noopener noreferrer';
+                previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-4 text-sm';
+                previewContainer.style.textDecoration = 'none';
+
+                let imageHtml = '';
+                if (preview.image) {
+                    imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-24 h-24 object-cover">`;
+                }
+
+                previewContainer.innerHTML = `
+                    ${imageHtml}
+                    <div class="p-3">
+                    <div class="font-bold mb-1">${escapeHtml(preview.title || '')}</div>
+                    <div class="text-gray-600">${escapeHtml(preview.description || '')}</div>
+                    </div>
+                `;
+                article.appendChild(previewContainer);
+            }
+
             // Post Actions (Like button)
             const postActionsDiv = document.createElement('div');
             // Removed 'border-b'
