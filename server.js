@@ -976,33 +976,32 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
     // Link preview logic
     const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
     const urls = content.match(urlRegex);
-    
+
     if (urls && urls.length > 0) {
-      const uniqueUrls = [...new Set(urls)].slice(0, 3);
-      const previews = [];
-      for (const url of uniqueUrls) {
-        try {
-          const { data } = await axios.get(url);
-          const $ = cheerio.load(data);
-          const getMetaTag = (name) => {
-            return (
-              $(`meta[property="og:${name}"]`).attr('content') ||
-              $(`meta[name="twitter:${name}"]`).attr('content') ||
-              $(`meta[name="${name}"]`).attr('content')
-            );
-          };
-          const preview = {
-            url: url,
-            title: getMetaTag('title') || $('title').first().text(),
-            description: getMetaTag('description') || $('p').first().text(),
-            image: getMetaTag('image'),
-          };
-          previews.push(preview);
-        } catch (previewError) {
-          console.error('Could not fetch link preview:', previewError.message);
-        }
+      try {
+        const url = urls[0];
+        const { data } = await axios.get(url);
+        const $ = cheerio.load(data);
+
+        const getMetaTag = (name) => {
+          return (
+            $(`meta[property="og:${name}"]`).attr('content') ||
+            $(`meta[name="twitter:${name}"]`).attr('content') ||
+            $(`meta[name="${name}"]`).attr('content')
+          );
+        };
+
+        const preview = {
+          url: url,
+          title: getMetaTag('title') || $('title').first().text(),
+          description: getMetaTag('description') || $('p').first().text(),
+          image: getMetaTag('image'),
+        };
+        newPostData.linkPreview = preview;
+      } catch (previewError) {
+        console.error('Could not fetch link preview:', previewError.message);
+        // Dont do anything if preview fails
       }
-      newPostData.linkPreview = previews;
     }
 
 
