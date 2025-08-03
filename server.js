@@ -90,14 +90,14 @@ const postAttachmentUpload = multer({
   },
 });
 
-// Recursive helper function to delete a comment and all its children
+// Recursively deletes a comment and all its replies.
 async function deleteCommentAndChildren(commentId) {
-  // Find and delete children first
+  // Find and delete all replies to this comment first.
   const children = await Comment.find({ parentComment: commentId });
   for (const child of children) {
-    await deleteCommentAndChildren(child._id); // Recursive call
+    await deleteCommentAndChildren(child._id);
   }
-  // After all children are deleted, delete the comment itself
+  // After all children are deleted, delete the comment itself.
   await Comment.findByIdAndDelete(commentId);
 }
 
@@ -107,47 +107,26 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
+// This middleware detects if the server is running behind a proxy and using HTTPS.
 app.use((req, res, next) => {
   if (!development) {
-    // Multiple ways to detect HTTPS in production
-    const isHttps = 
+    const isHttps =
       req.headers['x-forwarded-proto'] === 'https' ||
       req.headers['x-forwarded-ssl'] === 'on' ||
-      req.headers['x-arr-ssl'] || // Azure
+      req.headers['x-arr-ssl'] ||
       req.connection.encrypted ||
       req.secure ||
       (req.headers.host && req.headers.host.includes('https')) ||
       (req.get('referer') && req.get('referer').startsWith('https://'));
-    
     if (isHttps) {
       req.secure = true;
       req.protocol = 'https';
-      console.log('=== HTTPS DETECTED ===');
-      console.log('HTTPS detection method:', 
-        req.headers['x-forwarded-proto'] === 'https' ? 'x-forwarded-proto' :
-        req.headers['x-forwarded-ssl'] === 'on' ? 'x-forwarded-ssl' :
-        req.headers['x-arr-ssl'] ? 'x-arr-ssl' :
-        req.connection.encrypted ? 'connection.encrypted' :
-        req.secure ? 'req.secure' :
-        req.headers.host?.includes('https') ? 'host header' :
-        'referer header'
-      );
-      console.log('===================');
-    } else {
-      console.log('=== HTTPS NOT DETECTED ===');
-      console.log('x-forwarded-proto:', req.headers['x-forwarded-proto']);
-      console.log('x-forwarded-ssl:', req.headers['x-forwarded-ssl']);
-      console.log('connection.encrypted:', req.connection.encrypted);
-      console.log('req.secure:', req.secure);
-      console.log('host:', req.headers.host);
-      console.log('referer:', req.get('referer'));
-      console.log('========================');
     }
   }
   next();
 });
 
-// Updated session configuration that's more flexible
+// Configures the session settings for the application.
 const sessionConfig = {
   name: 'peerspace.sid',
   secret: process.env.SESSION_SECRET,
@@ -165,8 +144,7 @@ const sessionConfig = {
 };
 
 if (!development) {
-  // In production, we'll dynamically set secure based on the request
-  sessionConfig.cookie.secure = false; // We'll handle this per-request
+  sessionConfig.cookie.secure = false;
   sessionConfig.cookie.sameSite = 'lax';
 } else {
   sessionConfig.cookie.secure = false;
@@ -175,19 +153,19 @@ if (!development) {
 
 app.use(session(sessionConfig));
 
-// Add middleware to dynamically set secure cookies for HTTPS requests
+// Sets the session cookie to be secure if the request is over HTTPS.
 app.use((req, res, next) => {
   if (!development && req.secure && req.session) {
-    // For HTTPS requests, ensure the session cookie will be secure
     req.session.cookie.secure = true;
   }
   next();
 });
+
 // Passport configuration
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Helper function to download and save profile picture from Google
+// Downloads a user's profile picture from Google and saves it to S3.
 async function downloadProfilePicture(url, filename) {
   return new Promise((resolve, reject) => {
     https.get(url, (response) => {
@@ -217,7 +195,7 @@ async function downloadProfilePicture(url, filename) {
   });
 }
 
-// Function to generate a unique username
+// Generates a unique username for a new user based on their email.
 async function generateUniqueUsername(email) {
     let username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_.]/g, '');
     if (username.length < 3) {
@@ -238,51 +216,34 @@ const CALLBACK_URL = development
   ? 'http://localhost:8082/auth/google/callback'
   : 'https://peerspace.ipo-servers.net/auth/google/callback';
 
-console.log('Google OAuth Callback URL:', CALLBACK_URL); // Debug log
-
-// FIXED Google OAuth Strategy
+// Sets up the Google OAuth 2.0 strategy for Passport.
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   callbackURL: CALLBACK_URL
 }, async (accessToken, refreshToken, profile, done) => {
-  console.log('Google Strategy called with profile:', profile.id, profile.displayName); // Debug log
   try {
     let user = await User.findOne({ googleId: profile.id });
-
     const profilePictureUrl = profile.photos && profile.photos[0] ? profile.photos[0].value : null;
     
     if (user) {
-      console.log('Existing user found:', user.username); // Debug log
-      // Update last login and displayName
       user.lastLogin = new Date();
       user.displayName = profile.displayName;
-      
       const hasCustomProfilePic = user.profilePicture.path && !user.profilePicture.path.includes('googleusercontent.com');
       
       if (!hasCustomProfilePic && profilePictureUrl) {
         try {
           const filename = `google_${uuidv4()}`;
           const s3Url = await downloadProfilePicture(profilePictureUrl, filename);
-          
-          user.profilePicture = {
-            path: s3Url,
-            contentType: 'image/png'
-          };
+          user.profilePicture = { path: s3Url, contentType: 'image/png' };
         } catch (error) {
           console.error('Error downloading profile picture:', error);
-          // Keep existing profile picture on error
         }
       }
-      
       await user.save();
-      console.log('User updated and saved'); // Debug log
       return done(null, user);
     } else {
-      console.log('Creating new user'); // Debug log
-      // New user - download Google profile picture
       let profilePicturePath = null;
-      
       if (profilePictureUrl) {
         try {
           const filename = `google_${uuidv4()}`;
@@ -300,14 +261,10 @@ passport.use(new GoogleStrategy({
         username: username,
         displayName: profile.displayName,
         email: email,
-        profilePicture: {
-          path: profilePicturePath,
-          contentType: 'image/png'
-        }
+        profilePicture: { path: profilePicturePath, contentType: 'image/png' }
       });
       
       await newUser.save();
-      console.log('New user created:', newUser.username); // Debug log
       return done(null, newUser);
     }
   } catch (error) {
@@ -316,16 +273,15 @@ passport.use(new GoogleStrategy({
   }
 }));
 
+// Saves user's ID to the session.
 passport.serializeUser((user, done) => {
-  console.log('>>> SERIALIZE USER CALLED WITH:', user._id); // Debug log
   done(null, user._id);
 });
 
+// Retrieves user's data from the database using the ID from the session.
 passport.deserializeUser(async (id, done) => {
-  console.log('>>> DESERIALIZE USER CALLED WITH ID:', id);
   try {
     const user = await User.findById(id);
-    console.log('>>> USER FOUND:', user ? user.username : 'null');
     done(null, user);
   } catch (err) {
     console.error('>>> DESERIALIZE ERROR:', err);
@@ -333,30 +289,32 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-// ENHANCED Authentication middleware with better logging
+// Checks if a user is logged in.
 const isAuthenticated = (req, res, next) => {
   if (req.isAuthenticated() && req.user) {
-    console.log('✓ User is authenticated:', req.user.username);
     return next();
   }
-  console.log('✗ User is NOT authenticated');
   res.status(401).json({ error: 'Not authenticated' });
 };
 
 // Routes
+// Serves the main page of the application.
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Serves the user profile page.
 app.get('/profile', (req, res) => {
   res.sendFile(path.join(__dirname, 'profile.html'));
 });
 
+// Serves the user's inbox page.
 app.get('/inbox', isAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, 'inbox.html'));
 });
 
 // API Routes
+// Gets all notifications for the logged-in user.
 app.get('/api/notifications', isAuthenticated, async (req, res) => {
   try {
     const notifications = await Notification.find({ user: req.user._id })
@@ -364,10 +322,8 @@ app.get('/api/notifications', isAuthenticated, async (req, res) => {
       .populate('post')
       .sort({ createdAt: -1 });
 
-    console.log('Fetched notifications:', JSON.stringify(notifications, null, 2));
-
     const responseNotifications = notifications
-      .filter(n => n.post) // Filter out notifications where the post has been deleted
+      .filter(n => n.post)
       .map(n => ({
         _id: n._id,
         message: `<strong>${n.sender.displayName}</strong> mentioned you in <strong>${n.post.title}</strong>.`,
@@ -382,6 +338,7 @@ app.get('/api/notifications', isAuthenticated, async (req, res) => {
   }
 });
 
+// Gets the number of unread notifications for the logged-in user.
 app.get('/api/notifications/unread-count', isAuthenticated, async (req, res) => {
     try {
         const count = await Notification.countDocuments({ user: req.user._id, read: false });
@@ -392,6 +349,7 @@ app.get('/api/notifications/unread-count', isAuthenticated, async (req, res) => 
     }
 });
 
+// Marks a specific notification as read.
 app.post('/api/notifications/:notificationId/read', isAuthenticated, async (req, res) => {
     try {
         const { notificationId } = req.params;
@@ -412,37 +370,30 @@ app.post('/api/notifications/:notificationId/read', isAuthenticated, async (req,
     }
 });
 
-// FIXED Google Auth routes with better error handling
+// Starts the Google authentication process.
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'], prompt: 'select_account' })
 );
 
+// Handles the callback from Google after authentication.
 app.get('/auth/google/callback',
   passport.authenticate('google', { 
     failureRedirect: '/?error=auth_failed',
     failureMessage: true 
   }),
   (req, res) => {
-    console.log('=== GOOGLE CALLBACK SUCCESS ===');
-    console.log('User authenticated:', req.user ? req.user.username : 'null');
-    console.log('Session before save:', req.session);
-    console.log('Session ID:', req.sessionID);
-    
-    // Force session save before redirect
     req.session.save((err) => {
       if (err) {
         console.error('Error saving session:', err);
         return res.redirect('/?error=session_save_failed');
       }
-      console.log('Session saved successfully');
-      console.log('Redirecting to home...');
       res.redirect('/');
     });
   }
 );
 
+// Logs out the current user.
 app.post('/auth/logout', (req, res) => {
-  console.log('Logout requested for user:', req.user ? req.user.username : 'anonymous');
   req.logout((err) => {
     if (err) {
       console.error('Logout error:', err);
@@ -453,16 +404,15 @@ app.post('/auth/logout', (req, res) => {
         console.error('Session destroy error:', err);
         return res.status(500).json({ error: 'Session destroy failed' });
       }
-      res.clearCookie('peerspace.sid'); // Explicitly expire the cookie
+      res.clearCookie('peerspace.sid');
       res.json({ success: true });
     });
   });
 });
 
-// ENHANCED user endpoint with better logging
+// Gets the data for the currently logged-in user.
 app.get('/api/user', (req, res) => {
   if (req.isAuthenticated() && req.user) {
-    console.log('✓ Sending user data for:', req.user.username);
     const { _id, username, displayName, email, profilePicture, description, createdAt, theme } = req.user;
     return res.json({
       id: _id,
@@ -475,12 +425,11 @@ app.get('/api/user', (req, res) => {
       theme: theme
     });
   } else {
-    console.log('✗ User not authenticated - sending 401');
     return res.status(401).json({ error: 'Not authenticated' });
   }
 });
 
-// User search for @-mentions
+// Searches for users to mention in a post or comment.
 app.get('/api/users/search', isAuthenticated, async (req, res) => {
   try {
     const { query } = req.query;
@@ -500,7 +449,7 @@ app.get('/api/users/search', isAuthenticated, async (req, res) => {
   }
 });
 
-// Get public user profile
+// Gets the public profile information for a user.
 app.get('/api/users/:userId', async (req, res) => {
   try {
     const user = await User.findById(req.params.userId).select('username displayName profilePicture description createdAt');
@@ -524,6 +473,7 @@ app.get('/api/users/:userId', async (req, res) => {
   }
 });
 
+// Gets a user's profile by their username.
 app.get('/api/users/by-username/:username', async (req, res) => {
     try {
         const user = await User.findOne({ username: req.params.username.toLowerCase() }).select('username displayName profilePicture description createdAt');
@@ -544,13 +494,7 @@ app.get('/api/users/by-username/:username', async (req, res) => {
     }
 });
 
-// Rest of your API routes remain the same...
-// (Including all the post, comment, notification, user update endpoints)
-// I'll keep the rest as they are since the main issue was with session/auth configuration
-
-// [All your other API endpoints continue here unchanged...]
-
-// New endpoint for Reporting Posts
+// Reports a post for inappropriate content.
 app.post('/api/posts/:postId/report', isAuthenticated, async (req, res) => {
   try {
     const { postId } = req.params;
@@ -585,7 +529,7 @@ app.post('/api/posts/:postId/report', isAuthenticated, async (req, res) => {
   }
 });
 
-// New endpoint for Poll Voting
+// Allows a user to vote in a poll.
 app.post('/api/posts/:postId/vote', isAuthenticated, async (req, res) => {
   try {
     const { postId } = req.params;
@@ -608,11 +552,9 @@ app.post('/api/posts/:postId/vote', isAuthenticated, async (req, res) => {
     if (existingVoteIndex > -1) {
       const previousVote = post.usersWhoVoted[existingVoteIndex];
       if (previousVote.optionIndex === optionIndex) {
-        // User is clicking the same option again, so un-vote.
         post.pollOptions[optionIndex].votes = Math.max(0, post.pollOptions[optionIndex].votes - 1);
         post.usersWhoVoted.splice(existingVoteIndex, 1);
       } else {
-        // User is changing their vote.
         if (post.pollOptions[previousVote.optionIndex]) {
           post.pollOptions[previousVote.optionIndex].votes = Math.max(0, post.pollOptions[previousVote.optionIndex].votes - 1);
         }
@@ -620,7 +562,6 @@ app.post('/api/posts/:postId/vote', isAuthenticated, async (req, res) => {
         post.pollOptions[optionIndex].votes += 1;
       }
     } else {
-      // New vote.
       post.pollOptions[optionIndex].votes += 1;
       post.usersWhoVoted.push({ userId, optionIndex });
     }
@@ -641,7 +582,7 @@ app.post('/api/posts/:postId/vote', isAuthenticated, async (req, res) => {
   }
 });
 
-// Delete a comment or reply (hard delete)
+// Deletes a comment or a reply.
 app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
   try {
     const { commentId } = req.params;
@@ -674,7 +615,7 @@ app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
   }
 });
 
-// Update user description
+// Updates a user's description.
 app.put('/api/user/description', isAuthenticated, async (req, res) => {
   try {
     const { description } = req.body;
@@ -702,7 +643,7 @@ app.put('/api/user/description', isAuthenticated, async (req, res) => {
   }
 });
 
-// Update user display name
+// Updates a user's display name.
 app.put('/api/user/displayName', isAuthenticated, async (req, res) => {
   try {
     const { displayName } = req.body;
@@ -730,7 +671,7 @@ app.put('/api/user/displayName', isAuthenticated, async (req, res) => {
   }
 });
 
-// Update username
+// Updates a user's username.
 app.put('/api/user/username', isAuthenticated, async (req, res) => {
     try {
         const { username } = req.body;
@@ -760,7 +701,7 @@ app.put('/api/user/username', isAuthenticated, async (req, res) => {
     }
 });
 
-// Upload profile picture endpoint
+// Updates the theme for the logged-in user.
 app.put('/api/user/theme', isAuthenticated, async (req, res) => {
   try {
     const { theme } = req.body;
@@ -785,6 +726,7 @@ app.put('/api/user/theme', isAuthenticated, async (req, res) => {
   }
 });
 
+// Uploads a new profile picture for the user.
 app.post('/api/user/profile-picture', isAuthenticated, upload.single('profilePicture'), async (req, res) => {
   try {
     if (!req.file) {
@@ -818,8 +760,6 @@ app.post('/api/user/profile-picture', isAuthenticated, upload.single('profilePic
 
     req.user.profilePicture = user.profilePicture;
 
-    console.log('Profile picture updated successfully:', user.profilePicture.path);
-
     res.json({
       success: true,
       photo: user.profilePicture.path,
@@ -831,7 +771,7 @@ app.post('/api/user/profile-picture', isAuthenticated, upload.single('profilePic
 });
 
 
-// Get posts with populated author data
+// Gets all posts and their details.
 app.get('/api/posts', async (req, res) => {
   try {
     const posts = await Post.find()
@@ -842,30 +782,26 @@ app.get('/api/posts', async (req, res) => {
 
     const postsWithDetails = await Promise.all(
       posts.map(async (post) => {
-        // Fetch all comments for the post
         const allCommentsRaw = await Comment.find({ post: post._id })
           .populate('author', '_id username displayName profilePicture')
           .sort({ createdAt: 1 });
 
-        // Function to recursively build comment tree
         const buildCommentTree = (parentId) => {
           return allCommentsRaw
-            .filter(comment => String(comment.parentComment) === String(parentId)) // Compare as strings
+            .filter(comment => String(comment.parentComment) === String(parentId))
             .map(comment => {
               let replyingTo = null;
               if (comment.parentComment) {
                 const parentCommentObject = allCommentsRaw.find(c => String(c._id) === String(comment.parentComment));
                 if (parentCommentObject) {
-                  // Parent comment exists
                   replyingTo = {
                     id: parentCommentObject.author._id,
                     username: parentCommentObject.author.username
                   };
                 } else {
-                  // Parent comment was likely deleted (it's a reply to a deleted reply)
                   replyingTo = {
                     id: null,
-                    username: "Reply deleted" // Changed placeholder text
+                    username: "Reply deleted"
                   };
                 }
               }
@@ -882,16 +818,15 @@ app.get('/api/posts', async (req, res) => {
                 isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
                 createdAt: comment.createdAt.toISOString(),
                 parentComment: comment.parentComment,
-                replyingTo: replyingTo, // Updated logic here
+                replyingTo: replyingTo,
                 linkPreview: comment.linkPreview,
                 replies: buildCommentTree(comment._id)
               };
             });
         };
         
-        // Get top-level comments (those without a parentComment or parentComment is null)
         const topLevelComments = allCommentsRaw
-            .filter(comment => !comment.parentComment) // Filter for actual top-level comments
+            .filter(comment => !comment.parentComment)
             .map(comment => ({
                 id: comment._id,
                 content: comment.content,
@@ -904,8 +839,8 @@ app.get('/api/posts', async (req, res) => {
                 likes: comment.likes.length,
                 isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
                 createdAt: comment.createdAt.toISOString(),
-                parentComment: null, // Explicitly null for top-level
-                replyingTo: null,    // Top-level comments are not replying to anyone
+                parentComment: null,
+                replyingTo: null,
                 linkPreview: comment.linkPreview,
                 replies: buildCommentTree(comment._id)
             }));
@@ -916,12 +851,11 @@ app.get('/api/posts', async (req, res) => {
           title: post.title,
           content: post.content,
           linkPreview: post.linkPreview,
-          postType: post.postType, // Include postType
+          postType: post.postType,
           attachments: post.attachments,
-          pollOptions: post.pollOptions ? post.pollOptions.map(opt => ({ // Include pollOptions
+          pollOptions: post.pollOptions ? post.pollOptions.map(opt => ({
             option: opt.option,
             votes: opt.votes,
-            // _id: opt._id // Optionally include option ID if needed by frontend for voting, though index is used now
           })) : [],
           author: {
             id: post.author._id,
@@ -933,7 +867,7 @@ app.get('/api/posts', async (req, res) => {
           isLiked: currentUserId ? post.likes.includes(currentUserId) : false,
           createdAt: post.createdAt.toISOString(),
           comments: topLevelComments,
-          usersWhoVoted: post.postType === 'poll' ? post.usersWhoVoted : undefined // Include if it's a poll
+          usersWhoVoted: post.postType === 'poll' ? post.usersWhoVoted : undefined
         };
       })
     );
@@ -945,7 +879,7 @@ app.get('/api/posts', async (req, res) => {
   }
 });
 
-// Create new post
+// Creates a new post.
 app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments', 15), async (req, res) => {
   try {
     const { title, content, postType } = req.body;
@@ -971,11 +905,10 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       title,
       content,
       author: req.user._id,
-      postType: postType || 'normal', // Default to 'normal' if not provided
+      postType: postType || 'normal',
       attachments: []
     };
 
-    // Link preview logic
     const linkPreview = await generateLinkPreview(content);
     if (linkPreview) {
         newPostData.linkPreview = linkPreview;
@@ -997,7 +930,6 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
                 '-c:a', 'aac'
               ])
               .on('end', () => {
-                console.log('✅ Transcode complete:', outputPath);
                 resolve(outputPath);
               })
               .on('error', (err, stdout, stderr) => {
@@ -1024,8 +956,8 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
             fileType: 'video'
           });
 
-          fs.unlinkSync(file.path); // Delete original file
-          fs.unlinkSync(outputPath); // Delete processed file
+          fs.unlinkSync(file.path);
+          fs.unlinkSync(outputPath);
         } else if (file.mimetype.startsWith('image/')) {
           const fileContent = fs.readFileSync(file.path);
           const key = `post_attachments/${uuidv4()}-${file.originalname}`;
@@ -1041,7 +973,7 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
             url: result.Location,
             fileType: 'image'
           });
-          fs.unlinkSync(file.path); // Delete original file
+          fs.unlinkSync(file.path);
         }
       }
     }
@@ -1050,11 +982,10 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       if (!pollOptions || !Array.isArray(pollOptions) || pollOptions.length < 2) {
         return res.status(400).json({ error: 'Polls require at least two options.' });
       }
-      // Sanitize poll options
       newPostData.pollOptions = pollOptions.map(opt => ({
-        option: String(opt.option).trim(), // Ensure option is a string and trim whitespace
-        votes: 0 // Votes start at 0
-      })).filter(opt => opt.option); // Filter out any empty options
+        option: String(opt.option).trim(),
+        votes: 0
+      })).filter(opt => opt.option);
 
       if (newPostData.pollOptions.length < 2) {
         return res.status(400).json({ error: 'Polls require at least two valid options.' });
@@ -1078,21 +1009,21 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       content: post.content,
       postType: post.postType,
       attachments: post.attachments,
-      pollOptions: post.pollOptions, // Ensure pollOptions are returned
-      linkPreview: post.linkPreview, // Include linkPreview in the response
+      pollOptions: post.pollOptions,
+      linkPreview: post.linkPreview,
       author: {
         id: post.author._id,
         username: post.author.username,
         displayName: post.author.displayName,
         photo: post.author.profilePicture.path || '/default-profile.png'
       },
-      likes: [], // Initialize likes
-      isLiked: false, // Initialize isLiked
+      likes: [],
+      isLiked: false,
       createdAt: post.createdAt.toISOString(),
       comments: []
     };
 
-    res.status(201).json(responsePost); // Use 201 for resource creation
+    res.status(201).json(responsePost);
   } catch (error) {
     console.error('Error creating post:', error);
     if (error.name === 'ValidationError') {
@@ -1102,7 +1033,7 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
   }
 });
 
-// Add comment to post
+// Adds a comment to a post.
 app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
   try {
     const { postId } = req.params;
@@ -1161,7 +1092,7 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
   }
 });
 
-// Reply to a comment
+// Adds a reply to a comment.
 app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) => {
   try {
     const { commentId } = req.params;
@@ -1183,7 +1114,7 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
     const reply = new Comment({
       content,
       author: req.user._id,
-      post: parentComment.post, // Associate reply with the same post
+      post: parentComment.post,
       parentComment: commentId
     });
 
@@ -1224,6 +1155,7 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
   }
 });
 
+// Generates a preview for the first link found in a piece of text.
 async function generateLinkPreview(content) {
   const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
   const urls = content.match(urlRegex);
@@ -1231,12 +1163,11 @@ async function generateLinkPreview(content) {
   if (urls && urls.length > 0) {
     try {
       let url = urls[0];
-      // Prepend http:// if the URL doesn't have a protocol
       if (!url.match(/^[a-zA-Z]+:\/\//)) {
         url = 'http://' + url;
       }
 
-      const { data } = await axios.get(url, { timeout: 5000 }); // Add a timeout
+      const { data } = await axios.get(url, { timeout: 5000 });
       const $ = cheerio.load(data);
 
       const getMetaTag = (name) => {
@@ -1251,34 +1182,31 @@ async function generateLinkPreview(content) {
       const description = getMetaTag('description') || $('p').first().text();
       let image = getMetaTag('image');
 
-      // Make relative image URLs absolute
       if (image && image.trim() && !image.startsWith('http')) {
         try {
             const urlObject = new URL(url);
             image = new URL(image, urlObject.origin).href;
         } catch (e) {
             console.error(`Invalid image URL found for ${url}: ${image}`);
-            image = null; // Invalidate bad image URL
+            image = null;
         }
       }
 
-      // Basic validation to ensure we have something to show
       if (title || description) {
           return {
             url: url,
             title: title ? title.trim() : '',
-            description: description ? description.trim().substring(0, 200) : '', // Trim and limit length
+            description: description ? description.trim().substring(0, 200) : '',
             image: image,
           };
       }
     } catch (previewError) {
-      // console.error(`Could not fetch link preview for ${urls[0]}:`, previewError.message);
     }
   }
-  return null; // Return null if no URL or if preview generation fails
+  return null;
 }
 
-// Helper function to parse mentions and create notifications
+// Creates notifications for any users mentioned in a post or comment.
 async function createNotificationsForMentions(text, postId, commentId, senderId) {
     const mentionRegex = /@(\w+)/g;
     const mentions = text.match(mentionRegex);
@@ -1302,7 +1230,7 @@ async function createNotificationsForMentions(text, postId, commentId, senderId)
     }
 }
 
-// Like/Unlike a post
+// Likes or unlikes a post.
 app.post('/api/posts/:postId/like', isAuthenticated, async (req, res) => {
   try {
     const { postId } = req.params;
@@ -1315,17 +1243,13 @@ app.post('/api/posts/:postId/like', isAuthenticated, async (req, res) => {
 
     const likedIndex = post.likes.indexOf(userId);
     if (likedIndex > -1) {
-      // User has liked, so unlike
       post.likes.splice(likedIndex, 1);
     } else {
-      // User has not liked, so like
       post.likes.push(userId);
     }
 
     await post.save();
     
-    // We don't need to return the full post object with populated author and comments here.
-    // Just the like status and count.
     res.json({ 
       likesCount: post.likes.length,
       isLiked: post.likes.includes(userId) 
@@ -1337,7 +1261,7 @@ app.post('/api/posts/:postId/like', isAuthenticated, async (req, res) => {
   }
 });
 
-// Like/Unlike a comment
+// Likes or unlikes a comment.
 app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
   try {
     const { commentId } = req.params;
@@ -1368,7 +1292,7 @@ app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
   }
 });
 
-// Get a single post
+// Gets a single post by its ID.
 app.get('/api/posts/:postId', async (req, res) => {
     try {
         const post = await Post.findById(req.params.postId)
@@ -1392,7 +1316,7 @@ app.get('/api/posts/:postId', async (req, res) => {
     }
 });
 
-// Delete a post and its associated comments/replies
+// Deletes a post and all its comments.
 app.delete('/api/posts/:postId', isAuthenticated, async (req, res) => {
   try {
     const { postId } = req.params;
@@ -1404,17 +1328,11 @@ app.delete('/api/posts/:postId', isAuthenticated, async (req, res) => {
       return res.status(404).json({ error: 'Post not found.' });
     }
 
-    // Check if the current user is the author of the post
     if (post.author.toString() !== userId.toString()) {
       return res.status(403).json({ error: 'User not authorized to delete this post.' });
     }
 
-    // Delete all comments and replies associated with the post
-    // Mongoose doesn't have automatic cascading delete for this scenario with `parentComment` self-references.
-    // We first delete all comments (which includes replies as they are also comments) linked to the post.
     await Comment.deleteMany({ post: postId });
-
-    // Then delete the post itself
     await Post.findByIdAndDelete(postId);
 
     res.json({ success: true, message: 'Post and associated comments deleted successfully.' });
@@ -1429,11 +1347,10 @@ app.delete('/api/posts/:postId', isAuthenticated, async (req, res) => {
 });
 
 
-// Error handling middleware
+// Catches and handles any errors that occur in the application.
 app.use((error, req, res, next) => {
   console.error('Unhandled error:', error);
   
-  // Handle multer errors
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
@@ -1441,7 +1358,6 @@ app.use((error, req, res, next) => {
     return res.status(400).json({ error: 'File upload error: ' + error.message });
   }
   
-  // Handle other errors
   if (error.message === 'Not an image! Please upload only images.') {
     return res.status(400).json({ error: 'Please upload only image files.' });
   }
@@ -1450,6 +1366,7 @@ app.use((error, req, res, next) => {
 });
 
 
+// Starts the server.
 app.listen(PORT, () => {
   if (development) {
     console.log(`Development server running on http://localhost:${PORT}`);

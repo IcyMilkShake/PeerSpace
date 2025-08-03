@@ -5,67 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Profile - Forum</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="theme-loader.js"></script> <!-- THEME LOADER -->
+    <script src="theme-loader.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
-    <link rel="stylesheet" href="themes.css"> <!-- THEME STYLES -->
+    <link rel="stylesheet" href="themes.css">
     <style>
-        /* Profile page specific styles */
-        /* Most base styles (body, nav, buttons, modals, inputs) are now in themes.css */
-
-        /* Ensure the main profile card and its header use theme variables if not already covered by Tailwind + themes.css */
-        /* #profile-content is styled by themes.css */
-        /* .profile-header is styled by themes.css */
-        /* #profile-name, #profile-joined-date, #profile-description-view, #profile-description-edit are styled by themes.css */
-
-        /* .button-primary and .button-secondary are defined in themes.css */
-        /* Specific buttons like #edit-description-button will use these classes. */
-
-        /* .profile-avatar and related styles are in themes.css */
-        
-        /* #profile-loading p, #profile-error p are styled by themes.css */
-        /* #profile-error a (go to homepage button) is styled by .button-primary in themes.css */
-
-        /* User Profile Modal in nav (#user-profile-modal) is styled by themes.css */
-        
-        /* .profile-img and .profile-initials are general utility classes in themes.css */
-
-        /* Cropper and Modal Styles (file-upload, crop-image-container, #crop-image, .modal-overlay, etc.) */
-        /* are now in themes.css as they are general modal/component styles. */
-
-        /* Styles for text color on specific elements if not covered by general rules in themes.css */
-        /* For example, nav h1 text color is handled by 'nav h1' in themes.css */
-        nav .text-gray-800 { /* Fallback for Forum title if needed */
+        nav .text-gray-800 {
             color: var(--text-primary);
         }
-        #profile-content .text-gray-800 { /* e.g. Profile Name */
+        #profile-content .text-gray-800 {
             color: var(--text-primary);
         }
-        #profile-content .text-gray-500 { /* e.g. Joined Date */
+        #profile-content .text-gray-500 {
             color: var(--text-secondary);
         }
-        #profile-content .text-gray-700 { /* e.g. "About me" title */
+        #profile-content .text-gray-700 {
             color: var(--text-primary); 
         }
-        #profile-content .text-gray-600 { /* e.g. description view */
-            color: var(--text-primary); /* Overridden for better readability in themes.css */
+        #profile-content .text-gray-600 {
+            color: var(--text-primary);
         }
-        
-        /* Ensure that Tailwind classes like `bg-white` on #profile-content, 
-           or `border-b` on .profile-header are effectively themed via themes.css.
-           For example, #profile-content { background-color: var(--card-bg); }
-           .profile-header { border-bottom-color: var(--border-color); }
-        */
-
     </style>
 </head>
 <body class="min-h-screen"> 
-    <!-- Notification Container (similar to index.html) -->
     <div id="notification-container" class="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-sm sm:max-w-md p-4 space-y-3 z-[100]">
-        <!-- Notifications will be dynamically added here -->
     </div>
 
-    <!-- Navigation -->
     <nav class="shadow-md border-b">
         <div class="max-w-4xl mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
@@ -73,28 +38,21 @@
                     <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                         <span class="text-white font-bold text-lg">F</span>
                     </div>
-                    <h1 class="text-2xl font-bold">Forum</h1> <!-- text-gray-800 removed, handled by themes.css -->
+                    <h1 class="text-2xl font-bold">Forum</h1>
                 </a>
                 <div id="auth-section-profile">
-                    <!-- Auth status will be rendered here by JS. Example when logged out:
-                         <a href="/" class="text-blue-600 hover:text-blue-700">Back to Forum</a>
-                         When logged in, it will be a button to toggle the profile modal.
-                    -->
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- User Profile Modal (Dropdown in Nav - structure from index.html) -->
-    <!-- ID is changed to user-profile-dropdown-profile to avoid conflict if we reuse user-profile ID from index.html -->
     <div id="user-profile-dropdown-profile" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-2 border z-50 w-60" style="border-color: var(--border-color);">
         <div class="flex items-center space-x-3 p-2 mb-2 border-b" style="border-bottom-color: var(--border-color);">
             <div id="modal-profile-img-container-profile">
-                <!-- Profile image component from createProfileImage will be inserted here. -->
             </div>
             <div>
                 <div id="modal-user-name-profile" class="font-medium text-sm"></div>
-                <div id="modal-user-email-profile" class="text-xs text-gray-500"></div> <!-- text-gray-500 will be themed -->
+                <div id="modal-user-email-profile" class="text-xs text-gray-500"></div>
             </div>
         </div>
         <nav class="space-y-1">
@@ -114,25 +72,18 @@
         </nav>
     </div>
 
-    <!-- Main Profile Content -->
     <main class="max-w-3xl mx-auto px-4 py-8">
         <div id="profile-loading" class="text-center py-12">
-            <p>Loading profile...</p> <!-- text-gray-500 removed -->
+            <p>Loading profile...</p>
         </div>
 
-        <div id="profile-content" class="hidden rounded-lg shadow-lg overflow-hidden"> <!-- bg-white removed -->
-            <!-- Banner and Profile Header -->
+        <div id="profile-content" class="hidden rounded-lg shadow-lg overflow-hidden">
             <div class="relative">
-                <!-- Banner -->
                 <div class="profile-header h-32 sm:h-48"></div>
-
-                <!-- Profile Picture -->
                 <div id="profile-avatar-container" class="absolute -bottom-12 sm:-bottom-16 left-4 sm:left-8 flex items-center justify-center">
-                    <!-- Avatar will be loaded here -->
                 </div>
             </div>
 
-            <!-- Profile Info -->
             <div class="pt-16 sm:pt-20 px-4 sm:px-6 pb-6">
                 <div class="flex items-center justify-between w-full">
                     <h2 id="profile-display-name" class="text-2xl sm:text-3xl font-bold"></h2>
@@ -156,7 +107,6 @@
                 <p id="profile-joined-date" class="text-sm mt-1"></p>
                 <p id="profile-country" class="text-sm mt-1"></p>
 
-                <!-- Edit Display Name Form (hidden by default) -->
                 <div id="edit-display-name-form" class="hidden mt-4">
                     <input type="text" id="profile-display-name-edit" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2" />
                     <div class="mt-3 flex justify-end space-x-2">
@@ -169,7 +119,6 @@
                     </div>
                 </div>
 
-                <!-- Edit Username Form (hidden by default) -->
                 <div id="edit-username-form" class="hidden mt-4">
                     <input type="text" id="profile-username-edit" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2" />
                     <div class="mt-3 flex justify-end space-x-2">
@@ -182,12 +131,9 @@
                     </div>
                 </div>
 
-                <!-- Description -->
                 <div id="profile-description-view" class="mt-4 whitespace-pre-wrap leading-relaxed">
-                    <!-- Description will be loaded here -->
                 </div>
                 
-                <!-- Edit Description Form (hidden by default) -->
                 <div id="edit-description-form" class="hidden mt-4">
                     <div class="flex justify-between items-center">
                         <label for="profile-description-edit" class="block text-sm font-medium text-gray-700">Description</label>
@@ -210,7 +156,6 @@
                     Edit Description
                 </button>
 
-                <!-- Change Profile Picture Button - Shown only if it's the current user's profile -->
                 <div id="change-picture-section" class="hidden mt-6 pt-6 border-t">
                     <h3 class="text-xl font-semibold mb-3">Profile Picture</h3>
                     <div class="file-upload">
@@ -229,32 +174,7 @@
         </div>
     </main>
 
-    <!-- User Profile Modal (for logged-in user nav on this page) -->
-    <!-- THIS IS THE OLD MODAL - IT WILL BE REPLACED BY THE NEW user-profile-dropdown-profile above -->
-    <!-- <div id="user-profile-modal" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-4 border z-50 w-64"> 
-        <div class="flex items-center space-x-3 mb-3">
-            <div id="modal-profile-img-container" class="profile-img w-10 h-10 rounded-full border-2">
-            </div>
-            <div>
-                <div id="modal-user-name" class="font-medium text-gray-800 text-sm"></div>
-                <div id="modal-user-email" class="text-xs text-gray-500"></div>
-            </div>
-        </div>
-        <a id="view-my-profile-link" href="#" class="profile-menu-item"> 
-            View My Profile
-        </a>
-        <a href="settings.html" id="profile-menu-settings-profile" class="profile-menu-item">
-            <svg class="w-5 h-5 mr-2 inline" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-            Settings
-        </a>
-        <hr class="my-1" style="border-top-color: var(--border-color);">
-        <button id="logout-btn-profile" class="profile-menu-item"> 
-            Sign Out
-        </button>
-    </div> -->
-
-    <!-- Image Cropper Modal (Copied from index.html) -->
-    <div id="crop-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[60] p-4"> <!-- Ensure z-index is higher than nav modal if needed -->
+    <div id="crop-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[60] p-4">
         <div class="bg-white rounded-lg crop-modal-content max-w-4xl w-full max-h-[95vh] overflow-hidden">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4">
@@ -280,7 +200,6 @@
         </div>
     </div>
 
-    <!-- Upload Progress Modal (Copied from index.html) -->
     <div id="upload-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[70]">
         <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
             <h3 class="text-lg font-semibold mb-4">Uploading Profile Picture</h3>
@@ -291,24 +210,22 @@
         </div>
     </div>
 
-
     <script>
         let currentLoggedInUser = null;
-        let profileUserId = null; // To store the ID of the profile being viewed
-        let cropper = null; // For profile picture cropping
+        let profileUserId = null;
+        let cropper = null;
 
-        // Get initials from name (Standardized - Copied from index.html)
+        // Gets the first letter of the first two words of a name.
         function getInitials(name) {
             if (!name) return '?';
             return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
         }
         
-        // Create profile image element with fallback (Standardized - Copied from index.html)
-        // Added borderClass parameter for optional borders (e.g., for modal profile image)
+        // Creates a user profile image or a fallback with initials.
         function createProfileImage(photoUrl, name, size = "w-10 h-10", textClass = "text-sm", borderClass = "") {
             const container = document.createElement('div');
             container.className = `profile-img ${size} ${borderClass} rounded-full flex items-center justify-center overflow-hidden`;
-            container.style.backgroundColor = 'var(--input-field-bg)'; // Apply theme variable
+            container.style.backgroundColor = 'var(--input-field-bg)';
             
             if (borderClass && borderClass.includes('border')) { 
                 container.style.borderColor = 'var(--border-color-medium)';
@@ -322,7 +239,7 @@
                 img.onerror = function() {
                     container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
                 };
-                img.src = photoUrl + '?t=' + Date.now(); // Cache busting
+                img.src = photoUrl + '?t=' + Date.now();
                 container.appendChild(img);
             } else {
                 container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(name)}</span>`;
@@ -330,7 +247,7 @@
             return container;
         }
 
-        // --- CropperJS Functions (Copied and adapted from index.html) ---
+        // Initializes the image cropper.
         function initializeCropper(imageElement) {
             if (cropper) {
                 cropper.destroy();
@@ -345,15 +262,16 @@
             });
         }
 
+        // Handles the selection of a profile picture file.
         function handleProfilePictureSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
-            event.target.value = ''; // Reset file input
+            event.target.value = '';
 
             if (!file.type.startsWith('image/')) {
                 showNotification('Please select an image file', 'warning'); return;
             }
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            if (file.size > 5 * 1024 * 1024) {
                 showNotification('Image too large (max 5MB)', 'warning'); return;
             }
 
@@ -389,7 +307,6 @@
                     if (cropper) cropper.destroy();
                     cropImage.src = dataUrl;
                     document.getElementById('crop-modal').classList.remove('hidden');
-                    // User profile modal in nav might be open, ensure it's hidden
                     const navUserModal = document.getElementById('user-profile-modal');
                     if(navUserModal) navUserModal.classList.add('hidden');
 
@@ -400,6 +317,7 @@
             reader.readAsDataURL(file);
         }
 
+        // Uploads the cropped image to the server.
         async function uploadCroppedImage() {
             if (!cropper) { showNotification('Cropper not initialized.', 'error'); return; }
             const canvas = cropper.getCroppedCanvas({ width: 300, height: 300, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
@@ -430,14 +348,12 @@
                         reject(new Error('Upload network error'));
                     };
                     xhr.open('POST', '/api/user/profile-picture');
-                    // Assuming isAuthenticated middleware on server handles auth via session cookie
                     xhr.send(formData);
                 }, 'image/png', 0.9);
             });
         }
-        // --- End CropperJS Functions ---
 
-
+        // Checks if a user is logged in on the profile page.
         async function checkAuthStatusForProfilePage() {
             try {
                 const response = await fetch('/api/user', { credentials: 'include' });
@@ -453,24 +369,22 @@
             updateProfilePageNav(); 
         }
 
+        // Updates the navigation bar based on the user's login status.
         function updateProfilePageNav() {
             const authSection = document.getElementById('auth-section-profile');
-            // Use the new dropdown ID
             const userProfileDropdown = document.getElementById('user-profile-dropdown-profile'); 
 
             if (currentLoggedInUser) {
                 const navProfileImg = createProfileImage(currentLoggedInUser.photo, currentLoggedInUser.name, "w-8 h-8", "text-xs");
                 
-                // Standardized button structure from index.html
                 authSection.innerHTML = `
                     <button onclick="toggleProfileDropdown()" class="nav-profile-button-hover flex items-center space-x-2 p-1 rounded-lg transition-colors">
-                        <div id="nav-profile-img-container-profile-page"></div> <!-- Unique ID for nav image container -->
+                        <div id="nav-profile-img-container-profile-page"></div>
                         <span class="font-medium text-sm">${escapeHtml(currentLoggedInUser.displayName)}</span>
                     </button>
                 `;
                 document.getElementById('nav-profile-img-container-profile-page').appendChild(navProfileImg);
 
-                // Update new user profile dropdown modal
                 const modalImgContainer = document.getElementById('modal-profile-img-container-profile');
                 modalImgContainer.innerHTML = ''; 
                 modalImgContainer.appendChild(createProfileImage(currentLoggedInUser.photo, currentLoggedInUser.displayName, "w-10 h-10", "text-base", "border-2"));
@@ -480,39 +394,34 @@
                 userEmailElem.textContent = currentLoggedInUser.email;
                 userEmailElem.classList.add('truncate');
                 
-                // Update links in the new dropdown
                 const profileMenuLink = document.getElementById('profile-menu-profile-page');
                 if (profileMenuLink) {
                     profileMenuLink.href = `profile.html?id=${currentLoggedInUser.id}`;
                 }
-                // Settings link 'profile-menu-settings-profile-page' href is already correct in HTML
 
                 const logoutBtn = document.getElementById('logout-btn-profile-page');
                 logoutBtn.removeEventListener('click', logoutFromProfilePage); 
                 logoutBtn.addEventListener('click', logoutFromProfilePage);
 
-                // Ensure dropdown is hidden initially if user just logged in, or shown if it was already toggled (though typically hidden on load)
-                // userProfileDropdown.classList.add('hidden'); // Or manage visibility based on previous state if needed
-
             } else {
-                authSection.innerHTML = '<a href="/" id="back-to-forum-link-profile" class="hover:underline">Back to Forum</a>'; // Added ID for consistency
+                authSection.innerHTML = '<a href="/" id="back-to-forum-link-profile" class="hover:underline">Back to Forum</a>';
                 if (userProfileDropdown) userProfileDropdown.classList.add('hidden');
             }
         }
         
-        // Renamed and updated to match index.html's toggleUserProfile
+        // Shows or hides the profile dropdown menu.
         function toggleProfileDropdown() {
             const userProfileDropdown = document.getElementById('user-profile-dropdown-profile');
             if (!currentLoggedInUser || !userProfileDropdown) return;
             userProfileDropdown.classList.toggle('hidden');
         }
 
+        // Logs the user out from the profile page.
         async function logoutFromProfilePage() {
             try {
                 await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
                 currentLoggedInUser = null;
                 updateProfilePageNav(); 
-                // Redirect to home after logout
                 window.location.href = '/'; 
             } catch (error) {
                 console.error('Logout failed:', error);
@@ -520,6 +429,7 @@
             }
         }
         
+        // Escapes HTML to prevent XSS attacks.
         function escapeHtml(text) {
             if (text === null || typeof text === 'undefined') return '';
             const div = document.createElement('div');
@@ -527,29 +437,20 @@
             return div.innerHTML;
         }
 
-        // Close dropdown when clicking outside - updated to new IDs
-        document.addEventListener('click', (e) => {
-            const userProfileDropdown = document.getElementById('user-profile-dropdown-profile');
-            const authSection = document.getElementById('auth-section-profile');
-            // Check if elements exist before trying to access contains
-            if (authSection && userProfileDropdown && 
-                !authSection.contains(e.target) && 
-                !userProfileDropdown.contains(e.target)) {
-                userProfileDropdown.classList.add('hidden');
-            }
-        });
-
+        // Gets the user ID or username from the URL.
         function getUserIdFromUrl() {
             const params = new URLSearchParams(window.location.search);
             return params.get('id') || params.get('username');
         }
 
+        // Formats a date string into a more readable format.
         function formatDate(dateString) {
             if (!dateString) return 'N/A';
             const date = new Date(dateString);
             return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
         }
 
+        // Loads the profile data for the user.
         async function loadProfileData() {
             const profileIdentifier = getUserIdFromUrl();
             if (!profileIdentifier) {
@@ -582,15 +483,13 @@
             }
         }
 
+        // Renders the profile data on the page.
         function renderProfileData(profile) {
-            // Avatar
             const avatarContainer = document.getElementById('profile-avatar-container');
-            avatarContainer.innerHTML = ''; // Clear previous
+            avatarContainer.innerHTML = '';
             const avatarElement = createProfileImage(profile.photo, profile.displayName, "profile-avatar", "text-5xl");
             avatarContainer.appendChild(avatarElement);
 
-
-            // Name and Join Date
             document.getElementById('profile-display-name').textContent = escapeHtml(profile.displayName);
             document.getElementById('profile-username').textContent = `@${escapeHtml(profile.username)}`;
             document.getElementById('profile-joined-date').textContent = `Joined on ${formatDate(profile.createdAt)}`;
@@ -600,13 +499,11 @@
                 document.getElementById('profile-country').textContent = '';
             }
 
-            // Description
             const descriptionView = document.getElementById('profile-description-view');
             const descriptionEditInput = document.getElementById('profile-description-edit');
             descriptionView.textContent = profile.description || 'No description provided.';
             descriptionEditInput.value = profile.description || '';
 
-            // Edit button visibility
             const editButton = document.getElementById('edit-description-button');
             const changeDisplayNameButton = document.getElementById('change-display-name');
             const changeUsernameButton = document.getElementById('change-username');
@@ -621,7 +518,6 @@
                     descriptionEditInput.focus();
                 };
 
-                // Show change profile picture section
                 document.getElementById('change-picture-section').classList.remove('hidden');
                 document.getElementById('profile-picture-input-profile-page').addEventListener('change', handleProfilePictureSelect);
 
@@ -633,6 +529,7 @@
             }
         }
 
+        // Displays an error message if the profile fails to load.
         function displayProfileError(message) {
             document.getElementById('profile-loading').classList.add('hidden');
             document.getElementById('profile-content').classList.add('hidden');
@@ -641,6 +538,7 @@
             errorElement.querySelector('p').textContent = message || "Could not load profile.";
         }
         
+        // Saves the user's new description.
         async function saveDescription() {
             const newDescription = document.getElementById('profile-description-edit').value;
             const saveButton = document.getElementById('save-description');
@@ -650,9 +548,7 @@
             try {
                 const response = await fetch('/api/user/description', {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({ description: newDescription })
                 });
@@ -665,11 +561,10 @@
 
                 if (result.success) {
                     document.getElementById('profile-description-view').textContent = result.description || 'No description provided.';
-                    // Update currentLoggedInUser if it's their own profile, for consistency
                     if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
                          currentLoggedInUser.description = result.description;
                     }
-                    cancelEditDescription(); // Hide form, show view
+                    cancelEditDescription();
                 } else {
                     alert('Failed to save description: ' + (result.error || 'Unknown error'));
                 }
@@ -683,23 +578,86 @@
             }
         }
 
+        // Cancels the editing of the user's description.
         function cancelEditDescription() {
             document.getElementById('edit-description-form').classList.add('hidden');
             document.getElementById('profile-description-view').classList.remove('hidden');
             document.getElementById('edit-description-button').classList.remove('hidden');
-            // Optionally reset textarea content if needed:
-            // document.getElementById('profile-description-edit').value = document.getElementById('profile-description-view').textContent;
         }
+        
+        // Closes the image cropper modal.
+        function closeCropModal() {
+            document.getElementById('crop-modal').classList.add('hidden');
+            if (cropper) { cropper.destroy(); cropper = null; }
+        }
+
+        // Shows a notification message to the user.
+        function showNotification(message, type = 'info', duration = 3000) {
+            const notificationContainerProfile = document.getElementById('notification-container');
+            if (!notificationContainerProfile) {
+                console.warn("Notification container not found on profile.html. Falling back to alert.");
+                alert(`${type.toUpperCase()}: ${message}`);
+                return;
+            }
+
+            const notificationId = `notif-profile-${Date.now()}`;
+            const notification = document.createElement('div');
+            notification.id = notificationId;
+            notification.className = `notification notification-${type}`;
+            
+            const messageSpan = document.createElement('span');
+            messageSpan.textContent = message;
+            notification.appendChild(messageSpan);
+
+            const closeButton = document.createElement('button');
+            closeButton.className = 'notification-close-btn';
+            closeButton.innerHTML = '&times;';
+            closeButton.onclick = () => {
+                notification.classList.remove('notification-visible');
+                setTimeout(() => notification.remove(), 300); 
+            };
+            notification.appendChild(closeButton);
+
+            notificationContainerProfile.appendChild(notification);
+
+            setTimeout(() => {
+                notification.classList.add('notification-visible');
+            }, 50); 
+
+            if (duration > 0) {
+                setTimeout(() => {
+                    if (document.getElementById(notificationId)) {
+                        notification.classList.remove('notification-visible');
+                        setTimeout(() => notification.remove(), 300);
+                    }
+                }, duration);
+            }
+        }
+
+        // Closes the profile dropdown when clicking outside of it.
+        document.addEventListener('click', (e) => {
+            const userProfileDropdown = document.getElementById('user-profile-dropdown-profile');
+            const authSection = document.getElementById('auth-section-profile');
+            if (authSection && userProfileDropdown && 
+                !authSection.contains(e.target) && 
+                !userProfileDropdown.contains(e.target)) {
+                userProfileDropdown.classList.add('hidden');
+            }
+        });
+
+        // Event listener for changing the display name.
         document.getElementById('change-display-name').addEventListener('click', () => {
             document.getElementById('edit-display-name-form').classList.remove('hidden');
             document.getElementById('profile-display-name-edit').value = document.getElementById('profile-display-name').textContent;
             document.getElementById('profile-display-name-edit').focus();
         });
 
+        // Event listener for canceling the display name change.
         document.getElementById('cancel-edit-display-name').addEventListener('click', () => {
             document.getElementById('edit-display-name-form').classList.add('hidden');
         });
 
+        // Event listener for saving the new display name.
         document.getElementById('save-display-name').addEventListener('click', async () => {
             const newDisplayName = document.getElementById('profile-display-name-edit').value;
             if (newDisplayName.trim().length <= 0 || newDisplayName.trim().length > 50) {
@@ -709,9 +667,7 @@
             try {
                 const response = await fetch('/api/user/displayName', {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({ displayName: newDisplayName })
                 });
@@ -738,24 +694,25 @@
             }
         });
 
+        // Event listener for changing the username.
         document.getElementById('change-username').addEventListener('click', () => {
             document.getElementById('edit-username-form').classList.remove('hidden');
-            document.getElementById('profile-username-edit').value = document.getElementById('profile-username').textContent.substring(1); // remove @
+            document.getElementById('profile-username-edit').value = document.getElementById('profile-username').textContent.substring(1);
             document.getElementById('profile-username-edit').focus();
         });
 
+        // Event listener for canceling the username change.
         document.getElementById('cancel-edit-username').addEventListener('click', () => {
             document.getElementById('edit-username-form').classList.add('hidden');
         });
 
+        // Event listener for saving the new username.
         document.getElementById('save-username').addEventListener('click', async () => {
             const newUsername = document.getElementById('profile-username-edit').value.toLowerCase();
             try {
                 const response = await fetch('/api/user/username', {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify({ username: newUsername })
                 });
@@ -777,13 +734,14 @@
                 alert('Error saving username: ' + error.message);
             }
         });
-        // Event Listeners for description editing
+
         document.getElementById('save-description').addEventListener('click', saveDescription);
         document.getElementById('cancel-edit-description').addEventListener('click', cancelEditDescription);
 
         const descriptionEditInput = document.getElementById('profile-description-edit');
         const descriptionCharCount = document.getElementById('description-char-count');
 
+        // Event listener for the description character count.
         descriptionEditInput.addEventListener('input', () => {
             const currentLength = descriptionEditInput.value.length;
             const maxLength = descriptionEditInput.maxLength;
@@ -795,23 +753,21 @@
             }
         });
 
-        // Event Listeners for Cropper Modal
+        // Event listener for saving the cropped image.
         document.getElementById('crop-save').addEventListener('click', async () => {
             try {
-                const result = await uploadCroppedImage(); // This now uses the XHR upload
+                const result = await uploadCroppedImage();
                 if (result && result.success) {
                     if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
-                        currentLoggedInUser.photo = result.photo; // Update local cache for logged-in user
+                        currentLoggedInUser.photo = result.photo;
                     }
-                    // Re-render the main profile avatar on this page
                     const avatarContainer = document.getElementById('profile-avatar-container');
-                    avatarContainer.innerHTML = ''; // Clear previous
+                    avatarContainer.innerHTML = '';
                     const newAvatar = createProfileImage(result.photo, document.getElementById('profile-display-name').textContent, "profile-avatar", "text-5xl");
                     avatarContainer.appendChild(newAvatar);
                     
-                    // Also update the avatar in the nav modal if it's the current user's profile
                     if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
-                         updateProfilePageNav(); // This will refresh the nav modal with new pic
+                         updateProfilePageNav();
                     }
 
                     document.getElementById('crop-modal').classList.add('hidden');
@@ -828,64 +784,12 @@
             }
         });
 
-        function closeCropModal() {
-            document.getElementById('crop-modal').classList.add('hidden');
-            if (cropper) { cropper.destroy(); cropper = null; }
-        }
         document.getElementById('crop-cancel').addEventListener('click', closeCropModal);
         document.getElementById('crop-cancel-btn').addEventListener('click', closeCropModal);
         window.addEventListener('resize', () => { if (cropper) cropper.resize(); });
 
-
-        // --- Notification System (Full version from index.html) ---
-        const notificationContainerProfile = document.getElementById('notification-container');
-
-        function showNotification(message, type = 'info', duration = 3000) {
-            if (!notificationContainerProfile) { // Check if container exists on this page
-                console.warn("Notification container not found on profile.html. Falling back to alert.");
-                alert(`${type.toUpperCase()}: ${message}`);
-                return;
-            }
-
-            const notificationId = `notif-profile-${Date.now()}`;
-            const notification = document.createElement('div');
-            notification.id = notificationId;
-            // Basic classes, assuming Tailwind is available or similar global styles for notifications
-            notification.className = `notification notification-${type}`; // Relies on global styles for .notification, .notification-type
-            
-            const messageSpan = document.createElement('span');
-            messageSpan.textContent = message;
-            notification.appendChild(messageSpan);
-
-            const closeButton = document.createElement('button');
-            closeButton.className = 'notification-close-btn'; // Relies on global styles
-            closeButton.innerHTML = '&times;';
-            closeButton.onclick = () => {
-                notification.classList.remove('notification-visible'); // Relies on global styles
-                setTimeout(() => notification.remove(), 300); 
-            };
-            notification.appendChild(closeButton);
-
-            notificationContainerProfile.appendChild(notification);
-
-            setTimeout(() => {
-                notification.classList.add('notification-visible'); // Relies on global styles
-            }, 50); 
-
-            if (duration > 0) {
-                setTimeout(() => {
-                    if (document.getElementById(notificationId)) {
-                        notification.classList.remove('notification-visible');
-                        setTimeout(() => notification.remove(), 300);
-                    }
-                }, duration);
-            }
-        }
-        // --- End Notification System ---
-
-        // Modified Initial calls
+        // Initializes the page when the DOM is fully loaded.
         document.addEventListener('DOMContentLoaded', async () => {
-            // theme-loader.js already applies theme by the time DOMContentLoaded fires
             await checkAuthStatusForProfilePage(); 
             await loadProfileData(); 
         });

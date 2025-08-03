@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+// Checks if the number of attachments is within the limit.
 function arrayLimit(val) {
   return val.length <= 15;
 }

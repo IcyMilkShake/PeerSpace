@@ -5,46 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - Forum</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="theme-loader.js"></script> <!-- THEME LOADER -->
-    <link rel="stylesheet" href="themes.css"> <!-- THEME STYLES -->
+    <script src="theme-loader.js"></script>
+    <link rel="stylesheet" href="themes.css">
     <style>
-        /* Settings page specific styles */
-        /* Most base styles (body, nav, cards, modals) are now in themes.css */
-
-        /* Main page title "Settings" */
-        main > h1.text-3xl { /* More specific selector if needed */
+        main > h1.text-3xl {
             color: var(--text-primary);
         }
-        
-        /* .setting-card and its internal elements (h2, p) are styled by themes.css */
-        /* Radio button theme selection styling is now in themes.css */
-        /* Placeholder Toggle Switches styling is now in themes.css */
-
-        /* Profile image styling for nav (.profile-img, .profile-initials) is in themes.css */
-        /* User profile modal in nav (#user-profile-modal-settings) is styled by themes.css */
-        
-        /* Ensure Tailwind classes like `bg-white` on .setting-card
-           are effectively themed via themes.css.
-           For example, .setting-card { background-color: var(--card-bg); border: 1px solid var(--border-color); }
-        */
-
-        /* Fallback for nav h1 if its color isn't set by themes.css general nav h1 rule */
         nav .text-2xl.font-bold {
             color: var(--text-primary);
         }
-
-        /* Fallback for text colors within setting cards if not covered by general rules */
-        .setting-card .text-gray-600 { /* e.g., paragraph text */
+        .setting-card .text-gray-600 {
             color: var(--text-secondary);
         }
-        .setting-card .text-gray-700 { /* e.g., toggle labels if not themed by more specific rules */
+        .setting-card .text-gray-700 {
             color: var(--text-primary);
         }
-
     </style>
 </head>
 <body class="min-h-screen">
-    <!-- Navigation -->
     <nav class="shadow-md border-b">
         <div class="max-w-4xl mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
@@ -52,52 +30,43 @@
                     <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                         <span class="text-white font-bold text-lg">F</span>
                     </div>
-                    <h1 class="text-2xl font-bold">Forum</h1> <!-- text-gray-800 removed, themed by CSS -->
+                    <h1 class="text-2xl font-bold">Forum</h1>
                 </a>
                 <div id="auth-section-settings">
-                    <!-- Auth status will be rendered here by JS. Example when logged out:
-                         <a href="/" class="text-blue-600 hover:text-blue-700">Back to Forum</a>
-                         When logged in, it will be a button to toggle the profile modal.
-                    -->
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- User Profile Modal (Dropdown in Nav - structure from index.html) -->
-    <!-- ID is changed to user-profile-dropdown-settings to avoid conflict -->
     <div id="user-profile-dropdown-settings" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-2 border z-50 w-60" style="border-color: var(--border-color);">
         <div class="flex items-center space-x-3 p-2 mb-2 border-b" style="border-bottom-color: var(--border-color);">
             <div id="modal-profile-img-container-settings">
-                <!-- Profile image component from createProfileImage will be inserted here. -->
             </div>
             <div>
-                <div id="modal-user-name-settings" class="font-medium text-sm"></div> <!-- text-sm for consistency -->
-                <div id="modal-user-email-settings" class="text-xs text-gray-500"></div> <!-- text-gray-500 will be themed -->
+                <div id="modal-user-name-settings" class="font-medium text-sm"></div>
+                <div id="modal-user-email-settings" class="text-xs text-gray-500"></div>
             </div>
         </div>
         <nav class="space-y-1">
-            <a href="#" id="profile-menu-profile-settings-page" class="profile-menu-item"> <!-- ID changed for clarity -->
+            <a href="#" id="profile-menu-profile-settings-page" class="profile-menu-item">
                 <svg class="w-5 h-5 mr-2 inline" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                 Profile
             </a>
-            <a href="settings.html" id="profile-menu-settings-settings-page" class="profile-menu-item"> <!-- ID changed for clarity -->
+            <a href="settings.html" id="profile-menu-settings-settings-page" class="profile-menu-item">
                 <svg class="w-5 h-5 mr-2 inline" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 Settings
             </a>
             <hr class="my-1" style="border-top-color: var(--border-color);">
-            <button id="logout-btn-settings-page" class="w-full text-left profile-menu-item"> <!-- ID changed for clarity -->
+            <button id="logout-btn-settings-page" class="w-full text-left profile-menu-item">
                  <svg class="w-5 h-5 mr-2 inline" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                 Sign Out
             </button>
         </nav>
     </div>
 
-    <!-- Main Settings Content -->
     <main class="max-w-2xl mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold mb-8">Settings</h1>
 
-        <!-- Appearance Settings -->
         <section id="appearance-settings" class="setting-card shadow-md rounded-lg p-6 mb-8">
             <h2 class="text-xl font-semibold mb-4">Appearance</h2>
             <p class="text-sm text-gray-600 mb-1">Choose your preferred theme.</p>
@@ -132,7 +101,6 @@
             </div>
         </section>
 
-        <!-- Placeholder Settings -->
         <section id="placeholder-settings" class="setting-card shadow-md rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Future Settings (Placeholders)</h2>
             <div class="space-y-4">
@@ -162,20 +130,19 @@
     </main>
 
     <script>
-        // --- Theme Management ---
+        let currentLoggedInUserConfig = null;
+
+        // Applies a new theme to the website and saves it.
         async function applyTheme(theme, fromEvent = false) {
             document.documentElement.className = 'theme-' + theme;
             
-            // Save the theme to localStorage
             localStorage.setItem('theme', theme);
 
             if (fromEvent) {
                 try {
                     await fetch('/api/user/theme', {
                         method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ theme }),
                     });
                 } catch (error) {
@@ -183,7 +150,6 @@
                 }
             }
 
-            // Update radio buttons
             const radioButtons = document.querySelectorAll('input[name="theme"]');
             radioButtons.forEach(radio => {
                 radio.checked = (radio.value === theme);
@@ -191,89 +157,49 @@
                 if (dot) {
                     dot.classList.toggle('hidden', radio.value !== theme);
                 }
-                // Style the label itself
                 radio.nextElementSibling.classList.toggle('border-blue-500', radio.value === theme);
                 radio.nextElementSibling.classList.toggle('bg-blue-50', radio.value === theme);
-
-
             });
-             // Update toggle switch styles based on theme
             updateToggleStyles(theme);
         }
         
+        // Updates the styles of the toggle switches based on the current theme.
         function updateToggleStyles(theme) {
             const isDark = theme === 'dark' || theme === 'midnight';
             document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
-                const label = checkbox.nextElementSibling; // The toggle-bg label
+                const label = checkbox.nextElementSibling;
                 if (isDark) {
-                    label.style.backgroundColor = checkbox.checked ? 'var(--button-bg)' : 'var(--input-bg)'; // Use theme variables
+                    label.style.backgroundColor = checkbox.checked ? 'var(--button-bg)' : 'var(--input-bg)';
                     checkbox.style.borderColor = 'var(--input-border)';
-                    checkbox.style.backgroundColor = 'var(--text-primary)'; // Toggle circle color
-                } else { // Light theme
-                    label.style.backgroundColor = checkbox.checked ? '#3B82F6' : '#CBD5E0'; // Tailwind blue-500 and gray-400
-                    checkbox.style.borderColor = '#a0aec0'; // gray-500
+                    checkbox.style.backgroundColor = 'var(--text-primary)';
+                } else {
+                    label.style.backgroundColor = checkbox.checked ? '#3B82F6' : '#CBD5E0';
+                    checkbox.style.borderColor = '#a0aec0';
                     checkbox.style.backgroundColor = 'white';
                 }
             });
         }
 
-
+        // Loads and applies the saved theme.
         function loadTheme(theme) {
             applyTheme(theme);
             return theme;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            checkAuthStatusForSettingsPage().then(() => {
-                const currentTheme = currentLoggedInUserConfig ? currentLoggedInUserConfig.theme : 'dark';
-                loadTheme(currentTheme);
-
-                const themeRadios = document.querySelectorAll('input[name="theme"]');
-                themeRadios.forEach(radio => {
-                    radio.addEventListener('change', (event) => {
-                        applyTheme(event.target.value, true);
-                    });
-                });
-                 // Initial and on-change toggle styling
-                document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
-                    checkbox.addEventListener('change', () => updateToggleStyles(currentLoggedInUserConfig ? currentLoggedInUserConfig.theme : 'dark'));
-                });
-                updateToggleStyles(currentTheme); // Initial call
-
-                // Placeholder toggles - just for looks, no actual functionality
-                document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
-                    checkbox.addEventListener('change', (event) => {
-                        const label = event.target.nextElementSibling;
-                        if (event.target.checked) {
-                            label.style.backgroundColor = (currentLoggedInUserConfig && (currentLoggedInUserConfig.theme === 'dark' || currentLoggedInUserConfig.theme === 'midnight')) ? 'var(--button-bg)' : '#3B82F6';
-                        } else {
-                            label.style.backgroundColor = (currentLoggedInUserConfig && (currentLoggedInUserConfig.theme === 'dark' || currentLoggedInUserConfig.theme === 'midnight')) ? 'var(--input-bg)' : '#CBD5E0';
-                        }
-                    });
-                });
-            });
-        });
-
-        // --- Auth & Nav specific to settings.html (similar to profile.html) ---
-        let currentLoggedInUserConfig = null;
-
-        // Get initials from name (Standardized - Copied from index.html)
+        // Gets the first letter of the first two words of a name.
         function getInitials(displayName) {
             if (!displayName) return '?';
             return displayName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
         }
 
-        // Create profile image element with fallback (Standardized - Copied from index.html)
-        // Added borderClass parameter for optional borders (e.g., for modal profile image)
+        // Creates a user profile image or a fallback with initials.
         function createProfileImage(photoUrl, displayName, size = "w-10 h-10", textClass = "text-sm", borderClass = "") {
             const container = document.createElement('div');
-            // Ensured all necessary classes for layout and appearance are here.
             container.className = `profile-img ${size} ${borderClass} rounded-full flex items-center justify-center overflow-hidden`;
-            container.style.backgroundColor = 'var(--input-field-bg)'; // Apply theme variable (changed from --input-bg)
+            container.style.backgroundColor = 'var(--input-field-bg)';
             
-            // If a border class is provided (e.g., "border-2"), set its color using CSS variable.
             if (borderClass && borderClass.includes('border')) { 
-                container.style.borderColor = 'var(--border-color-medium)'; // (changed from --border-color)
+                container.style.borderColor = 'var(--border-color-medium)';
             }
             
             if (photoUrl && photoUrl.trim() && photoUrl !== '/default-profile.png') {
@@ -284,7 +210,7 @@
                 img.onerror = function() {
                     container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(displayName)}</span>`;
                 };
-                img.src = photoUrl + '?t=' + Date.now(); // Cache busting
+                img.src = photoUrl + '?t=' + Date.now();
                 container.appendChild(img);
             } else {
                 container.innerHTML = `<span class="profile-initials ${textClass} font-semibold" style="color: var(--text-secondary);">${getInitials(displayName)}</span>`;
@@ -292,6 +218,7 @@
             return container;
         }
 
+        // Checks if a user is logged in on the settings page.
         async function checkAuthStatusForSettingsPage() {
             try {
                 const response = await fetch('/api/user', { credentials: 'include' });
@@ -307,24 +234,22 @@
             updateSettingsPageNav();
         }
 
+        // Updates the navigation bar based on the user's login status.
         function updateSettingsPageNav() {
             const authSection = document.getElementById('auth-section-settings');
-            // Use the new dropdown ID
             const userProfileDropdown = document.getElementById('user-profile-dropdown-settings'); 
 
             if (currentLoggedInUserConfig) {
                 const navProfileImg = createProfileImage(currentLoggedInUserConfig.photo, currentLoggedInUserConfig.displayName, "w-8 h-8", "text-xs");
                 
-                // Standardized button structure from index.html
                 authSection.innerHTML = `
                     <button onclick="toggleSettingsDropdown()" class="nav-profile-button-hover flex items-center space-x-2 p-1 rounded-lg transition-colors">
-                        <div id="nav-profile-img-container-settings-page"></div> <!-- Unique ID for nav image container -->
+                        <div id="nav-profile-img-container-settings-page"></div>
                         <span class="font-medium text-sm">${escapeHtml(currentLoggedInUserConfig.displayName)}</span>
                     </button>
                 `;
                 document.getElementById('nav-profile-img-container-settings-page').appendChild(navProfileImg);
 
-                // Update new user profile dropdown modal
                 const modalImgContainer = document.getElementById('modal-profile-img-container-settings');
                 modalImgContainer.innerHTML = ''; 
                 modalImgContainer.appendChild(createProfileImage(currentLoggedInUserConfig.photo, currentLoggedInUserConfig.displayName, "w-10 h-10", "text-base", "border-2"));
@@ -334,36 +259,29 @@
                 userEmailElem.textContent = currentLoggedInUserConfig.email;
                 userEmailElem.classList.add('truncate');
                 
-                // Update links in the new dropdown
                 const profileMenuLink = document.getElementById('profile-menu-profile-settings-page');
                 if (profileMenuLink) {
                     profileMenuLink.href = `profile.html?id=${currentLoggedInUserConfig.id}`;
                 }
-                // Settings link 'profile-menu-settings-settings-page' href is already correct in HTML
 
                 const logoutBtn = document.getElementById('logout-btn-settings-page');
                 logoutBtn.removeEventListener('click', logoutFromSettingsPage); 
                 logoutBtn.addEventListener('click', logoutFromSettingsPage);
                 
-                // Ensure .profile-menu-item class is present on dynamic items if needed (though already set in HTML for new structure)
-                // For example, if links were dynamically created without the class:
-                // profileMenuLink.classList.add('profile-menu-item');
-                // document.getElementById('profile-menu-settings-settings-page').classList.add('profile-menu-item');
-                // logoutBtn.classList.add('profile-menu-item');
-
             } else {
-                authSection.innerHTML = '<a href="/" id="back-to-forum-link-settings" class="hover:underline">Back to Forum</a>'; // Added ID for consistency
+                authSection.innerHTML = '<a href="/" id="back-to-forum-link-settings" class="hover:underline">Back to Forum</a>';
                 if(userProfileDropdown) userProfileDropdown.classList.add('hidden');
             }
         }
         
-        // Renamed and updated to match index.html's toggleUserProfile
+        // Shows or hides the settings dropdown menu.
         function toggleSettingsDropdown() {
             const userProfileDropdown = document.getElementById('user-profile-dropdown-settings');
             if (!currentLoggedInUserConfig || !userProfileDropdown) return;
             userProfileDropdown.classList.toggle('hidden');
         }
 
+        // Logs the user out from the settings page.
         async function logoutFromSettingsPage() {
             try {
                 await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
@@ -372,10 +290,10 @@
                 window.location.href = '/'; 
             } catch (error) {
                 console.error('Logout failed:', error);
-                // Consider adding a user notification here if a system is available
             }
         }
         
+        // Escapes HTML to prevent XSS attacks.
         function escapeHtml(text) {
             if (text === null || typeof text === 'undefined') return '';
             const div = document.createElement('div');
@@ -383,7 +301,37 @@
             return div.innerHTML;
         }
 
-        // Close dropdown when clicking outside - updated to new IDs
+        // Initializes the page when the DOM is fully loaded.
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthStatusForSettingsPage().then(() => {
+                const currentTheme = currentLoggedInUserConfig ? currentLoggedInUserConfig.theme : 'dark';
+                loadTheme(currentTheme);
+
+                const themeRadios = document.querySelectorAll('input[name="theme"]');
+                themeRadios.forEach(radio => {
+                    radio.addEventListener('change', (event) => {
+                        applyTheme(event.target.value, true);
+                    });
+                });
+                document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', () => updateToggleStyles(currentLoggedInUserConfig ? currentLoggedInUserConfig.theme : 'dark'));
+                });
+                updateToggleStyles(currentTheme);
+
+                document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', (event) => {
+                        const label = event.target.nextElementSibling;
+                        if (event.target.checked) {
+                            label.style.backgroundColor = (currentLoggedInUserConfig && (currentLoggedInUserConfig.theme === 'dark' || currentLoggedInUserConfig.theme === 'midnight')) ? 'var(--button-bg)' : '#3B82F6';
+                        } else {
+                            label.style.backgroundColor = (currentLoggedInUserConfig && (currentLoggedInUserConfig.theme === 'dark' || currentLoggedInUserConfig.theme === 'midnight')) ? 'var(--input-bg)' : '#CBD5E0';
+                        }
+                    });
+                });
+            });
+        });
+
+        // Closes the dropdown menu when clicking outside of it.
         document.addEventListener('click', (e) => {
             const userProfileDropdown = document.getElementById('user-profile-dropdown-settings');
             const authSection = document.getElementById('auth-section-settings');
@@ -394,28 +342,27 @@
             }
         });
         
-        // Style for toggle switch
         const style = document.createElement('style');
         style.textContent = `
             .toggle-checkbox:checked {
                 right: 0;
-                border-color: var(--button-bg); /* Use theme variable */
+                border-color: var(--button-bg);
             }
             .toggle-checkbox:checked + .toggle-label {
-                background-color: var(--button-bg); /* Use theme variable */
+                background-color: var(--button-bg);
             }
             .radio-dot {
-                display: none; /* Hide by default */
+                display: none;
             }
             input[type="radio"]:checked + label .radio-dot {
-                display: block; /* Show when checked */
+                display: block;
             }
             input[type="radio"] + label {
                 border-color: var(--input-border);
             }
              input[type="radio"]:checked + label {
-                border-color: var(--link-color) !important; /* Ensure this overrides */
-                background-color: var(--bg-secondary) !important; /* Lighter background for selection */
+                border-color: var(--link-color) !important;
+                background-color: var(--bg-secondary) !important;
             }
             input[type="radio"] + label:hover {
                 background-color: var(--bg-secondary);
