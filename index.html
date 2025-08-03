@@ -1671,7 +1671,7 @@
             const before = text.substring(0, mentionStartIndex);
             const after = text.substring(currentTextarea.selectionStart);
             
-            currentTextarea.value = `${before}@${user.username} ${after}`;
+            currentTextarea.value = `${before}@${user.username}[${user._id}] ${after}`;
             hideSuggestions();
             currentTextarea.focus();
         }
@@ -1740,8 +1740,13 @@
                     return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${url}</a>`;
                 });
 
-                const mentionRegex = /@(\w+)/g;
-                escapedText = escapedText.replace(mentionRegex, function(match, username) {
+                const mentionWithIdRegex = /@([\w.]+)\[([a-f\d]{24})\]/g;
+                escapedText = escapedText.replace(mentionWithIdRegex, (match, username, userId) => {
+                    return `<a href="/profile.html?id=${userId}" class="mention-link" onclick="event.stopPropagation()">@${username}</a>`;
+                });
+
+                const oldMentionRegex = /@([\w.]+)(?!\[[a-f\d]{24}\])/g;
+                escapedText = escapedText.replace(oldMentionRegex, (match, username) => {
                     return `<a href="/profile.html?username=${username}" class="mention-link" onclick="event.stopPropagation()">${match}</a>`;
                 });
             }

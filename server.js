@@ -444,7 +444,7 @@ app.get('/api/users/search', isAuthenticated, async (req, res) => {
         { username: { $regex: query, $options: 'i' } },
         { displayName: { $regex: query, $options: 'i' } }
       ]
-    }).select('username displayName').limit(10);
+    }).select('_id username displayName').limit(10);
     res.json(users);
   } catch (error) {
     console.error('Error searching users:', error);

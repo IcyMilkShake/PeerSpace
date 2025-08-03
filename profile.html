@@ -10,6 +10,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
     <link rel="stylesheet" href="themes.css">
     <style>
+        .mention-link {
+            font-weight: bold;
+        }
         nav .text-gray-800 {
             color: var(--text-primary);
         }
@@ -708,8 +711,13 @@
                     return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${url}</a>`;
                 });
 
-                const mentionRegex = /@(\w+)/g;
-                escapedText = escapedText.replace(mentionRegex, function(match, username) {
+                const mentionWithIdRegex = /@([\w.]+)\[([a-f\d]{24})\]/g;
+                escapedText = escapedText.replace(mentionWithIdRegex, (match, username, userId) => {
+                    return `<a href="/profile.html?id=${userId}" class="mention-link" onclick="event.stopPropagation()">@${username}</a>`;
+                });
+
+                const oldMentionRegex = /@([\w.]+)(?!\[[a-f\d]{24}\])/g;
+                escapedText = escapedText.replace(oldMentionRegex, (match, username) => {
                     return `<a href="/profile.html?username=${username}" class="mention-link" onclick="event.stopPropagation()">${match}</a>`;
                 });
             }
@@ -817,7 +825,7 @@
             const before = text.substring(0, mentionStartIndex);
             const after = text.substring(currentTextarea.selectionStart);
             
-            currentTextarea.value = `${before}@${user.username} ${after}`;
+            currentTextarea.value = `${before}@${user.username}[${user._id}] ${after}`;
             hideSuggestions();
             currentTextarea.focus();
         }
@@ -901,11 +909,56 @@
             }
         }
 
+        // --- Link preview functions ---
+        // Fetches a link preview for a given URL.
+        async function fetchLinkPreview(url) {
+            try {
+                const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
+                if (!response.ok) {
+                    throw new Error('Link preview failed');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching link preview:', error);
+                return null;
+            }
+        }
+
+        // Creates the HTML for a link preview.
+        function createLinkPreview(data) {
+            if (!data || !data.title) return '';
+            return `
+                <div class="link-preview">
+                    ${data.image ? `<img src="${data.image}" alt="Preview" class="link-preview-image">` : ''}
+                    <div class="link-preview-content">
+                        <div class="link-preview-title">${data.title}</div>
+                        <div class="link-preview-description">${data.description || ''}</div>
+                        <div class="link-preview-url">${data.url}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Renders link previews in a given text.
+        async function renderLinkPreviews(text, container) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const urls = text.match(urlRegex);
+
+            if (urls) {
+                for (const url of urls) {
+                    const preview = await fetchLinkPreview(url);
+                    if (preview) {
+                        const previewHtml = createLinkPreview(preview);
+                        container.innerHTML += previewHtml;
+                    }
+                }
+            }
+        }
+
 
         // Loads the profile data for the user.
         async function loadProfileData() {
             const profileIdentifier = getUserIdFromUrl();
-            profileUserId = profileIdentifier;
             if (!profileIdentifier) {
                 displayProfileError("No user ID or username provided in the URL.");
                 return;
@@ -924,6 +977,7 @@
                     throw new Error(errorData.error || errorData.message || `Failed to load profile: ${response.status}`);
                 }
                 const profileData = await response.json();
+                profileUserId = profileData.id;
                 
                 renderProfileData(profileData);
 
@@ -1577,6 +1631,31 @@
                     article.appendChild(postTagsContainer);
                 }
                 article.appendChild(postContentElement);
+
+                if (post.linkPreview && post.linkPreview.url) {
+                    const preview = post.linkPreview;
+                    const previewContainer = document.createElement('a');
+                    previewContainer.href = preview.url;
+                    previewContainer.target = '_blank';
+                    previewContainer.rel = 'noopener noreferrer';
+                    previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-4 text-sm';
+                    previewContainer.style.textDecoration = 'none';
+                    previewContainer.onclick = (e) => e.stopPropagation();
+
+                    let imageHtml = '';
+                    if (preview.image) {
+                        imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-16 h-16 sm:w-24 sm:h-24 object-cover flex-shrink-0">`;
+                    }
+
+                    previewContainer.innerHTML = `
+                        ${imageHtml}
+                        <div class="p-3 overflow-hidden">
+                        <div class="font-bold mb-1 truncate">${escapeHtml(preview.title || '')}</div>
+                        <div class="text-gray-600 text-xs truncate">${(preview.description || '').substring(0, 100)}</div>
+                        </div>
+                    `;
+                    article.appendChild(previewContainer);
+                }
 
                 const linkPreviewsContainer = document.createElement('div');
                 linkPreviewsContainer.className = 'link-previews';
@@ -2860,7 +2939,7 @@
         }
 
         async function loadProfileContent() {
-            const userId = getUserIdFromUrl();
+            const userId = profileUserId;
             if (!userId) return;
 
             const contentType = document.querySelector('.filter-btn.active-filter-btn').dataset.contentType;
@@ -2930,8 +3009,29 @@
                 </div>
             `;
 
-            const linkPreviewsContainer = commentElement.querySelector('.link-previews');
-            renderLinkPreviews(comment.content, linkPreviewsContainer);
+            if (comment.linkPreview && comment.linkPreview.url) {
+                const preview = comment.linkPreview;
+                const previewContainer = document.createElement('a');
+                previewContainer.href = preview.url;
+                previewContainer.target = '_blank';
+                previewContainer.rel = 'noopener noreferrer';
+                previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-2 text-sm';
+                previewContainer.style.textDecoration = 'none';
+
+                let imageHtml = '';
+                if (preview.image) {
+                    imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-16 h-16 sm:w-20 sm:h-20 object-cover flex-shrink-0">`;
+                }
+
+                previewContainer.innerHTML = `
+                    ${imageHtml}
+                    <div class="p-2 overflow-hidden">
+                        <div class="font-bold truncate">${escapeHtml(preview.title || '')}</div>
+                        <div class="text-gray-600 text-xs truncate">${escapeHtml(preview.description || '')}</div>
+                    </div>
+                `;
+                commentElement.querySelector('.link-previews').appendChild(previewContainer);
+            }
 
             return commentElement;
         }
