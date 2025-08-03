@@ -40,6 +40,16 @@ const userSchema = new mongoose.Schema({
       default: 'image/png'
     }
   },
+  bannerPicture: {
+    path: {
+      type: String,
+      default: null
+    },
+    contentType: {
+      type: String,
+      default: 'image/png'
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -415,13 +415,14 @@ app.post('/auth/logout', (req, res) => {
 // Gets the data for the currently logged-in user.
 app.get('/api/user', (req, res) => {
   if (req.isAuthenticated() && req.user) {
-    const { _id, username, displayName, email, profilePicture, description, createdAt, theme } = req.user;
+    const { _id, username, displayName, email, profilePicture, bannerPicture, description, createdAt, theme } = req.user;
     return res.json({
       id: _id,
       username,
       displayName,
       email,
       photo: profilePicture.path || '/default-profile.png',
+      banner: bannerPicture.path || '/default-banner.png',
       description: description || '',
       createdAt: createdAt,
       theme: theme
@@ -454,7 +455,7 @@ app.get('/api/users/search', isAuthenticated, async (req, res) => {
 // Gets the public profile information for a user.
 app.get('/api/users/:userId', async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId).select('username displayName profilePicture description createdAt');
+    const user = await User.findById(req.params.userId).select('username displayName profilePicture bannerPicture description createdAt');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -463,6 +464,7 @@ app.get('/api/users/:userId', async (req, res) => {
       username: user.username,
       displayName: user.displayName,
       photo: user.profilePicture.path || '/default-profile.png',
+      banner: user.bannerPicture.path || null,
       description: user.description || '',
       createdAt: user.createdAt
     });
@@ -478,7 +480,7 @@ app.get('/api/users/:userId', async (req, res) => {
 // Gets a user's profile by their username.
 app.get('/api/users/by-username/:username', async (req, res) => {
     try {
-        const user = await User.findOne({ username: req.params.username.toLowerCase() }).select('username displayName profilePicture description createdAt');
+        const user = await User.findOne({ username: req.params.username.toLowerCase() }).select('username displayName profilePicture bannerPicture description createdAt');
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
@@ -487,6 +489,7 @@ app.get('/api/users/by-username/:username', async (req, res) => {
             username: user.username,
             displayName: user.displayName,
             photo: user.profilePicture.path || '/default-profile.png',
+            banner: user.bannerPicture.path || null,
             description: user.description || '',
             createdAt: user.createdAt
         });
@@ -495,6 +498,60 @@ app.get('/api/users/by-username/:username', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch user profile' });
     }
 });
+
+// Gets content for a specific user, with filtering and sorting.
+app.get('/api/users/:userId/content', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { contentType, sortBy } = req.query;
+
+        let content;
+        let sortOption = {};
+
+        switch (sortBy) {
+            case 'oldest':
+                sortOption = { createdAt: 1 };
+                break;
+            case 'likes':
+                sortOption = { likes: -1 };
+                break;
+            case 'comments':
+                sortOption = { comments: -1 };
+                break;
+            default: // newest
+                sortOption = { createdAt: -1 };
+        }
+
+        if (contentType === 'posts') {
+            const posts = await Post.find({ author: userId })
+                .populate('author', 'username displayName profilePicture')
+                .sort(sortOption)
+                .lean(); // Use lean() for better performance as we are modifying the objects
+
+            for (let post of posts) {
+                post.commentCount = await Comment.countDocuments({ post: post._id });
+            }
+            content = posts;
+        } else if (contentType === 'comments') {
+            content = await Comment.find({ author: userId })
+                .populate('author', 'username displayName profilePicture')
+                .populate({
+                    path: 'post',
+                    select: 'title'
+                })
+                .sort(sortOption);
+        } else {
+            return res.status(400).json({ error: 'Invalid content type' });
+        }
+
+        res.json(content);
+
+    } catch (error) {
+        console.error('Error fetching user content:', error);
+        res.status(500).json({ error: 'Failed to fetch user content' });
+    }
+});
+
 
 // Reports a post for inappropriate content.
 app.post('/api/posts/:postId/report', isAuthenticated, async (req, res) => {
@@ -769,6 +826,59 @@ app.post('/api/user/profile-picture', isAuthenticated, upload.single('profilePic
   } catch (error) {
     console.error('Error uploading profile picture:', error);
     res.status(500).json({ error: 'Failed to upload profile picture' });
+  }
+});
+
+// Uploads a new banner picture for the user.
+app.post('/api/user/banner-picture', isAuthenticated, upload.single('bannerPicture'), async (req, res) => {
+  try {
+    console.log('Banner upload request received');
+    if (!req.file) {
+      console.log('No file uploaded');
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    console.log('Finding user...');
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      console.log('User not found');
+      return res.status(404).json({ error: 'User not found' });
+    }
+    console.log('User found:', user.username);
+
+    const ext = req.file.originalname.split('.').pop();
+    const key = `banner_pics/${uuidv4()}.${ext}`;
+
+    const params = {
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+      ACL: 'public-read',
+    };
+
+    console.log('Uploading to S3...');
+    const result = await s3.upload(params).promise();
+    console.log('S3 upload successful:', result.Location);
+
+    user.bannerPicture = {
+      path: result.Location,
+      contentType: req.file.mimetype,
+    };
+
+    console.log('Saving user...');
+    await user.save();
+    console.log('User saved successfully');
+
+    req.user.bannerPicture = user.bannerPicture;
+
+    res.json({
+      success: true,
+      photo: user.bannerPicture.path,
+    });
+  } catch (error) {
+    console.error('Error uploading banner picture:', error);
+    res.status(500).json({ error: 'Failed to upload banner picture' });
   }
 });
 

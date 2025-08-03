@@ -25,6 +25,30 @@
         #profile-content .text-gray-600 {
             color: var(--text-primary);
         }
+        .filter-btn {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .filter-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        .sort-select {
+            background-color: var(--input-field-bg);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+        }
+        .post-card, .comment-card {
+            background-color: var(--post-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+        }
     </style>
 </head>
 <body class="min-h-screen"> 
@@ -79,8 +103,17 @@
 
         <div id="profile-content" class="hidden rounded-lg shadow-lg overflow-hidden">
             <div class="relative">
-                <div class="profile-header h-32 sm:h-48"></div>
+                <div id="banner-container" class="h-32 sm:h-48">
+                    <div class="profile-header h-full w-full"></div>
+                    <img id="banner-image" class="w-full h-full object-cover hidden" src="" alt="User banner">
+                </div>
                 <div id="profile-avatar-container" class="absolute -bottom-12 sm:-bottom-16 left-4 sm:left-8 flex items-center justify-center">
+                </div>
+                <div id="change-banner-section" class="hidden absolute top-4 right-4">
+                    <input type="file" id="banner-picture-input" accept="image/*" class="hidden"/>
+                    <label for="banner-picture-input" id="change-banner-button" class="button-primary cursor-pointer inline-block text-sm">
+                        Change Banner
+                    </label>
                 </div>
             </div>
 
@@ -166,6 +199,29 @@
                     </div>
                 </div>
             </div>
+
+            <div class="px-4 sm:px-6 py-4 border-t">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <button id="filter-posts-btn" class="filter-btn active" data-content-type="posts">Posts</button>
+                        <button id="filter-comments-btn" class="filter-btn" data-content-type="comments">Comments</button>
+                    </div>
+                    <div>
+                        <select id="sort-by-select" class="sort-select">
+                            <option value="newest">Newest</option>
+                            <option value="oldest">Oldest</option>
+                            <option value="likes">Most Liked</option>
+                            <option value="comments">Most Commented</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="user-content-feed" class="space-y-4">
+                    <!-- User content will be loaded here -->
+                </div>
+                <div id="user-content-loading" class="text-center py-8 hidden">
+                    <p>Loading content...</p>
+                </div>
+            </div>
         </div>
 
         <div id="profile-error" class="hidden text-center py-12">
@@ -214,6 +270,8 @@
         let currentLoggedInUser = null;
         let profileUserId = null;
         let cropper = null;
+        let bannerCropper = null;
+        let avatarContainer;
 
         // Gets the first letter of the first two words of a name.
         function getInitials(name) {
@@ -259,6 +317,21 @@
                 cropBoxMovable: true, cropBoxResizable: true, toggleDragModeOnDblclick: false,
                 responsive: true, checkOrientation: false, modal: true, background: true,
                 minContainerWidth: 200, minContainerHeight: 200,
+            });
+        }
+
+        // Initializes the banner cropper.
+        function initializeBannerCropper(imageElement) {
+            if (bannerCropper) {
+                bannerCropper.destroy();
+                bannerCropper = null;
+            }
+            bannerCropper = new Cropper(imageElement, {
+                aspectRatio: 3 / 1, viewMode: 1, dragMode: 'move', autoCropArea: 0.8,
+                restore: false, guides: true, center: true, highlight: false,
+                cropBoxMovable: true, cropBoxResizable: true, toggleDragModeOnDblclick: false,
+                responsive: true, checkOrientation: false, modal: true, background: true,
+                minContainerWidth: 300, minContainerHeight: 100,
             });
         }
 
@@ -317,6 +390,61 @@
             reader.readAsDataURL(file);
         }
 
+        // Handles the selection of a banner picture file.
+        function handleBannerPictureSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            event.target.value = '';
+
+            if (!file.type.startsWith('image/')) {
+                showNotification('Please select an image file', 'warning'); return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                showNotification('Image too large (max 5MB)', 'warning'); return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = () => {
+                    const MAX_WIDTH = 1500;
+                    const MAX_HEIGHT = 1500;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const dataUrl = canvas.toDataURL('image/jpeg');
+                    
+                    const cropImage = document.getElementById('crop-image');
+                    if (bannerCropper) bannerCropper.destroy();
+                    cropImage.src = dataUrl;
+                    document.getElementById('crop-modal').classList.remove('hidden');
+                    const navUserModal = document.getElementById('user-profile-modal');
+                    if(navUserModal) navUserModal.classList.add('hidden');
+
+                    cropImage.onload = () => setTimeout(() => initializeBannerCropper(cropImage), 100);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
         // Uploads the cropped image to the server.
         async function uploadCroppedImage() {
             if (!cropper) { showNotification('Cropper not initialized.', 'error'); return; }
@@ -348,6 +476,42 @@
                         reject(new Error('Upload network error'));
                     };
                     xhr.open('POST', '/api/user/profile-picture');
+                    xhr.send(formData);
+                }, 'image/png', 0.9);
+            });
+        }
+
+        // Uploads the cropped banner image to the server.
+        async function uploadCroppedBannerImage() {
+            if (!bannerCropper) { showNotification('Banner cropper not initialized.', 'error'); return; }
+            const canvas = bannerCropper.getCroppedCanvas({ width: 1500, height: 500, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
+            if (!canvas) { showNotification('Failed to crop banner image.', 'error'); return; }
+
+            return new Promise((resolve, reject) => {
+                canvas.toBlob(async (blob) => {
+                    if (!blob) { reject(new Error('Blob creation failed')); return; }
+                    const formData = new FormData();
+                    formData.append('bannerPicture', blob, 'banner.png');
+                    
+                    const uploadModal = document.getElementById('upload-modal');
+                    const progressBar = document.getElementById('upload-progress');
+                    uploadModal.classList.remove('hidden');
+                    progressBar.style.width = '0%';
+
+                    const xhr = new XMLHttpRequest();
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) progressBar.style.width = (e.loaded / e.total) * 100 + '%';
+                    };
+                    xhr.onload = () => {
+                        uploadModal.classList.add('hidden');
+                        if (xhr.status === 200) resolve(JSON.parse(xhr.responseText));
+                        else reject(new Error(`Upload failed: ${xhr.statusText}`));
+                    };
+                    xhr.onerror = () => {
+                        uploadModal.classList.add('hidden');
+                        reject(new Error('Upload network error'));
+                    };
+                    xhr.open('POST', '/api/user/banner-picture');
                     xhr.send(formData);
                 }, 'image/png', 0.9);
             });
@@ -485,10 +649,22 @@
 
         // Renders the profile data on the page.
         function renderProfileData(profile) {
-            const avatarContainer = document.getElementById('profile-avatar-container');
             avatarContainer.innerHTML = '';
             const avatarElement = createProfileImage(profile.photo, profile.displayName, "profile-avatar", "text-5xl");
             avatarContainer.appendChild(avatarElement);
+
+            const bannerImage = document.getElementById('banner-image');
+            const bannerContainer = document.getElementById('banner-container');
+            const profileHeader = bannerContainer.querySelector('.profile-header');
+
+            if (profile.banner && profile.banner !== '/default-banner.png') {
+                bannerImage.src = profile.banner;
+                bannerImage.classList.remove('hidden');
+                profileHeader.classList.add('hidden');
+            } else {
+                bannerImage.classList.add('hidden');
+                profileHeader.classList.remove('hidden');
+            }
 
             document.getElementById('profile-display-name').textContent = escapeHtml(profile.displayName);
             document.getElementById('profile-username').textContent = `@${escapeHtml(profile.username)}`;
@@ -521,11 +697,15 @@
                 document.getElementById('change-picture-section').classList.remove('hidden');
                 document.getElementById('profile-picture-input-profile-page').addEventListener('change', handleProfilePictureSelect);
 
+                document.getElementById('change-banner-section').classList.remove('hidden');
+                document.getElementById('banner-picture-input').addEventListener('change', handleBannerPictureSelect);
+
             } else {
                 editButton.classList.add('hidden');
                 changeDisplayNameButton.classList.add('hidden');
                 changeUsernameButton.classList.add('hidden');
                 document.getElementById('change-picture-section').classList.add('hidden');
+                document.getElementById('change-banner-section').classList.add('hidden');
             }
         }
 
@@ -589,6 +769,7 @@
         function closeCropModal() {
             document.getElementById('crop-modal').classList.add('hidden');
             if (cropper) { cropper.destroy(); cropper = null; }
+            if (bannerCropper) { bannerCropper.destroy(); bannerCropper = null; }
         }
 
         // Shows a notification message to the user.
@@ -756,12 +937,37 @@
         // Event listener for saving the cropped image.
         document.getElementById('crop-save').addEventListener('click', async () => {
             try {
-                const result = await uploadCroppedImage();
+                let result;
+                if (bannerCropper) {
+                    console.log("Saving banner image...");
+                    result = await uploadCroppedBannerImage();
+                } else {
+                    console.log("Saving profile picture...");
+                    result = await uploadCroppedImage();
+                }
+
                 if (result && result.success) {
-                    if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
-                        currentLoggedInUser.photo = result.photo;
+                    if (bannerCropper) {
+                        const bannerImage = document.getElementById('banner-image');
+                        const bannerContainer = document.getElementById('banner-container');
+                        const profileHeader = bannerContainer.querySelector('.profile-header');
+
+                        bannerImage.src = result.photo + '?t=' + Date.now();
+                        bannerImage.classList.remove('hidden');
+                        profileHeader.classList.add('hidden');
+
+                        if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
+                            currentLoggedInUser.banner = result.photo;
+                        }
+                        showNotification('Banner image updated successfully!', 'success');
+                        closeCropModal();
+                        return;
+                    } else {
+                        if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
+                            currentLoggedInUser.photo = result.photo;
+                        }
+                        const avatarContainer = document.getElementById('profile-avatar-container');
                     }
-                    const avatarContainer = document.getElementById('profile-avatar-container');
                     avatarContainer.innerHTML = '';
                     const newAvatar = createProfileImage(result.photo, document.getElementById('profile-display-name').textContent, "profile-avatar", "text-5xl");
                     avatarContainer.appendChild(newAvatar);
@@ -790,9 +996,107 @@
 
         // Initializes the page when the DOM is fully loaded.
         document.addEventListener('DOMContentLoaded', async () => {
+            avatarContainer = document.getElementById('profile-avatar-container');
             await checkAuthStatusForProfilePage(); 
-            await loadProfileData(); 
+            await loadProfileData();
+
+            document.getElementById('filter-posts-btn').addEventListener('click', () => {
+                document.getElementById('filter-posts-btn').classList.add('active');
+                document.getElementById('filter-comments-btn').classList.remove('active');
+                loadUserContent();
+            });
+
+            document.getElementById('filter-comments-btn').addEventListener('click', () => {
+                document.getElementById('filter-comments-btn').classList.add('active');
+                document.getElementById('filter-posts-btn').classList.remove('active');
+                loadUserContent();
+            });
+
+            document.getElementById('sort-by-select').addEventListener('change', loadUserContent);
+
+            loadUserContent();
         });
+
+        async function loadUserContent() {
+            const userId = getUserIdFromUrl();
+            if (!userId) return;
+
+            const contentType = document.querySelector('.filter-btn.active').dataset.contentType;
+            const sortBy = document.getElementById('sort-by-select').value;
+            const feedContainer = document.getElementById('user-content-feed');
+            const loadingIndicator = document.getElementById('user-content-loading');
+
+            feedContainer.innerHTML = '';
+            loadingIndicator.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`/api/users/${userId}/content?contentType=${contentType}&sortBy=${sortBy}`);
+                if (!response.ok) {
+                    throw new Error('Failed to load content');
+                }
+                const content = await response.json();
+                renderUserContent(content, contentType);
+            } catch (error) {
+                console.error('Error loading user content:', error);
+                feedContainer.innerHTML = '<p class="text-center text-red-500">Failed to load content.</p>';
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        function renderUserContent(content, contentType) {
+            const feedContainer = document.getElementById('user-content-feed');
+            if (content.length === 0) {
+                feedContainer.innerHTML = `<p class="text-center text-gray-500">No ${contentType} found.</p>`;
+                return;
+            }
+
+            content.forEach(item => {
+                if (contentType === 'posts') {
+                    const postElement = createPostElement(item);
+                    feedContainer.appendChild(postElement);
+                } else {
+                    const commentElement = createCommentElement(item);
+                    feedContainer.appendChild(commentElement);
+                }
+            });
+        }
+
+        function createPostElement(post) {
+            const postElement = document.createElement('div');
+            postElement.className = 'post-card';
+            postElement.innerHTML = `
+                <div class="p-4">
+                    <h3 class="font-bold text-lg">${escapeHtml(post.title)}</h3>
+                    <p class="text-gray-600 text-sm">
+                        ${new Date(post.createdAt).toLocaleString()} | 
+                        ${post.likes.length} likes | 
+                        ${post.commentCount} comments
+                    </p>
+                    <div class="mt-2">${escapeHtml(post.content)}</div>
+                </div>
+            `;
+            return postElement;
+        }
+
+        function createCommentElement(comment) {
+            const commentElement = document.createElement('div');
+            commentElement.className = 'comment-card';
+            const postTitle = comment.post ? escapeHtml(comment.post.title) : '[Post deleted]';
+            commentElement.innerHTML = `
+                <div class="p-4">
+                    <p class="text-sm text-gray-500">
+                        Commented on <strong>${postTitle}</strong>
+                    </p>
+                    <div class="mt-2">${escapeHtml(comment.content)}</div>
+                    <p class="text-gray-600 text-sm mt-2">
+                        ${new Date(comment.createdAt).toLocaleString()} | 
+                        ${comment.likes.length} likes
+                    </p>
+                </div>
+            `;
+            return commentElement;
+        }
 
     </script>
 </body>
