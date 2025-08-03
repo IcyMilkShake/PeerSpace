@@ -1997,8 +1997,7 @@ Add Video +
 
         addPollOptionBtn.addEventListener('click', addPollOptionInput);
 
-        // Add event listeners to the initial poll options
-        document.querySelectorAll('#poll-options-inputs .flex').forEach(pollOptionDiv => {
+        function addPollOptionEventListeners(pollOptionDiv) {
             const input = pollOptionDiv.querySelector('input');
             const charCountSpan = pollOptionDiv.querySelector('span');
             const deleteButton = pollOptionDiv.querySelector('button');
@@ -2020,7 +2019,10 @@ Add Video +
                     updateDeleteButtons();
                 }
             };
-        });
+        }
+
+        // Add event listeners to the initial poll options
+        document.querySelectorAll('#poll-options-inputs .flex').forEach(addPollOptionEventListeners);
 
         updateDeleteButtons();
 
