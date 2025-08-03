@@ -76,26 +76,6 @@
         .notification-item.font-bold {
             background-color: var(--accent-color-subtle);
         }
-        .filter-btn {
-            background-color: transparent;
-            border: 1px solid var(--border-color);
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .filter-btn.active {
-            background-color: var(--primary-color);
-            color: white;
-            border-color: var(--primary-color);
-        }
-        .sort-select {
-            background-color: var(--input-bg);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-        }
     </style>
 </head>
 <body class="min-h-screen"> 
@@ -143,7 +123,7 @@
         </nav>
     </div>
 
-    <main class="max-w-3xl mx-auto px-4 py-8">
+    <main class="max-w-4xl mx-auto px-4 py-8">
         <div id="profile-loading" class="text-center py-12">
             <p>Loading profile...</p>
         </div>
@@ -250,14 +230,14 @@
         </div>
 
         <div class="mt-8">
-            <div id="profile-controls" class="sticky top-4 z-40 mb-6 p-4 rounded-b-lg shadow-lg backdrop-blur-md bg-white/80 dark:bg-gray-900/80" style="transition: top 0.3s ease-in-out;">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <button id="filter-posts-btn" class="filter-btn active" data-content-type="posts">Posts</button>
-                        <button id="filter-comments-btn" class="filter-btn" data-content-type="comments">Comments</button>
+            <div id="profile-controls" class="sticky top-4 z-40 mb-6 p-4 rounded-b-lg shadow-lg backdrop-blur-md" style="transition: top 0.3s ease-in-out; background-color: var(--filter-bar-bg); border-bottom: 1px solid var(--border-color);">
+                <div class="flex justify-between items-center flex-wrap gap-y-2">
+                    <div class="flex flex-wrap gap-x-3 gap-y-2 items-center">
+                        <button id="filter-posts-btn" class="filter-btn active-filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md" data-content-type="posts">Posts</button>
+                        <button id="filter-comments-btn" class="filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md" data-content-type="comments">Comments</button>
                     </div>
                     <div>
-                        <select id="sort-by-select" class="sort-select">
+                        <select id="sort-by-select" class="px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md" style="background-color: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color);">
                             <option value="newest">Newest</option>
                             <option value="oldest">Oldest</option>
                             <option value="likes">Most Liked</option>
@@ -266,7 +246,7 @@
                     </div>
                 </div>
             </div>
-            <div id="posts-container" class="space-y-6 px-4">
+            <div id="posts-container" class="space-y-6">
             </div>
             <div id="single-post-container" class="hidden space-y-6">
             </div>
@@ -704,11 +684,36 @@
         }
         
         // Escapes HTML to prevent XSS attacks.
-        function escapeHtml(text) {
-            if (text === null || typeof text === 'undefined') return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        function escapeHtml(text, allowLinks = false) {
+            let escapedText = text.replace(/[&<>"']/g, function (match) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[match];
+            });
+
+            if (allowLinks) {
+                const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+                escapedText = escapedText.replace(urlRegex, function(url) {
+                    let fullUrl = url;
+                    if (!url.match(/^[a-zA-Z]+:\/\//)) {
+                        fullUrl = 'http://' + url;
+                    }
+                    const safeHref = fullUrl.replace(/[&<>"']/g, function (match) {
+                        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
+                    });
+                    return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+                });
+
+                const mentionRegex = /@(\w+)/g;
+                escapedText = escapedText.replace(mentionRegex, function(match, username) {
+                    return `<a href="/profile.html?username=${username}" class="mention-link" onclick="event.stopPropagation()">${match}</a>`;
+                });
+            }
+            return escapedText;
         }
 
         // Gets the user ID or username from the URL.
@@ -723,6 +728,179 @@
             const date = new Date(dateString);
             return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
         }
+
+        // Handles the logic for when a user types @ to mention someone.
+        function handleMention(textarea) {
+            currentTextarea = textarea;
+            const text = textarea.value;
+            const cursorPos = textarea.selectionStart;
+            const atIndex = text.lastIndexOf('@', cursorPos - 1);
+
+            if (atIndex === -1) {
+                hideSuggestions();
+                return;
+            }
+
+            mentionStartIndex = atIndex;
+            mentionQuery = text.substring(atIndex + 1, cursorPos);
+
+            if (mentionQuery.includes(' ')) {
+                hideSuggestions();
+                return;
+            }
+            
+            fetchUsers(mentionQuery);
+        }
+
+        // Fetches a list of users that match the mention query.
+        async function fetchUsers(query) {
+            try {
+                const response = await fetch(`/api/users/search?query=${query}`);
+                mentionSuggestions = await response.json();
+                showSuggestions();
+            } catch (error) {
+                console.error('Error fetching users:', error);
+                hideSuggestions();
+            }
+        }
+
+        // Shows the suggestions for user mentions.
+        function showSuggestions() {
+            const suggestionsBox = document.getElementById('mentions-suggestions') || createSuggestionsBox();
+            suggestionsBox.innerHTML = '';
+
+            if (mentionSuggestions.length === 0) {
+                hideSuggestions();
+                return;
+            }
+
+            mentionSuggestions.forEach((user, index) => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <div class="font-bold">${user.displayName}</div>
+                    <div class="text-sm text-gray-500">@${user.username}</div>
+                `;
+                div.onclick = () => selectSuggestion(index);
+                suggestionsBox.appendChild(div);
+            });
+
+            const rect = currentTextarea.getBoundingClientRect();
+            suggestionsBox.style.top = `${rect.bottom + window.scrollY}px`;
+            suggestionsBox.style.left = `${rect.left + window.scrollX}px`;
+            suggestionsBox.style.display = 'block';
+            activeSuggestionIndex = -1;
+        }
+
+        // Hides the user mention suggestions.
+        function hideSuggestions() {
+            const suggestionsBox = document.getElementById('mentions-suggestions');
+            if (suggestionsBox) {
+                suggestionsBox.style.display = 'none';
+            }
+        }
+
+        // Creates the suggestions box if it doesn't exist.
+        function createSuggestionsBox() {
+            const suggestionsBox = document.createElement('div');
+            suggestionsBox.id = 'mentions-suggestions';
+            suggestionsBox.className = 'mentions-suggestions';
+            document.body.appendChild(suggestionsBox);
+            return suggestionsBox;
+        }
+
+        // Selects a user from the mention suggestions.
+        function selectSuggestion(index) {
+            if (index < 0 || index >= mentionSuggestions.length) return;
+
+            const user = mentionSuggestions[index];
+            const text = currentTextarea.value;
+            const before = text.substring(0, mentionStartIndex);
+            const after = text.substring(currentTextarea.selectionStart);
+            
+            currentTextarea.value = `${before}@${user.username} ${after}`;
+            hideSuggestions();
+            currentTextarea.focus();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const suggestionsBox = document.getElementById('mentions-suggestions');
+            if (!suggestionsBox || suggestionsBox.style.display === 'none') return;
+        
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeSuggestionIndex = (activeSuggestionIndex + 1) % mentionSuggestions.length;
+                updateActiveSuggestion();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeSuggestionIndex = (activeSuggestionIndex - 1 + mentionSuggestions.length) % mentionSuggestions.length;
+                updateActiveSuggestion();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                selectSuggestion(activeSuggestionIndex);
+            } else if (e.key === 'Escape') {
+                hideSuggestions();
+            }
+        });
+
+        window.addEventListener('scroll', () => {
+            hideSuggestions();
+        });
+
+        // Updates the currently highlighted user mention suggestion.
+        function updateActiveSuggestion() {
+            const suggestionsBox = document.getElementById('mentions-suggestions');
+            const suggestions = suggestionsBox.children;
+            for (let i = 0; i < suggestions.length; i++) {
+                suggestions[i].style.backgroundColor = i === activeSuggestionIndex ? 'var(--bg-hover)' : '';
+            }
+        }
+
+        // --- Link preview functions ---
+        // Fetches a link preview for a given URL.
+        async function fetchLinkPreview(url) {
+            try {
+                const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
+                if (!response.ok) {
+                    throw new Error('Link preview failed');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching link preview:', error);
+                return null;
+            }
+        }
+
+        // Creates the HTML for a link preview.
+        function createLinkPreview(data) {
+            if (!data || !data.title) return '';
+            return `
+                <div class="link-preview">
+                    ${data.image ? `<img src="${data.image}" alt="Preview" class="link-preview-image">` : ''}
+                    <div class="link-preview-content">
+                        <div class="link-preview-title">${data.title}</div>
+                        <div class="link-preview-description">${data.description || ''}</div>
+                        <div class="link-preview-url">${data.url}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Renders link previews in a given text.
+        async function renderLinkPreviews(text, container) {
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const urls = text.match(urlRegex);
+
+            if (urls) {
+                for (const url of urls) {
+                    const preview = await fetchLinkPreview(url);
+                    if (preview) {
+                        const previewHtml = createLinkPreview(preview);
+                        container.innerHTML += previewHtml;
+                    }
+                }
+            }
+        }
+
 
         // Loads the profile data for the user.
         async function loadProfileData() {
@@ -1399,31 +1577,11 @@
                     article.appendChild(postTagsContainer);
                 }
                 article.appendChild(postContentElement);
-                
-                if (post.linkPreview && post.linkPreview.url) {
-                    const preview = post.linkPreview;
-                    const previewContainer = document.createElement('a');
-                    previewContainer.href = preview.url;
-                    previewContainer.target = '_blank';
-                    previewContainer.rel = 'noopener noreferrer';
-                    previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-4 text-sm';
-                    previewContainer.style.textDecoration = 'none';
-                    previewContainer.onclick = (e) => e.stopPropagation();
 
-                    let imageHtml = '';
-                    if (preview.image) {
-                        imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-16 h-16 sm:w-24 sm:h-24 object-cover flex-shrink-0">`;
-                    }
-
-                    previewContainer.innerHTML = `
-                        ${imageHtml}
-                        <div class="p-3 overflow-hidden">
-                        <div class="font-bold mb-1 truncate">${escapeHtml(preview.title || '')}</div>
-                        <div class="text-gray-600 text-xs truncate">${(preview.description || '').substring(0, 100)}</div>
-                        </div>
-                    `;
-                    article.appendChild(previewContainer);
-                }
+                const linkPreviewsContainer = document.createElement('div');
+                linkPreviewsContainer.className = 'link-previews';
+                article.appendChild(linkPreviewsContainer);
+                renderLinkPreviews(post.content, linkPreviewsContainer);
 
                 const postActionsDiv = document.createElement('div');
                 postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
@@ -2705,7 +2863,7 @@
             const userId = getUserIdFromUrl();
             if (!userId) return;
 
-            const contentType = document.querySelector('.filter-btn.active').dataset.contentType;
+            const contentType = document.querySelector('.filter-btn.active-filter-btn').dataset.contentType;
             const sortBy = document.getElementById('sort-by-select').value;
             const feedContainer = document.getElementById('posts-container');
             const emptyState = document.getElementById('empty-state');
@@ -2753,18 +2911,28 @@
 
         function createCommentElement(comment) {
             const commentElement = document.createElement('div');
-            commentElement.className = 'bg-white dark:bg-gray-800 rounded-lg shadow-md p-4';
+            commentElement.className = 'rounded-lg shadow-md p-4';
+            commentElement.style.backgroundColor = 'var(--post-card-bg)';
             const postTitle = comment.post ? escapeHtml(comment.post.title) : '[Post deleted]';
+            
+            const commentContentHtml = escapeHtml(comment.content, true)
+                .replace(/@(\w+)/g, '<a href="/profile/$1" class="text-blue-500 hover:underline">@$1</a>');
+
             commentElement.innerHTML = `
                 <div class="text-sm text-gray-500">
                     Commented on <strong>${postTitle}</strong>
                 </div>
-                <div class="mt-2 whitespace-pre-wrap">${escapeHtml(comment.content)}</div>
+                <div class="mt-2 whitespace-pre-wrap">${commentContentHtml}</div>
+                <div class="link-previews"></div>
                 <div class="text-xs text-gray-400 mt-2">
                     ${new Date(comment.createdAt).toLocaleString()} | 
                     ${comment.likes.length} likes
                 </div>
             `;
+
+            const linkPreviewsContainer = commentElement.querySelector('.link-previews');
+            renderLinkPreviews(comment.content, linkPreviewsContainer);
+
             return commentElement;
         }
 
@@ -2775,14 +2943,14 @@
             loadProfileContent();
 
             document.getElementById('filter-posts-btn').addEventListener('click', () => {
-                document.getElementById('filter-posts-btn').classList.add('active');
-                document.getElementById('filter-comments-btn').classList.remove('active');
+                document.getElementById('filter-posts-btn').classList.add('active-filter-btn');
+                document.getElementById('filter-comments-btn').classList.remove('active-filter-btn');
                 loadProfileContent();
             });
 
             document.getElementById('filter-comments-btn').addEventListener('click', () => {
-                document.getElementById('filter-comments-btn').classList.add('active');
-                document.getElementById('filter-posts-btn').classList.remove('active');
+                document.getElementById('filter-comments-btn').classList.add('active-filter-btn');
+                document.getElementById('filter-posts-btn').classList.remove('active-filter-btn');
                 loadProfileContent();
             });
 
