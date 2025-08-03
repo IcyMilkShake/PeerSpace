@@ -228,7 +228,9 @@ passport.use(new GoogleStrategy({
     
     if (user) {
       user.lastLogin = new Date();
-      user.displayName = profile.displayName;
+      if (!user.displayName) {
+        user.displayName = profile.displayName;
+      }
       const hasCustomProfilePic = user.profilePicture.path && !user.profilePicture.path.includes('googleusercontent.com');
       
       if (!hasCustomProfilePic && profilePictureUrl) {
