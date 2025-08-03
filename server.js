@@ -504,47 +504,106 @@ app.get('/api/users/:userId/content', async (req, res) => {
     try {
         const { userId } = req.params;
         const { contentType, sortBy } = req.query;
-
-        let content;
-        let sortOption = {};
-
-        switch (sortBy) {
-            case 'oldest':
-                sortOption = { createdAt: 1 };
-                break;
-            case 'likes':
-                sortOption = { likes: -1 };
-                break;
-            case 'comments':
-                sortOption = { comments: -1 };
-                break;
-            default: // newest
-                sortOption = { createdAt: -1 };
-        }
+        const currentUserId = req.user ? req.user._id : null;
+        const authorId = new mongoose.Types.ObjectId(userId);
 
         if (contentType === 'posts') {
-            const posts = await Post.find({ author: userId })
-                .populate('author', 'username displayName profilePicture')
-                .sort(sortOption)
-                .lean(); // Use lean() for better performance as we are modifying the objects
+            let sortedPosts;
 
-            for (let post of posts) {
-                post.commentCount = await Comment.countDocuments({ post: post._id });
+            if (sortBy === 'likes') {
+                const postIds = await Post.aggregate([
+                    { $match: { author: authorId } },
+                    { $addFields: { likesCount: { $size: "$likes" } } },
+                    { $sort: { likesCount: -1, createdAt: -1 } },
+                    { $project: { _id: 1 } }
+                ]);
+                const ids = postIds.map(p => p._id);
+                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture');
+                sortedPosts = ids.map(id => unsortedPosts.find(p => p._id.equals(id)));
+            } else if (sortBy === 'comments') {
+                const postIds = await Post.aggregate([
+                    { $match: { author: authorId } },
+                    { $lookup: { from: 'comments', localField: '_id', foreignField: 'post', as: 'comments' } },
+                    { $addFields: { commentCount: { $size: "$comments" } } },
+                    { $sort: { commentCount: -1, createdAt: -1 } },
+                    { $project: { _id: 1 } }
+                ]);
+                const ids = postIds.map(p => p._id);
+                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture');
+                sortedPosts = ids.map(id => unsortedPosts.find(p => p._id.equals(id)));
+            } else {
+                const sortOption = (sortBy === 'oldest') ? { createdAt: 1 } : { createdAt: -1 };
+                sortedPosts = await Post.find({ author: authorId })
+                    .populate('author', 'username displayName profilePicture')
+                    .sort(sortOption);
             }
-            content = posts;
+            
+            const postsWithDetails = await Promise.all(
+              sortedPosts.map(async (post) => {
+                const allCommentsRaw = await Comment.find({ post: post._id })
+                  .populate('author', '_id username displayName profilePicture')
+                  .sort({ createdAt: 1 });
+
+                const buildCommentTree = (parentId) => {
+                  return allCommentsRaw
+                    .filter(comment => String(comment.parentComment) === String(parentId))
+                    .map(comment => {
+                      let replyingTo = null;
+                      if (comment.parentComment) {
+                        const parentCommentObject = allCommentsRaw.find(c => String(c._id) === String(comment.parentComment));
+                        if (parentCommentObject) {
+                          replyingTo = { id: parentCommentObject.author._id, username: parentCommentObject.author.username };
+                        } else {
+                          replyingTo = { id: null, username: "Reply deleted" };
+                        }
+                      }
+                      return {
+                        id: comment._id, content: comment.content,
+                        author: { id: comment.author._id, username: comment.author.username, displayName: comment.author.displayName, photo: comment.author.profilePicture.path || '/default-profile.png' },
+                        likes: comment.likes.length, isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
+                        createdAt: comment.createdAt.toISOString(), parentComment: comment.parentComment,
+                        replyingTo: replyingTo, linkPreview: comment.linkPreview,
+                        replies: buildCommentTree(comment._id)
+                      };
+                    });
+                };
+                
+                const topLevelComments = allCommentsRaw
+                    .filter(comment => !comment.parentComment)
+                    .map(comment => ({
+                        id: comment._id, content: comment.content,
+                        author: { id: comment.author._id, username: comment.author.username, displayName: comment.author.displayName, photo: comment.author.profilePicture.path || '/default-profile.png' },
+                        likes: comment.likes.length, isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
+                        createdAt: comment.createdAt.toISOString(), parentComment: null, replyingTo: null,
+                        linkPreview: comment.linkPreview,
+                        replies: buildCommentTree(comment._id)
+                    }));
+
+                return {
+                  id: post._id, title: post.title, content: post.content,
+                  linkPreview: post.linkPreview, postType: post.postType,
+                  attachments: post.attachments,
+                  pollOptions: post.pollOptions ? post.pollOptions.map(opt => ({ option: opt.option, votes: opt.votes })) : [],
+                  author: { id: post.author._id, username: post.author.username, displayName: post.author.displayName, photo: post.author.profilePicture.path || '/default-profile.png' },
+                  likes: post.likes.length, isLiked: currentUserId ? post.likes.includes(currentUserId) : false,
+                  createdAt: post.createdAt.toISOString(),
+                  comments: topLevelComments,
+                  usersWhoVoted: post.postType === 'poll' ? post.usersWhoVoted : undefined
+                };
+              })
+            );
+            return res.json(postsWithDetails);
+
         } else if (contentType === 'comments') {
-            content = await Comment.find({ author: userId })
+            const sortOption = (sortBy === 'oldest') ? { createdAt: 1 } : { createdAt: -1 };
+            const comments = await Comment.find({ author: authorId })
                 .populate('author', 'username displayName profilePicture')
-                .populate({
-                    path: 'post',
-                    select: 'title'
-                })
+                .populate({ path: 'post', select: 'title' })
                 .sort(sortOption);
+            return res.json(comments);
         } else {
             return res.status(400).json({ error: 'Invalid content type' });
         }
-
-        res.json(content);
 
     } catch (error) {
         console.error('Error fetching user content:', error);

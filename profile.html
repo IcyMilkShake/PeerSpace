@@ -25,6 +25,57 @@
         #profile-content .text-gray-600 {
             color: var(--text-primary);
         }
+        .mentions-suggestions {
+            border: 1px solid var(--dropdown-border);
+            background-color: var(--dropdown-bg);
+            color: var(--dropdown-text);
+            position: absolute;
+            z-index: 50;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-radius: 0.5rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-secondary);
+        }
+        .mentions-suggestions div {
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 0.375rem;
+        }
+        .mentions-suggestions div:hover {
+            background-color: var(--dropdown-item-hover-bg);
+        }
+        .selected-poll-option {
+            background-color: var(--accent-color-subtle);
+            color: var(--accent-color-text);
+            border: 1px solid var(--accent-color);
+        }
+        .themed-hover-bg:hover {
+            background-color: var(--bg-hover);
+        }
+        .poll-progress-track {
+            background-color: var(--bg-secondary);
+        }
+        .poll-progress-fill {
+            background-color: #3b82f6;
+        }
+        #report-modal {
+            background-color: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+        #report-modal input[type="text"], #report-modal textarea {
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        #report-modal input[type="text"]:focus, #report-modal textarea:focus {
+             border-color: var(--accent-color);
+             box-shadow: 0 0 0 2px var(--accent-color-subtle);
+        }
+        .notification-item.font-bold {
+            background-color: var(--accent-color-subtle);
+        }
         .filter-btn {
             background-color: transparent;
             border: 1px solid var(--border-color);
@@ -39,14 +90,10 @@
             border-color: var(--primary-color);
         }
         .sort-select {
-            background-color: var(--input-field-bg);
+            background-color: var(--input-bg);
+            color: var(--text-primary);
             border: 1px solid var(--border-color);
             padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-        }
-        .post-card, .comment-card {
-            background-color: var(--post-bg);
-            border: 1px solid var(--border-color);
             border-radius: 0.5rem;
         }
     </style>
@@ -200,8 +247,11 @@
                 </div>
             </div>
 
-            <div class="px-4 sm:px-6 py-4 border-t">
-                <div class="flex justify-between items-center mb-4">
+        </div>
+
+        <div class="mt-8">
+            <div id="profile-controls" class="sticky top-4 z-40 mb-6 p-4 rounded-b-lg shadow-lg backdrop-blur-md bg-white/80 dark:bg-gray-900/80" style="transition: top 0.3s ease-in-out;">
+                <div class="flex justify-between items-center">
                     <div>
                         <button id="filter-posts-btn" class="filter-btn active" data-content-type="posts">Posts</button>
                         <button id="filter-comments-btn" class="filter-btn" data-content-type="comments">Comments</button>
@@ -215,12 +265,15 @@
                         </select>
                     </div>
                 </div>
-                <div id="user-content-feed" class="space-y-4">
-                    <!-- User content will be loaded here -->
-                </div>
-                <div id="user-content-loading" class="text-center py-8 hidden">
-                    <p>Loading content...</p>
-                </div>
+            </div>
+            <div id="posts-container" class="space-y-6 px-4">
+            </div>
+            <div id="single-post-container" class="hidden space-y-6">
+            </div>
+            <div id="empty-state" class="text-center py-16 hidden">
+                <div class="text-6xl mb-4">📝</div>
+                <h3 class="text-xl font-semibold mb-2">No posts to display</h3>
+                <p>This user hasn't made any posts of this type yet.</p>
             </div>
         </div>
 
@@ -229,6 +282,61 @@
             <a href="/" id="go-home-error-btn" class="button-primary mt-4 inline-block">Go to Homepage</a>
         </div>
     </main>
+
+    <div id="confirmation-modal-overlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[90] p-4">
+        <div id="confirmation-modal" class="rounded-lg shadow-xl p-6 max-w-sm w-full">
+            <h3 id="confirmation-modal-title" class="text-lg font-semibold mb-4">Confirmation</h3>
+            <p id="confirmation-modal-message" class="text-sm mb-6">Are you sure?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="confirmation-modal-cancel-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button id="confirmation-modal-confirm-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="report-modal-overlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[95] p-4">
+            <div id="report-modal" class="rounded-lg shadow-xl p-6 max-w-md w-full">
+                <h3 id="report-modal-title" class="text-lg font-semibold mb-4">Report Post</h3>
+                <form id="report-form">
+                    <input type="hidden" id="report-post-id">
+                    <div class="mb-4">
+                        <label for="report-reason-type" class="block text-sm font-medium mb-1">Reason:</label>
+                        <select id="report-reason-type" name="report-reason-type" class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="not_type">Post not according to its post type</option>
+                            <option value="inappropriate">Inappropriate content</option>
+                            <option value="other">Other (Please specify)</option>
+                        </select>
+                    </div>
+                    <div id="report-reason-other-container" class="mb-4 hidden">
+                        <label for="report-reason-other" class="block text-sm font-medium mb-1">Specify Reason:</label>
+                        <input type="text" id="report-reason-other" name="report-reason-other" class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-6">
+                        <label for="report-description" class="block text-sm font-medium mb-1">Description (Optional):</label>
+                        <textarea id="report-description" name="report-description" rows="3" class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" id="report-modal-cancel-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit" id="report-modal-submit-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                            Submit Report
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    <div id="lightbox-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[100]">
+        <span id="lightbox-close" class="absolute top-4 right-4 text-white text-3xl cursor-pointer">&times;</span>
+        <img id="lightbox-image" class="max-w-full max-h-full">
+        <button id="lightbox-prev" class="absolute left-4 text-white text-3xl">&#10094;</button>
+        <button id="lightbox-next" class="absolute right-4 text-white text-3xl">&#10095;</button>
+    </div>
 
     <div id="crop-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[60] p-4">
         <div class="bg-white rounded-lg crop-modal-content max-w-4xl w-full max-h-[95vh] overflow-hidden">
@@ -267,7 +375,9 @@
     </div>
 
     <script>
-        let currentLoggedInUser = null;
+        let currentUser = null;
+        let posts = [];
+        let currentFilter = 'all';
         let profileUserId = null;
         let cropper = null;
         let bannerCropper = null;
@@ -522,13 +632,13 @@
             try {
                 const response = await fetch('/api/user', { credentials: 'include' });
                 if (response.ok) {
-                    currentLoggedInUser = await response.json();
+                    currentUser = await response.json();
                 } else {
-                    currentLoggedInUser = null;
+                    currentUser = null;
                 }
             } catch (error) {
                 console.error('Auth check failed on profile page:', error);
-                currentLoggedInUser = null;
+                currentUser = null;
             }
             updateProfilePageNav(); 
         }
@@ -538,29 +648,29 @@
             const authSection = document.getElementById('auth-section-profile');
             const userProfileDropdown = document.getElementById('user-profile-dropdown-profile'); 
 
-            if (currentLoggedInUser) {
-                const navProfileImg = createProfileImage(currentLoggedInUser.photo, currentLoggedInUser.name, "w-8 h-8", "text-xs");
+            if (currentUser) {
+                const navProfileImg = createProfileImage(currentUser.photo, currentUser.name, "w-8 h-8", "text-xs");
                 
                 authSection.innerHTML = `
                     <button onclick="toggleProfileDropdown()" class="nav-profile-button-hover flex items-center space-x-2 p-1 rounded-lg transition-colors">
                         <div id="nav-profile-img-container-profile-page"></div>
-                        <span class="font-medium text-sm">${escapeHtml(currentLoggedInUser.displayName)}</span>
+                        <span class="font-medium text-sm">${escapeHtml(currentUser.displayName)}</span>
                     </button>
                 `;
                 document.getElementById('nav-profile-img-container-profile-page').appendChild(navProfileImg);
 
                 const modalImgContainer = document.getElementById('modal-profile-img-container-profile');
                 modalImgContainer.innerHTML = ''; 
-                modalImgContainer.appendChild(createProfileImage(currentLoggedInUser.photo, currentLoggedInUser.displayName, "w-10 h-10", "text-base", "border-2"));
+                modalImgContainer.appendChild(createProfileImage(currentUser.photo, currentUser.displayName, "w-10 h-10", "text-base", "border-2"));
                 
-                document.getElementById('modal-user-name-profile').textContent = currentLoggedInUser.displayName;
+                document.getElementById('modal-user-name-profile').textContent = currentUser.displayName;
                 const userEmailElem = document.getElementById('modal-user-email-profile');
-                userEmailElem.textContent = currentLoggedInUser.email;
+                userEmailElem.textContent = currentUser.email;
                 userEmailElem.classList.add('truncate');
                 
                 const profileMenuLink = document.getElementById('profile-menu-profile-page');
                 if (profileMenuLink) {
-                    profileMenuLink.href = `profile.html?id=${currentLoggedInUser.id}`;
+                    profileMenuLink.href = `profile.html?id=${currentUser.id}`;
                 }
 
                 const logoutBtn = document.getElementById('logout-btn-profile-page');
@@ -576,7 +686,7 @@
         // Shows or hides the profile dropdown menu.
         function toggleProfileDropdown() {
             const userProfileDropdown = document.getElementById('user-profile-dropdown-profile');
-            if (!currentLoggedInUser || !userProfileDropdown) return;
+            if (!currentUser || !userProfileDropdown) return;
             userProfileDropdown.classList.toggle('hidden');
         }
 
@@ -584,7 +694,7 @@
         async function logoutFromProfilePage() {
             try {
                 await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
-                currentLoggedInUser = null;
+                currentUser = null;
                 updateProfilePageNav(); 
                 window.location.href = '/'; 
             } catch (error) {
@@ -617,6 +727,7 @@
         // Loads the profile data for the user.
         async function loadProfileData() {
             const profileIdentifier = getUserIdFromUrl();
+            profileUserId = profileIdentifier;
             if (!profileIdentifier) {
                 displayProfileError("No user ID or username provided in the URL.");
                 return;
@@ -683,7 +794,7 @@
             const editButton = document.getElementById('edit-description-button');
             const changeDisplayNameButton = document.getElementById('change-display-name');
             const changeUsernameButton = document.getElementById('change-username');
-            if (currentLoggedInUser && currentLoggedInUser.id === profile.id) {
+            if (currentUser && currentUser.id === profile.id) {
                 editButton.classList.remove('hidden');
                 changeDisplayNameButton.classList.remove('hidden');
                 changeUsernameButton.classList.remove('hidden');
@@ -741,8 +852,8 @@
 
                 if (result.success) {
                     document.getElementById('profile-description-view').textContent = result.description || 'No description provided.';
-                    if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
-                         currentLoggedInUser.description = result.description;
+                    if (currentUser && currentUser.id === profileUserId) {
+                         currentUser.description = result.description;
                     }
                     cancelEditDescription();
                 } else {
@@ -861,8 +972,8 @@
 
                 if (result.success) {
                     document.getElementById('profile-display-name').textContent = escapeHtml(result.displayName);
-                    if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
-                        currentLoggedInUser.displayName = result.displayName;
+                    if (currentUser && currentUser.id === profileUserId) {
+                        currentUser.displayName = result.displayName;
                     }
                     showNotification('Display name updated successfully!', 'success');
                     document.getElementById('edit-display-name-form').classList.add('hidden');
@@ -902,8 +1013,8 @@
 
                 if (response.ok && result.success) {
                     document.getElementById('profile-username').textContent = `@${escapeHtml(result.username)}`;
-                    if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
-                        currentLoggedInUser.username = result.username;
+                    if (currentUser && currentUser.id === profileUserId) {
+                        currentUser.username = result.username;
                     }
                     showNotification('Username updated successfully!', 'success');
                     document.getElementById('edit-username-form').classList.add('hidden');
@@ -956,15 +1067,15 @@
                         bannerImage.classList.remove('hidden');
                         profileHeader.classList.add('hidden');
 
-                        if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
-                            currentLoggedInUser.banner = result.photo;
+                        if (currentUser && currentUser.id === profileUserId) {
+                            currentUser.banner = result.photo;
                         }
                         showNotification('Banner image updated successfully!', 'success');
                         closeCropModal();
                         return;
                     } else {
-                        if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
-                            currentLoggedInUser.photo = result.photo;
+                        if (currentUser && currentUser.id === profileUserId) {
+                            currentUser.photo = result.photo;
                         }
                         const avatarContainer = document.getElementById('profile-avatar-container');
                     }
@@ -972,7 +1083,7 @@
                     const newAvatar = createProfileImage(result.photo, document.getElementById('profile-display-name').textContent, "profile-avatar", "text-5xl");
                     avatarContainer.appendChild(newAvatar);
                     
-                    if (currentLoggedInUser && currentLoggedInUser.id === profileUserId) {
+                    if (currentUser && currentUser.id === profileUserId) {
                          updateProfilePageNav();
                     }
 
@@ -995,39 +1106,1612 @@
         window.addEventListener('resize', () => { if (cropper) cropper.resize(); });
 
         // Initializes the page when the DOM is fully loaded.
-        document.addEventListener('DOMContentLoaded', async () => {
-            avatarContainer = document.getElementById('profile-avatar-container');
-            await checkAuthStatusForProfilePage(); 
-            await loadProfileData();
+        // --- ALL RENDERING AND INTERACTION LOGIC FROM INDEX.HTML ---
 
-            document.getElementById('filter-posts-btn').addEventListener('click', () => {
-                document.getElementById('filter-posts-btn').classList.add('active');
-                document.getElementById('filter-comments-btn').classList.remove('active');
-                loadUserContent();
+        function renderPosts() {
+            const container = document.getElementById('posts-container');
+            const emptyState = document.getElementById('empty-state');
+
+            const filteredPosts = posts.filter(post => {
+                if (currentFilter === 'all') {
+                    return true;
+                }
+                return post.postType === currentFilter || (currentFilter === 'normal' && (!post.postType || post.postType === 'normal'));
             });
 
-            document.getElementById('filter-comments-btn').addEventListener('click', () => {
-                document.getElementById('filter-comments-btn').classList.add('active');
-                document.getElementById('filter-posts-btn').classList.remove('active');
-                loadUserContent();
+            if (filteredPosts.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                if (currentFilter !== 'all') {
+                    emptyState.querySelector('h3').textContent = `No posts found for "${currentFilter.charAt(0).toUpperCase() + currentFilter.slice(1)}"`;
+                    emptyState.querySelector('p').textContent = 'This user has not made any posts of this type yet.';
+                } else {
+                    emptyState.querySelector('h3').textContent = 'No posts yet';
+                    emptyState.querySelector('p').textContent = "This user hasn't posted anything yet.";
+                }
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            container.innerHTML = '';
+            
+            filteredPosts.forEach(post => {
+                const article = document.createElement('article');
+                article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in';
+                article.classList.add("cursor-pointer");
+                article.onclick = () => {
+                    const referrer = `&ref=profile&refId=${profileUserId}`;
+                    window.location.href = `/?post=${post.id}${referrer}`;
+                };
+                
+                const postHeader = document.createElement('div');
+                postHeader.className = 'flex items-center justify-between mb-4';
+
+                const authorInfo = document.createElement('div');
+                authorInfo.className = 'flex items-center space-x-3';
+
+                const authorProfileLink = document.createElement('a');
+                authorProfileLink.href = `/profile.html?id=${post.author.id}`;
+                authorProfileLink.className = "flex items-center space-x-3 group";
+
+                const postProfileImg = createProfileImage(post.author.photo, post.author.displayName, "w-10 h-10");
+                authorProfileLink.appendChild(postProfileImg);
+                
+                const postHeaderInfo = document.createElement('div');
+                postHeaderInfo.innerHTML = `
+                    <div class="font-medium text-gray-800 group-hover:underline">${escapeHtml(post.author.displayName)}</div>
+                    <div class="text-sm text-gray-500">${formatDate(post.createdAt)}</div>
+                `;
+                authorProfileLink.appendChild(postHeaderInfo);
+                authorInfo.appendChild(authorProfileLink);
+                postHeader.appendChild(authorInfo);
+
+                const postActions = document.createElement('div');
+                postActions.className = 'ml-auto relative';
+
+                const menuButton = document.createElement('button');
+                menuButton.className = 'text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
+                menuButton.innerHTML = `<svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
+                menuButton.onclick = (e) => {
+                    e.stopPropagation();
+                    togglePostActionMenu(post.id);
+                };
+                postActions.appendChild(menuButton);
+
+                const dropdownMenu = document.createElement('div');
+                dropdownMenu.id = `post-action-menu-${post.id}`;
+                dropdownMenu.className = 'hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-20 post-action-menu';
+
+                if (currentUser && currentUser.id === post.author.id) {
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'block w-full text-left px-4 py-2 text-sm profile-menu-item profile-menu-item-danger';
+                    deleteButton.innerHTML = `
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        Delete Post
+                    `;
+                    deleteButton.onclick = (e) => {
+                        e.stopPropagation();
+                        confirmDeletePost(post.id);
+                        closeAllPostActionMenus();
+                    };
+                    dropdownMenu.appendChild(deleteButton);
+                }
+                if (currentUser && currentUser.id !== post.author.id) {
+                    const reportButton = document.createElement('button');
+                    reportButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
+                    reportButton.innerHTML = `
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4.25L16.25 3.5a2.121 2.121 0 013 3L6.25 19H3zm9-13l3 3"></path></svg>
+                        Report Post
+                    `;
+                    reportButton.onclick = (e) => {
+                        e.stopPropagation();
+                        openReportModal(post.id);
+                        closeAllPostActionMenus();
+                    };
+                    dropdownMenu.appendChild(reportButton);
+                }
+                
+                if (dropdownMenu.hasChildNodes()) {
+                    postActions.appendChild(dropdownMenu);
+                    postHeader.appendChild(postActions);
+                }
+                
+                const postTagsContainer = document.createElement('div');
+                postTagsContainer.className = 'mb-2';
+
+                if (post.postType && post.postType !== 'normal') {
+                    const typeBadge = document.createElement('span');
+                    typeBadge.className = `inline-block rounded-full px-3 py-1 text-xs font-semibold`; 
+                    let badgeColor = 'bg-gray-200 text-gray-700';
+                    if (post.postType === 'question') badgeColor = 'bg-blue-100 text-blue-700';
+                    else if (post.postType === 'guide') badgeColor = 'bg-green-100 text-green-700';
+                    else if (post.postType === 'poll') badgeColor = 'bg-purple-100 text-purple-700';
+                    typeBadge.classList.add(...badgeColor.split(' '));
+                    typeBadge.textContent = post.postType.charAt(0).toUpperCase() + post.postType.slice(1);
+                    postTagsContainer.appendChild(typeBadge);
+                }
+
+                const postContentElement = document.createElement('div');
+                const postTitleHtml = `<h2 class="text-xl font-bold mb-3">${escapeHtml(post.title)}</h2>`;
+                postContentElement.innerHTML = postTitleHtml;
+
+                const postTextParagraph = document.createElement('p');
+                postTextParagraph.className = "text-gray-700 mb-4 whitespace-pre-wrap";
+
+                if (post.content.length > 300) {
+                    const seeMoreContainer = document.createElement('div');
+                    seeMoreContainer.className = 'see-more-container post-see-more';
+
+                    const fullContent = document.createElement('p');
+                    fullContent.className = 'text-gray-700 mb-4 whitespace-pre-wrap';
+                    fullContent.innerHTML = escapeHtml(post.content, true);
+
+                    seeMoreContainer.appendChild(fullContent);
+
+                    const seeMoreBtn = document.createElement('button');
+                    seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
+                    seeMoreBtn.textContent = 'See More';
+                    seeMoreBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        if (seeMoreContainer.classList.contains('expanded')) {
+                            seeMoreContainer.classList.remove('expanded');
+                            seeMoreBtn.textContent = 'See More';
+                        } else {
+                            seeMoreContainer.classList.add('expanded');
+                            seeMoreBtn.textContent = 'See Less';
+                        }
+                    };
+                    postContentElement.appendChild(seeMoreContainer);
+                    postContentElement.appendChild(seeMoreBtn);
+                } else {
+                    postTextParagraph.innerHTML = escapeHtml(post.content, true);
+                    postContentElement.appendChild(postTextParagraph);
+                }
+
+                if (post.attachments && post.attachments.length > 0) {
+                    const imageAttachments = post.attachments.filter(a => a.fileType === 'image');
+                    const videoAttachments = post.attachments.filter(a => a.fileType === 'video');
+
+                    const firstImageIndex = post.attachments.findIndex(a => a.fileType === 'image');
+                    const firstVideoIndex = post.attachments.findIndex(a => a.fileType === 'video');
+
+                    const attachmentsContainer = document.createElement('div');
+
+                    const createImageSlideshow = () => {
+                        if (imageAttachments.length > 0) {
+                            const imageSlideshowContainer = document.createElement('div');
+                            imageSlideshowContainer.className = 'mt-4 mb-4 relative';
+                            if (imageAttachments.length > 1) {
+                                imageSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4 slideshow-scrollbar';
+                            }
+                            imageAttachments.forEach((attachment, index) => {
+                                const attachmentWrapper = document.createElement('div');
+                                attachmentWrapper.className = imageAttachments.length > 1 ? 'w-1/2 flex-shrink-0' : 'w-full';
+                                const img = document.createElement('img');
+                                img.src = attachment.url;
+                                img.className = 'w-full h-full object-cover rounded cursor-pointer';
+                                img.onclick = (e) => {
+                                    e.stopPropagation();
+                                    const imageUrls = imageAttachments.map(a => a.url);
+                                    openLightbox(imageUrls, index);
+                                };
+                                attachmentWrapper.appendChild(img);
+                                imageSlideshowContainer.appendChild(attachmentWrapper);
+                            });
+                            attachmentsContainer.appendChild(imageSlideshowContainer);
+                        }
+                    };
+
+                    const createVideoSlideshow = () => {
+                        if (videoAttachments.length > 0) {
+                            const videoSlideshowContainer = document.createElement('div');
+                            videoSlideshowContainer.className = 'mt-4 mb-4 relative';
+                            if (videoAttachments.length > 1) {
+                                videoSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4 slideshow-scrollbar';
+                            }
+                            videoAttachments.forEach(attachment => {
+                                const attachmentWrapper = document.createElement('div');
+                                attachmentWrapper.className = videoAttachments.length > 1 ? 'w-1/2 flex-shrink-0' : 'w-full';
+                                const videoWrapper = document.createElement('div');
+                                videoWrapper.style.width = '100%';
+                                videoWrapper.style.overflow = 'hidden';
+                                videoWrapper.onclick = (e) => e.stopPropagation();
+                                const video = document.createElement('video');
+                                video.className = 'w-full h-auto object-cover rounded post-video';
+                                video.controls = true;
+                                video.setAttribute('playsinline', '');
+                                video.setAttribute('loop', '');
+                                video.muted = true;
+                                const source = document.createElement('source');
+                                source.src = attachment.url;
+                                source.type = 'video/mp4';
+                                video.appendChild(source);
+                                video.innerHTML += 'Your browser does not support the video tag.';
+                                videoWrapper.appendChild(video);
+                                attachmentWrapper.appendChild(videoWrapper);
+                                videoSlideshowContainer.appendChild(attachmentWrapper);
+                            });
+                            attachmentsContainer.appendChild(videoSlideshowContainer);
+                        }
+                    };
+
+                    if (firstImageIndex !== -1 && (firstVideoIndex === -1 || firstImageIndex < firstVideoIndex)) {
+                        createImageSlideshow();
+                        createVideoSlideshow();
+                    } else {
+                        createVideoSlideshow();
+                        createImageSlideshow();
+                    }
+
+                    postContentElement.appendChild(attachmentsContainer);
+                }
+
+                if (post.postType === 'poll' && post.pollOptions && post.pollOptions.length > 0) {
+                    const pollContainer = document.createElement('div');
+                    pollContainer.className = 'mb-4 p-4 border rounded-lg';
+                    pollContainer.id = `poll-${post.id}`;
+                    pollContainer.onclick = (e) => e.stopPropagation();
+
+                    const currentUserVote = post.usersWhoVoted && currentUser ? post.usersWhoVoted.find(vote => vote.userId === currentUser.id) : null;
+                    
+                    post.pollOptions.forEach((option, index) => {
+                        const optionDiv = document.createElement('div');
+                        optionDiv.className = 'mb-2';
+                        
+                        const totalVotes = post.pollOptions.reduce((sum, opt) => sum + (opt.votes || 0), 0);
+                        const percentage = totalVotes > 0 ? ((option.votes || 0) / totalVotes * 100).toFixed(1) : 0;
+
+                        let buttonClass = "w-full text-left p-2 rounded-md transition-colors flex justify-between items-center text-sm";
+                        let votedIndicator = '';
+                        let isDisabled = !currentUser; 
+
+                        if (currentUserVote && currentUserVote.optionIndex === index) {
+                            buttonClass += ' selected-poll-option';
+                            votedIndicator = '<span class="text-xs font-semibold ml-2">(Your Vote)</span>';
+                        }
+                        
+                        if (currentUser) {
+                             buttonClass += ' themed-hover-bg';
+                        }
+
+
+                        optionDiv.innerHTML = `
+                            <button 
+                                onclick="event.stopPropagation(); voteInPoll('${post.id}', ${index})" 
+                                class="${buttonClass}"
+                                data-option-index="${index}"
+                                ${isDisabled ? 'disabled' : ''} 
+                                ${!currentUser ? 'title="Sign in to vote"' : 'title="Click to vote or change your vote"'} >
+                                <span>${escapeHtml(option.option)} ${votedIndicator}</span>
+                                <span class="text-xs text-gray-500 vote-count">${option.votes || 0} votes (${percentage}%)</span>
+                            </button>
+                            <div class="h-2 rounded-full mt-1 overflow-hidden poll-progress-track">
+                                <div class="h-full transition-all duration-300 poll-progress-fill" style="width: ${percentage}%;"></div>
+                            </div>
+                        `;
+                        pollContainer.appendChild(optionDiv);
+                    });
+                    postContentElement.appendChild(pollContainer);
+                }
+
+                article.appendChild(postHeader);
+                if (postTagsContainer.hasChildNodes()) {
+                    article.appendChild(postTagsContainer);
+                }
+                article.appendChild(postContentElement);
+                
+                if (post.linkPreview && post.linkPreview.url) {
+                    const preview = post.linkPreview;
+                    const previewContainer = document.createElement('a');
+                    previewContainer.href = preview.url;
+                    previewContainer.target = '_blank';
+                    previewContainer.rel = 'noopener noreferrer';
+                    previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-4 text-sm';
+                    previewContainer.style.textDecoration = 'none';
+                    previewContainer.onclick = (e) => e.stopPropagation();
+
+                    let imageHtml = '';
+                    if (preview.image) {
+                        imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-16 h-16 sm:w-24 sm:h-24 object-cover flex-shrink-0">`;
+                    }
+
+                    previewContainer.innerHTML = `
+                        ${imageHtml}
+                        <div class="p-3 overflow-hidden">
+                        <div class="font-bold mb-1 truncate">${escapeHtml(preview.title || '')}</div>
+                        <div class="text-gray-600 text-xs truncate">${(preview.description || '').substring(0, 100)}</div>
+                        </div>
+                    `;
+                    article.appendChild(previewContainer);
+                }
+
+                const postActionsDiv = document.createElement('div');
+                postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
+                
+                const likeButtonPost = document.createElement('button');
+                likeButtonPost.className = `like-button flex items-center space-x-1 ${post.isLiked ? 'like-button-active' : ''}`;
+                likeButtonPost.innerHTML = `
+                    <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                <span id="post-like-count-${post.id}">${post.likes || 0} Likes</span>
+                `;
+                likeButtonPost.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleLike('post', post.id);
+                };
+                postActionsDiv.appendChild(likeButtonPost);
+
+                const commentCountSpan = document.createElement('span');
+                commentCountSpan.className = 'flex items-center space-x-1';
+                const totalComments = countAllComments(post.comments);
+                commentCountSpan.innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    <span class="comment-count">${totalComments} Comments</span>
+                `;
+                postActionsDiv.appendChild(commentCountSpan);
+                
+                article.appendChild(postActionsDiv);
+                
+                container.appendChild(article);
             });
 
-            document.getElementById('sort-by-select').addEventListener('change', loadUserContent);
+            setupVideoObserver();
+        }
 
-            loadUserContent();
+        function renderCommentTree(comments, parentElement, postId, depth) {
+            comments.forEach(comment => {
+                const commentWrapper = document.createElement('div');
+                commentWrapper.className = `comment-wrapper mt-3 pl-${depth * 2}`; 
+
+                const commentDiv = document.createElement('div');
+                commentDiv.className = 'flex items-start space-x-3 bg-gray-50 p-3 rounded-lg shadow-sm'; 
+
+                const commentBody = document.createElement('div');
+                commentBody.className = 'flex-1 overflow-hidden';
+
+                const commentAuthorProfileLink = document.createElement('a');
+                commentAuthorProfileLink.href = `/profile.html?id=${comment.author.id}`;
+                commentAuthorProfileLink.className = "shrink-0 group";
+
+                const commentProfileImg = createProfileImage(comment.author.photo, comment.author.displayName, "w-8 h-8");
+                commentAuthorProfileLink.appendChild(commentProfileImg);
+                commentDiv.appendChild(commentAuthorProfileLink);
+            
+                const commentAuthorNameLink = document.createElement('a');
+                commentAuthorNameLink.href = `/profile.html?id=${comment.author.id}`;
+                commentAuthorNameLink.className = "font-medium text-gray-800 hover:underline";
+                commentAuthorNameLink.textContent = escapeHtml(comment.author.displayName);
+
+                const commentHeader = document.createElement('div');
+                commentHeader.className = 'flex items-center space-x-2 mb-1';
+                commentHeader.appendChild(commentAuthorNameLink);
+                
+                const commentTimestamp = document.createElement('span');
+                commentTimestamp.className = "text-sm text-gray-500";
+                commentTimestamp.textContent = formatDate(comment.createdAt);
+                commentHeader.appendChild(commentTimestamp);
+                commentBody.appendChild(commentHeader);
+
+                if (comment.replyingTo && comment.replyingTo.username) {
+                    const replyingToText = document.createElement('p');
+                    replyingToText.className = 'text-xs text-gray-500 mb-1';
+                    if (comment.replyingTo.username === "Reply deleted") {
+                         replyingToText.innerHTML = `Replying to: <span class="font-medium text-gray-600 italic">${escapeHtml(comment.replyingTo.username)}</span>`;
+                    } else {
+                         replyingToText.innerHTML = `
+                            Replying to: 
+                            <a href="/profile.html?id=${comment.replyingTo.id}" class="text-blue-600 hover:underline font-medium">
+                                @${escapeHtml(comment.replyingTo.username)}
+                            </a>
+                        `;
+                    }
+                    commentBody.appendChild(replyingToText);
+                }
+
+                const commentText = document.createElement('p');
+                commentText.className = "text-gray-700 whitespace-pre-wrap break-all";
+                
+                if (comment.content.length > 300) {
+                    const seeMoreContainer = document.createElement('div');
+                    seeMoreContainer.className = `see-more-container ${depth === 0 ? 'comment-see-more' : 'reply-see-more'}`;
+
+                    const fullContent = document.createElement('p');
+                    fullContent.className = 'text-gray-700 whitespace-pre-wrap break-all';
+                    fullContent.innerHTML = escapeHtml(comment.content, true);
+
+                    seeMoreContainer.appendChild(fullContent);
+
+                    const seeMoreBtn = document.createElement('button');
+                    seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
+                    seeMoreBtn.textContent = 'See More';
+                    seeMoreBtn.onclick = () => {
+                        if (seeMoreContainer.classList.contains('expanded')) {
+                            seeMoreContainer.classList.remove('expanded');
+                            seeMoreBtn.textContent = 'See More';
+                        } else {
+                            seeMoreContainer.classList.add('expanded');
+                            seeMoreBtn.textContent = 'See Less';
+                        }
+                    };
+                    commentBody.appendChild(seeMoreContainer);
+                    commentBody.appendChild(seeMoreBtn);
+                } else {
+                    commentText.innerHTML = escapeHtml(comment.content, true);
+                    commentBody.appendChild(commentText);
+                }
+
+                if (comment.linkPreview && comment.linkPreview.url) {
+                    const preview = comment.linkPreview;
+                    const previewContainer = document.createElement('a');
+                    previewContainer.href = preview.url;
+                    previewContainer.target = '_blank';
+                    previewContainer.rel = 'noopener noreferrer';
+                    previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-2 text-sm';
+                    previewContainer.style.textDecoration = 'none';
+                    previewContainer.onclick = (e) => e.stopPropagation();
+
+                    let imageHtml = '';
+                    if (preview.image) {
+                        imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-16 h-16 sm:w-20 sm:h-20 object-cover flex-shrink-0">`;
+                    }
+
+                    previewContainer.innerHTML = `
+                        ${imageHtml}
+                        <div class="p-2 overflow-hidden">
+                            <div class="font-bold truncate">${escapeHtml(preview.title || '')}</div>
+                            <div class="text-gray-600 text-xs truncate">${escapeHtml(preview.description || '')}</div>
+                        </div>
+                    `;
+                    commentBody.appendChild(previewContainer);
+                }
+
+                const commentActionsDiv = document.createElement('div');
+                commentActionsDiv.className = 'comment-actions flex items-center space-x-3 text-xs text-gray-500 mt-2';
+
+                const likeButtonComment = document.createElement('button');
+                likeButtonComment.className = `like-button flex items-center space-x-1 ${comment.isLiked ? 'like-button-active' : ''}`;
+                likeButtonComment.innerHTML = `
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                    <span id="comment-like-count-${comment.id}">${comment.likes || 0}</span>
+                `;
+                likeButtonComment.onclick = () => toggleLike('comment', comment.id);
+                commentActionsDiv.appendChild(likeButtonComment);
+
+                if (currentUser) {
+                    const replyButton = document.createElement('button');
+                    replyButton.className = 'hover:text-blue-600 font-medium';
+                    replyButton.textContent = 'Reply';
+                    replyButton.onclick = () => toggleReplyForm(comment.id, postId);
+                    commentActionsDiv.appendChild(replyButton);
+
+                    if (currentUser.id === comment.author.id) { 
+                        const deleteButton = document.createElement('button');
+                        deleteButton.className = 'hover:text-red-600 font-medium text-xs ml-2';
+                        deleteButton.textContent = 'Delete';
+                        deleteButton.onclick = () => confirmDeleteComment(comment.id, !comment.parentComment);
+                        commentActionsDiv.appendChild(deleteButton);
+                    }
+                }
+                commentBody.appendChild(commentActionsDiv);
+                
+                const replyFormContainerId = `reply-form-container-${comment.id}`;
+                const replyFormContainer = document.createElement('div');
+                replyFormContainer.id = replyFormContainerId;
+                replyFormContainer.className = 'reply-form hidden mt-2';
+                commentBody.appendChild(replyFormContainer);
+                
+                commentDiv.appendChild(commentBody);
+                commentWrapper.appendChild(commentDiv);
+
+                if (comment.replies && comment.replies.length > 0) {
+                    renderCommentTree(comment.replies, commentWrapper, postId, depth + 1);
+                }
+                
+                parentElement.appendChild(commentWrapper);
+            });
+        }
+
+        function toggleReplyForm(commentId, postId) {
+            const containerId = `reply-form-container-${commentId}`;
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const existingForm = container.querySelector('textarea');
+            if (existingForm) {
+                container.classList.toggle('hidden');
+                if (!container.classList.contains('hidden')) {
+                    container.querySelector('textarea').focus();
+                }
+            } else {
+                let commentData = null;
+                const post = posts.find(p => p.id === postId);
+                if (post) {
+                    function findCommentById(comments, id) {
+                        for (const c of comments) {
+                            if (c.id === id) return c;
+                            if (c.replies && c.replies.length > 0) {
+                                const foundInReply = findCommentById(c.replies, id);
+                                if (foundInReply) return foundInReply;
+                            }
+                        }
+                        return null;
+                    }
+                    commentData = findCommentById(post.comments, commentId);
+                }
+
+                if (!commentData) {
+                    console.error("Could not find comment data for ID:", commentId);
+                    return; 
+                }
+
+                container.innerHTML = `
+                    <p class="text-xs text-gray-500 mb-1">
+                        Replying to: 
+                        <a href="/profile.html?id=${commentData.author.id}" class="text-blue-600 hover:underline font-medium">
+                            ${escapeHtml(commentData.author.displayName)}
+                        </a>
+                    </p>
+                    <textarea id="reply-textarea-${commentId}" placeholder="Write a reply..." rows="2" maxlength="1000"
+                              class="w-full px-3 py-2 text-sm rounded-lg resize-none focus:outline-none focus:ring-1" onkeyup="handleMention(this)"></textarea>
+                    <div class="flex justify-between items-center mt-1">
+                        <span class="text-xs text-gray-500">0 / 1000</span>
+                        <div class="flex justify-end space-x-2">
+                            <button onclick="document.getElementById('${containerId}').classList.add('hidden');" 
+                                    class="button-cancel-reply px-3 py-1 text-xs rounded-md">Cancel</button>
+                            <button onclick="addCommentOrReply('${postId}', '${commentId}')" 
+                                    class="button-submit-reply px-3 py-1 text-xs rounded-md">Reply</button>
+                        </div>
+                    </div>
+                `;
+                container.classList.remove('hidden');
+                const textarea = container.querySelector('textarea');
+                const charCountSpan = container.querySelector('span');
+                textarea.addEventListener('input', () => {
+                    const currentLength = textarea.value.length;
+                    const maxLength = textarea.maxLength;
+                    charCountSpan.textContent = `${currentLength} / ${maxLength}`;
+                    if (currentLength >= maxLength) {
+                        charCountSpan.classList.add('text-red-500');
+                    } else {
+                        charCountSpan.classList.remove('text-red-500');
+                    }
+                });
+                textarea.focus();
+            }
+        }
+
+        async function addCommentOrReply(postId, parentCommentId = null) {
+            const textareaId = parentCommentId ? `reply-textarea-${parentCommentId}` : `comment-textarea-${postId}`;
+            const textarea = document.getElementById(textareaId);
+            if (!textarea) {
+                console.error("Textarea not found:", textareaId);
+                return;
+            }
+            const content = textarea.value.trim();
+
+            if (!content) return;
+
+            try {
+                let url, body;
+                if (parentCommentId) {
+                    url = `/api/comments/${parentCommentId}/replies`;
+                    body = JSON.stringify({ content });
+                } else {
+                    url = `/api/posts/${postId}/comments`;
+                    body = JSON.stringify({ content });
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: body
+                });
+
+                if (response.ok) {
+                    const newComment = await response.json();
+                    const postIndex = posts.findIndex(p => p.id === postId);
+                    if (postIndex !== -1) {
+                        if (parentCommentId) {
+                            const findAndAddReply = (comments) => {
+                                for (const comment of comments) {
+                                    if (comment.id === parentCommentId) {
+                                        if (!comment.replies) {
+                                            comment.replies = [];
+                                        }
+                                        newComment.replyingTo = {
+                                            id: comment.author.id,
+                                            username: comment.author.username
+                                        };
+                                        comment.replies.push(newComment);
+                                        return true;
+                                    }
+                                    if (comment.replies && findAndAddReply(comment.replies)) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            };
+                            findAndAddReply(posts[postIndex].comments);
+                        } else {
+                            posts[postIndex].comments.push(newComment);
+                        }
+                    }
+
+                    renderSinglePost(postId);
+                    textarea.value = '';
+                    showNotification("Comment added successfully.", "success");
+
+                    const post = posts.find(p => p.id === postId);
+                    if (post) {
+                        const commentCountSpan = document.querySelector(`#post-${postId} .comment-count`);
+                        if (commentCountSpan) {
+                            commentCountSpan.textContent = `${post.comments.length} Comments`;
+                        }
+                    }
+                } else {
+                    const errorData = await response.json();
+                    showNotification(`Failed to add ${parentCommentId ? 'reply' : 'comment'}: ${errorData.error || 'Server error'}`, 'error');
+                }
+            } catch (error) {
+                console.error(`Failed to add ${parentCommentId ? 'reply' : 'comment'}:`, error);
+                showNotification(`An error occurred while adding ${parentCommentId ? 'reply' : 'comment'}. Please try again.`, 'error');
+            }
+        }
+
+        function togglePostActionMenu(postId) {
+            const singlePostContainer = document.getElementById('single-post-container');
+            let menu;
+            if (!singlePostContainer.classList.contains('hidden')) {
+                menu = document.getElementById(`post-action-menu-single-${postId}`);
+            } else {
+                menu = document.getElementById(`post-action-menu-${postId}`);
+            }
+            
+            if (menu) {
+                const isHidden = menu.classList.contains('hidden');
+                
+                closeAllPostActionMenus();
+        
+                if (isHidden) {
+                    menu.classList.remove('hidden');
+                }
+            }
+        }
+
+        function closeAllPostActionMenus() {
+            document.querySelectorAll('.post-action-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        }
+
+        document.addEventListener('click', (event) => {
+            const isActionsButton = event.target.closest('button') && event.target.closest('button').innerHTML.includes('M10 6a2');
+            if (!isActionsButton && !event.target.closest('[id^="post-action-menu-"]')) {
+                closeAllPostActionMenus();
+            }
         });
 
-        async function loadUserContent() {
+        const reportModalOverlay = document.getElementById('report-modal-overlay');
+        const reportForm = document.getElementById('report-form');
+        const reportPostIdInput = document.getElementById('report-post-id');
+        const reportReasonTypeSelect = document.getElementById('report-reason-type');
+        const reportReasonOtherContainer = document.getElementById('report-reason-other-container');
+        const reportReasonOtherInput = document.getElementById('report-reason-other');
+        const reportDescriptionInput = document.getElementById('report-description');
+
+        function openReportModal(postId) {
+            if (!currentUser) {
+                showNotification("Please sign in to report posts.", "warning");
+                return;
+            }
+            reportPostIdInput.value = postId;
+            reportReasonTypeSelect.value = 'not_type';
+            reportReasonOtherContainer.classList.add('hidden');
+            reportReasonOtherInput.value = '';
+            reportDescriptionInput.value = '';
+            reportModalOverlay.classList.remove('hidden');
+        }
+
+        function closeReportModal() {
+            reportModalOverlay.classList.add('hidden');
+        }
+
+        reportReasonTypeSelect.addEventListener('change', () => {
+            if (reportReasonTypeSelect.value === 'other') {
+                reportReasonOtherContainer.classList.remove('hidden');
+            } else {
+                reportReasonOtherContainer.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('report-modal-cancel-btn').addEventListener('click', closeReportModal);
+        reportModalOverlay.addEventListener('click', (event) => {
+            if (event.target === reportModalOverlay) {
+                closeReportModal();
+            }
+        });
+
+        reportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const postId = reportPostIdInput.value;
+            let reasonType = reportReasonTypeSelect.value;
+            let reasonDetails = reportDescriptionInput.value.trim();
+
+            if (reasonType === 'other') {
+                const otherReason = reportReasonOtherInput.value.trim();
+                if (!otherReason) {
+                    showNotification('Please specify the reason if "Other" is selected.', 'warning');
+                    return;
+                }
+                reasonType = `other: ${otherReason}`;
+            }
+            
+            try {
+                const response = await fetch(`/api/posts/${postId}/report`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reasonType, reasonDetails })
+                });
+                if (response.ok) {
+                    showNotification('Post reported successfully. Thank you for your feedback.', 'success');
+                    closeReportModal();
+                } else {
+                    const errorData = await response.json().catch(() => ({ error: 'Failed to submit report.' }));
+                    showNotification(`Error: ${errorData.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to submit report:', error);
+                showNotification('An error occurred while submitting the report.', 'error');
+            }
+        });
+
+        async function voteInPoll(postId, optionIndex) {
+            event.stopPropagation();
+            if (!currentUser) {
+                showNotification("Please sign in to vote.", "warning");
+                return;
+            }
+            try {
+                const response = await fetch(`/api/posts/${postId}/vote`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ optionIndex })
+                });
+
+                if (response.ok) {
+                    const updatedPost = await response.json();
+                    const postIndex = posts.findIndex(p => p.id === postId);
+                    if (postIndex !== -1) {
+                        posts[postIndex].pollOptions = updatedPost.pollOptions;
+                        posts[postIndex].usersWhoVoted = updatedPost.usersWhoVoted;
+                    }
+
+                    const singlePostContainer = document.getElementById('single-post-container');
+                    const container = singlePostContainer.classList.contains('hidden') ? document : singlePostContainer;
+                    const pollContainer = container.querySelector(`#poll-${postId}`);
+
+                    if (pollContainer) {
+                        const localPost = posts[postIndex];
+                        const currentUserVote = localPost.usersWhoVoted && currentUser ? localPost.usersWhoVoted.find(vote => vote.userId === currentUser.id) : null;
+                        const totalVotes = localPost.pollOptions.reduce((sum, opt) => sum + (opt.votes || 0), 0);
+
+                        localPost.pollOptions.forEach((option, index) => {
+                            const optionButton = pollContainer.querySelector(`button[data-option-index="${index}"]`);
+                            if (optionButton) {
+                                pollContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('selected-poll-option'));
+
+                                let buttonClass = "w-full text-left p-2 rounded-md transition-colors flex justify-between items-center text-sm themed-hover-bg";
+                                let votedIndicator = '';
+                                
+                                if (currentUserVote && currentUserVote.optionIndex === index) {
+                                    buttonClass += ' selected-poll-option';
+                                    votedIndicator = '<span class="text-xs font-semibold ml-2">(Your Vote)</span>';
+                                }
+                                
+                                optionButton.className = buttonClass;
+
+                                const optionTextSpan = optionButton.querySelector('span:first-child');
+                                if (optionTextSpan) {
+                                    optionTextSpan.innerHTML = `${escapeHtml(option.option)} ${votedIndicator}`;
+                                }
+
+                                const voteCountSpan = optionButton.querySelector('.vote-count');
+                                const percentage = totalVotes > 0 ? ((option.votes || 0) / totalVotes * 100).toFixed(1) : 0;
+                                if (voteCountSpan) {
+                                    voteCountSpan.textContent = `${option.votes || 0} votes (${percentage}%)`;
+                                }
+                                
+                                const progressBarFill = optionButton.nextElementSibling.querySelector('.poll-progress-fill');
+                                if (progressBarFill) {
+                                    progressBarFill.style.width = `${percentage}%`;
+                                }
+                            }
+                        });
+                    }
+                    showNotification('Vote cast successfully!', 'success');
+                } else {
+                    const errorData = await response.json().catch(() => ({ error: 'Failed to cast vote.' }));
+                    showNotification(`Error: ${errorData.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error voting in poll:', error);
+                showNotification('An error occurred while casting your vote.', 'error');
+            }
+        }
+
+        async function toggleLike(type, id) {
+            if (!currentUser) {
+                showNotification("Please sign in to like content.", "warning");
+                return;
+            }
+
+            let url;
+            if (type === 'post') {
+                url = `/api/posts/${id}/like`;
+            } else if (type === 'comment') {
+                url = `/api/comments/${id}/like`;
+            } else {
+                return;
+            }
+
+            try {
+                const response = await fetch(url, { method: 'POST' });
+                if (response.ok) {
+                    const result = await response.json();
+
+                    if (type === 'post') {
+                        const postIndex = posts.findIndex(p => p.id === id);
+                        if (postIndex !== -1) {
+                            posts[postIndex].likes = result.likesCount;
+                            posts[postIndex].isLiked = result.isLiked;
+                        }
+                    } else if (type === 'comment') {
+                        function findAndUpdateComment(commentsArray, commentId, newLikesCount, newIsLiked) {
+                            for (let i = 0; i < commentsArray.length; i++) {
+                                let currentComment = commentsArray[i];
+                                if (currentComment.id === commentId) {
+                                    currentComment.likes = newLikesCount;
+                                    currentComment.isLiked = newIsLiked;
+                                    return true;
+                                }
+                                if (currentComment.replies && currentComment.replies.length > 0) {
+                                    if (findAndUpdateComment(currentComment.replies, commentId, newLikesCount, newIsLiked)) {
+                                        return true;
+                                    }
+                                }
+                            }
+                            return false;
+                        }
+                        for (let i = 0; i < posts.length; i++) {
+                            if (posts[i].comments && findAndUpdateComment(posts[i].comments, id, result.likesCount, result.isLiked)) {
+                                break; 
+                            }
+                        }
+                    }
+
+                    const likeCountSpan = document.getElementById(`${type}-like-count-${id}`);
+                    const likeButton = likeCountSpan ? likeCountSpan.parentElement : null;
+
+                    if (likeCountSpan) {
+                        likeCountSpan.textContent = type === 'post' ? `${result.likesCount} Likes` : `${result.likesCount}`;
+                    }
+
+                    if (likeButton) {
+                        if (result.isLiked) {
+                            likeButton.classList.add('like-button-active');
+                        } else {
+                            likeButton.classList.remove('like-button-active');
+                        }
+                    }
+                    
+                    const singlePostContainer = document.getElementById('single-post-container');
+                    if (!singlePostContainer.classList.contains('hidden')) {
+                        const post = posts.find(p => p.id === id);
+                        const likeCountSpan = document.querySelector(`#single-post-container #post-like-count-${id}`);
+                        const likeButton = likeCountSpan ? likeCountSpan.parentElement : null;
+
+                        if (likeCountSpan) {
+                            likeCountSpan.textContent = `${post.likes} Likes`;
+                        }
+
+                        if (likeButton) {
+                            if (post.isLiked) {
+                                likeButton.classList.add('like-button-active');
+                            } else {
+                                likeButton.classList.remove('like-button-active');
+                            }
+                        }
+                    }
+
+                } else {
+                    const errorData = await response.json().catch(() => ({error: "Unknown error"}));
+                    showNotification(`Failed to update like for ${type}: ${errorData.error}`, 'error');
+                }
+            } catch (error) {
+                console.error(`Error toggling like for ${type} ${id}:`, error);
+                showNotification(`Error updating like for ${type}. Please try again.`, 'error');
+            }
+        }
+
+        async function confirmDeletePost(postId) {
+            if (!currentUser) return;
+
+            const postToDelete = posts.find(p => p.id === postId);
+            if (!postToDelete || postToDelete.author.id !== currentUser.id) {
+                showNotification("You are not authorized to delete this post or the post was not found.", "error");
+                return;
+            }
+
+            showConfirmationDialog(
+                "Are you sure you want to delete this post? This will also delete all associated comments and replies.",
+                async () => {
+                    try {
+                        const response = await fetch(`/api/posts/${postId}`, {
+                            method: 'DELETE',
+                        });
+
+                        if (response.ok) {
+                            await loadProfilePosts();
+                            showNotification("Post deleted successfully.", "success");
+                        } else {
+                            const errorData = await response.json().catch(() => ({error: "Server error"}));
+                            showNotification(`Failed to delete post: ${errorData.error}`, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error deleting post:', error);
+                        showNotification('An error occurred while trying to delete the post.', 'error');
+                    }
+                },
+                () => {
+                    showNotification("Delete operation cancelled.", "info", 2000);
+                },
+                "Delete Post",
+                "Delete",
+                "Cancel"
+            );
+        }
+
+        async function confirmDeleteComment(commentId, isTopLevelComment) {
+            if (!currentUser) return;
+
+            let message = "Are you sure you want to delete this reply? This action cannot be undone.";
+            if (isTopLevelComment) {
+                message = "Are you sure you want to delete this comment? This will also delete all its replies. This action cannot be undone.";
+            }
+
+            showConfirmationDialog(
+                message,
+                async () => {
+                    try {
+                        const response = await fetch(`/api/comments/${commentId}`, {
+                            method: 'DELETE',
+                        });
+
+                        if (response.ok) {
+                            const post = posts.find(p => p.comments.some(c => c.id === commentId) || 
+                                                     p.comments.some(c => c.replies && c.replies.some(r => r.id === commentId)));
+
+                            if (post) {
+                                const removeComment = (comments) => {
+                                    for (let i = 0; i < comments.length; i++) {
+                                        if (comments[i].id === commentId) {
+                                            comments.splice(i, 1);
+                                            return true;
+                                        }
+                                        if (comments[i].replies && removeComment(comments[i].replies)) {
+                                            return true;
+                                        }
+                                    }
+                                    return false;
+                                };
+                                removeComment(post.comments);
+                                renderSinglePost(post.id);
+                                const commentCountSpan = document.querySelector(`#post-${post.id} .comment-count`);
+                                if (commentCountSpan) {
+                                    const totalComments = countAllComments(post.comments);
+                                    commentCountSpan.textContent = `${totalComments} Comments`;
+                                }
+                            }
+                            showNotification("Comment/reply deleted successfully.", "success");
+                        } else {
+                            const errorData = await response.json().catch(() => ({error: "Server error"}));
+                            showNotification(`Failed to delete comment/reply: ${errorData.error}`, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error deleting comment/reply:', error);
+                        showNotification('An error occurred while trying to delete the comment/reply.', 'error');
+                    }
+                },
+                () => {
+                },
+                "Delete Comment/Reply",
+                "Delete",
+                "Cancel"
+            );
+        }
+
+        let mentionQuery = '';
+        let mentionSuggestions = [];
+        let activeSuggestionIndex = -1;
+        let mentionStartIndex = -1;
+        let currentTextarea = null;
+
+        function handleMention(textarea) {
+            currentTextarea = textarea;
+            const text = textarea.value;
+            const cursorPos = textarea.selectionStart;
+            const atIndex = text.lastIndexOf('@', cursorPos - 1);
+
+            if (atIndex === -1) {
+                hideSuggestions();
+                return;
+            }
+
+            mentionStartIndex = atIndex;
+            mentionQuery = text.substring(atIndex + 1, cursorPos);
+
+            if (mentionQuery.includes(' ')) {
+                hideSuggestions();
+                return;
+            }
+            
+            fetchUsers(mentionQuery);
+        }
+
+        async function fetchUsers(query) {
+            try {
+                const response = await fetch(`/api/users/search?query=${query}`);
+                mentionSuggestions = await response.json();
+                showSuggestions();
+            } catch (error) {
+                console.error('Error fetching users:', error);
+                hideSuggestions();
+            }
+        }
+
+        function showSuggestions() {
+            const suggestionsBox = document.getElementById('mentions-suggestions') || createSuggestionsBox();
+            suggestionsBox.innerHTML = '';
+
+            if (mentionSuggestions.length === 0) {
+                hideSuggestions();
+                return;
+            }
+
+            mentionSuggestions.forEach((user, index) => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <div class="font-bold">${user.displayName}</div>
+                    <div class="text-sm text-gray-500">@${user.username}</div>
+                `;
+                div.onclick = () => selectSuggestion(index);
+                suggestionsBox.appendChild(div);
+            });
+
+            const rect = currentTextarea.getBoundingClientRect();
+            suggestionsBox.style.top = `${rect.bottom + window.scrollY}px`;
+            suggestionsBox.style.left = `${rect.left + window.scrollX}px`;
+            suggestionsBox.style.display = 'block';
+            activeSuggestionIndex = -1;
+        }
+
+        function hideSuggestions() {
+            const suggestionsBox = document.getElementById('mentions-suggestions');
+            if (suggestionsBox) {
+                suggestionsBox.style.display = 'none';
+            }
+        }
+
+        function createSuggestionsBox() {
+            const suggestionsBox = document.createElement('div');
+            suggestionsBox.id = 'mentions-suggestions';
+            suggestionsBox.className = 'mentions-suggestions';
+            document.body.appendChild(suggestionsBox);
+            return suggestionsBox;
+        }
+
+        function selectSuggestion(index) {
+            if (index < 0 || index >= mentionSuggestions.length) return;
+
+            const user = mentionSuggestions[index];
+            const text = currentTextarea.value;
+            const before = text.substring(0, mentionStartIndex);
+            const after = text.substring(currentTextarea.selectionStart);
+            
+            currentTextarea.value = `${before}@${user.username} ${after}`;
+            hideSuggestions();
+            currentTextarea.focus();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const suggestionsBox = document.getElementById('mentions-suggestions');
+            if (!suggestionsBox || suggestionsBox.style.display === 'none') return;
+        
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeSuggestionIndex = (activeSuggestionIndex + 1) % mentionSuggestions.length;
+                updateActiveSuggestion();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeSuggestionIndex = (activeSuggestionIndex - 1 + mentionSuggestions.length) % mentionSuggestions.length;
+                updateActiveSuggestion();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                selectSuggestion(activeSuggestionIndex);
+            } else if (e.key === 'Escape') {
+                hideSuggestions();
+            }
+        });
+
+        window.addEventListener('scroll', () => {
+            hideSuggestions();
+        });
+
+        function updateActiveSuggestion() {
+            const suggestionsBox = document.getElementById('mentions-suggestions');
+            const suggestions = suggestionsBox.children;
+            for (let i = 0; i < suggestions.length; i++) {
+                suggestions[i].style.backgroundColor = i === activeSuggestionIndex ? 'var(--bg-hover)' : '';
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        function escapeHtml(text, allowLinks = false) {
+            let escapedText = text.replace(/[&<>"']/g, function (match) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[match];
+            });
+
+            if (allowLinks) {
+                const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+                escapedText = escapedText.replace(urlRegex, function(url) {
+                    let fullUrl = url;
+                    if (!url.match(/^[a-zA-Z]+:\/\//)) {
+                        fullUrl = 'http://' + url;
+                    }
+                    const safeHref = fullUrl.replace(/[&<>"']/g, function (match) {
+                        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
+                    });
+                    return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+                });
+
+                const mentionRegex = /@(\w+)/g;
+                escapedText = escapedText.replace(mentionRegex, function(match, username) {
+                    return `<a href="/profile.html?username=${username}" class="mention-link" onclick="event.stopPropagation()">${match}</a>`;
+                });
+            }
+            return escapedText;
+        }
+
+        const confirmationModalOverlay = document.getElementById('confirmation-modal-overlay');
+        const confirmationModalElement = document.getElementById('confirmation-modal');
+        const confirmationModalMessage = document.getElementById('confirmation-modal-message');
+        const confirmationModalTitle = document.getElementById('confirmation-modal-title');
+        const confirmBtn = document.getElementById('confirmation-modal-confirm-btn');
+        const cancelBtn = document.getElementById('confirmation-modal-cancel-btn');
+
+        let currentOnConfirm = null;
+        let currentOnCancel = null;
+
+        function showConfirmationDialog(message, onConfirmCallback, onCancelCallback, title = "Confirm Action", confirmText = "Confirm", cancelText = "Cancel") {
+            if (!confirmationModalOverlay || !confirmationModalMessage || !confirmBtn || !cancelBtn || !confirmationModalTitle) {
+                console.error("Confirmation modal elements not found.");
+                if (confirm(message)) {
+                    if (onConfirmCallback) onConfirmCallback();
+                } else {
+                    if (onCancelCallback) onCancelCallback();
+                }
+                return;
+            }
+
+            confirmationModalMessage.textContent = message;
+            confirmationModalTitle.textContent = title;
+            confirmBtn.textContent = confirmText;
+            cancelBtn.textContent = cancelText;
+
+            currentOnConfirm = onConfirmCallback;
+            currentOnCancel = onCancelCallback;
+
+            confirmationModalOverlay.classList.remove('hidden');
+        }
+
+        function closeConfirmationDialog() {
+            confirmationModalOverlay.classList.add('hidden');
+            currentOnConfirm = null;
+            currentOnCancel = null;
+        }
+
+        confirmBtn.addEventListener('click', () => {
+            if (currentOnConfirm) {
+                currentOnConfirm();
+            }
+            closeConfirmationDialog();
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            if (currentOnCancel) {
+                currentOnCancel();
+            }
+            closeConfirmationDialog();
+        });
+        
+        confirmationModalOverlay.addEventListener('click', (event) => {
+            if (event.target === confirmationModalOverlay) {
+                 if (currentOnCancel) {
+                    currentOnCancel();
+                }
+                closeConfirmationDialog();
+            }
+        });
+
+        function showMainFeed() {
+            document.getElementById('posts-container').classList.remove('hidden');
+            document.getElementById('single-post-container').classList.add('hidden');
+            document.getElementById('profile-content').classList.remove('hidden');
+        }
+
+        function countAllComments(comments) {
+            let count = comments.length;
+            for (const comment of comments) {
+                if (comment.replies) {
+                    count += countAllComments(comment.replies);
+                }
+            }
+            return count;
+        }
+
+        async function renderSinglePost(postId) {
+            const post = posts.find(p => p.id === postId);
+            if (!post) {
+                showMainFeed();
+                return;
+            }
+
+            document.getElementById('posts-container').classList.add('hidden');
+            document.getElementById('filter-bar').classList.add('hidden');
+            document.getElementById('profile-content').classList.add('hidden');
+            
+            const container = document.getElementById('single-post-container');
+            container.innerHTML = '';
+            container.classList.remove('hidden');
+
+            const article = document.createElement('article');
+            article.className = 'rounded-lg shadow-md p-6';
+
+            const backButton = document.createElement('button');
+            backButton.className = 'back-to-posts-btn text-blue-600 hover:underline mb-4';
+            backButton.innerHTML = '&larr; Back to profile';
+            backButton.onclick = () => {
+                const url = new URL(window.location);
+                url.searchParams.delete('post');
+                history.pushState({ postId: null }, "", url);
+                showMainFeed();
+                renderPosts();
+            };
+            container.appendChild(backButton);
+
+            const postHeader = document.createElement('div');
+            postHeader.className = 'flex items-center space-x-3 mb-4';
+
+            const authorProfileLink = document.createElement('a');
+            authorProfileLink.href = `/profile.html?id=${post.author.id}`;
+            authorProfileLink.className = "flex items-center space-x-3 group flex-grow"; 
+
+            const postProfileImg = createProfileImage(post.author.photo, post.author.displayName, "w-10 h-10");
+            authorProfileLink.appendChild(postProfileImg);
+            
+            const postHeaderInfo = document.createElement('div');
+            postHeaderInfo.innerHTML = `
+                <div class="font-medium text-gray-800 group-hover:underline">${escapeHtml(post.author.displayName)}</div>
+                <div class="text-sm text-gray-500">${formatDate(post.createdAt)}</div>
+            `;
+            authorProfileLink.appendChild(postHeaderInfo);
+            postHeader.appendChild(authorProfileLink);
+
+            const postActionsMenu = document.createElement('div');
+            postActionsMenu.className = 'ml-auto relative';
+
+            const menuButton = document.createElement('button');
+            menuButton.className = 'text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
+            menuButton.innerHTML = `<svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
+            menuButton.onclick = (e) => {
+                e.stopPropagation();
+                togglePostActionMenu(post.id);
+            };
+            postActionsMenu.appendChild(menuButton);
+
+            const dropdownMenu = document.createElement('div');
+            dropdownMenu.id = `post-action-menu-single-${post.id}`;
+            dropdownMenu.className = 'hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-20 post-action-menu';
+
+            if (currentUser && currentUser.id === post.author.id) {
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'block w-full text-left px-4 py-2 text-sm profile-menu-item profile-menu-item-danger';
+                deleteButton.innerHTML = `
+                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    Delete Post
+                `;
+                deleteButton.onclick = () => {
+                    confirmDeletePost(post.id);
+                    closeAllPostActionMenus();
+                };
+                dropdownMenu.appendChild(deleteButton);
+            }
+
+            if (currentUser && currentUser.id !== post.author.id) {
+                const reportButton = document.createElement('button');
+                reportButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
+                reportButton.innerHTML = `
+                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4.25L16.25 3.5a2.121 2.121 0 013 3L6.25 19H3zm9-13l3 3"></path></svg>
+                    Report Post
+                `;
+                reportButton.onclick = () => {
+                    openReportModal(post.id);
+                    closeAllPostActionMenus();
+                };
+                dropdownMenu.appendChild(reportButton);
+            }
+            
+            if (dropdownMenu.hasChildNodes()) {
+                postActionsMenu.appendChild(dropdownMenu);
+                postHeader.appendChild(postActionsMenu);
+            }
+            
+            const postTagsContainer = document.createElement('div');
+            postTagsContainer.className = 'mb-2';
+
+            if (post.postType && post.postType !== 'normal') {
+                const typeBadge = document.createElement('span');
+                typeBadge.className = `inline-block rounded-full px-3 py-1 text-xs font-semibold`; 
+                let badgeColor = 'bg-gray-200 text-gray-700';
+                if (post.postType === 'question') badgeColor = 'bg-blue-100 text-blue-700';
+                else if (post.postType === 'guide') badgeColor = 'bg-green-100 text-green-700';
+                else if (post.postType === 'poll') badgeColor = 'bg-purple-100 text-purple-700';
+                typeBadge.classList.add(...badgeColor.split(' '));
+                typeBadge.textContent = post.postType.charAt(0).toUpperCase() + post.postType.slice(1);
+                postTagsContainer.appendChild(typeBadge);
+            }
+
+            const postContentElement = document.createElement('div');
+            const postTitleHtml = `<h2 class="text-xl font-bold mb-3">${escapeHtml(post.title)}</h2>`;
+            postContentElement.innerHTML = postTitleHtml;
+
+            const postTextParagraph = document.createElement('p');
+            postTextParagraph.className = "text-gray-700 mb-4 whitespace-pre-wrap";
+            
+            const seeMoreContainer = document.createElement('div');
+            seeMoreContainer.className = 'see-more-container post-see-more';
+
+            const fullContent = document.createElement('p');
+            fullContent.className = 'text-gray-700 mb-4 whitespace-pre-wrap';
+            fullContent.innerHTML = escapeHtml(post.content, true);
+
+            seeMoreContainer.appendChild(fullContent);
+            if (post.content.length > 500) {
+                const seeMoreBtn = document.createElement('button');
+                seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
+                seeMoreBtn.textContent = 'See More';
+                seeMoreBtn.onclick = () => {
+                    if (seeMoreContainer.classList.contains('expanded')) {
+                        seeMoreContainer.classList.remove('expanded');
+                        seeMoreBtn.textContent = 'See More';
+                    } else {
+                        seeMoreContainer.classList.add('expanded');
+                        seeMoreBtn.textContent = 'See Less';
+                    }
+                };
+                postContentElement.appendChild(seeMoreContainer);
+                postContentElement.appendChild(seeMoreBtn);
+            } else {
+                postTextParagraph.innerHTML = escapeHtml(post.content, true);
+                postContentElement.appendChild(postTextParagraph);
+            }
+
+            if (post.attachments && post.attachments.length > 0) {
+                // ... attachment logic ...
+            }
+
+            if (post.postType === 'poll' && post.pollOptions && post.pollOptions.length > 0) {
+                // ... poll logic ...
+            }
+            const commentsSection = document.createElement('div');
+            commentsSection.className = 'border-t pt-4';
+            
+            const commentsHeader = document.createElement('h3');
+            commentsHeader.className = 'font-semibold mb-3';
+            commentsHeader.style = 'color: var(--bg-primary)'
+            const totalComments = countAllComments(post.comments);
+            commentsHeader.textContent = `Comments (${totalComments})`;
+            commentsSection.appendChild(commentsHeader);
+
+            if (currentUser) {
+                const commentFormContainer = document.createElement('div');
+                commentFormContainer.className = 'mb-4';
+                const textarea = document.createElement('textarea');
+                textarea.id = `comment-textarea-${post.id}`;
+                textarea.placeholder = "Add a comment...";
+                textarea.rows = 2;
+                textarea.maxLength = 1000;
+                textarea.className = "w-full px-3 py-2 rounded-lg resize-none focus:outline-none focus:ring-2";
+                textarea.onkeyup = () => handleMention(textarea);
+
+                const charCountSpan = document.createElement('span');
+                charCountSpan.className = 'text-sm text-gray-500';
+                charCountSpan.textContent = '0 / 1000';
+
+                const button = document.createElement('button');
+                button.onclick = () => addCommentOrReply(post.id);
+                button.className = "button-submit-comment mt-2 px-4 py-2 rounded-lg font-medium transition-colors";
+                button.textContent = "Add Comment";
+
+                textarea.addEventListener('input', () => {
+                    const currentLength = textarea.value.length;
+                    const maxLength = textarea.maxLength;
+                    charCountSpan.textContent = `${currentLength} / ${maxLength}`;
+                    if (currentLength >= maxLength) {
+                        charCountSpan.classList.add('text-red-500');
+                    } else {
+                        charCountSpan.classList.remove('text-red-500');
+                    }
+                });
+                
+                const bottomDiv = document.createElement('div');
+                bottomDiv.className = 'flex justify-between items-center';
+                bottomDiv.appendChild(charCountSpan);
+                bottomDiv.appendChild(button);
+
+                commentFormContainer.appendChild(textarea);
+                commentFormContainer.appendChild(bottomDiv);
+                commentsSection.appendChild(commentFormContainer);
+            }
+            
+            const commentsContainer = document.createElement('div');
+            commentsContainer.className = 'space-y-3';
+            renderCommentTree(post.comments, commentsContainer, post.id, 0);
+            
+            commentsSection.appendChild(commentsContainer);
+            
+            article.appendChild(postHeader);
+            if (postTagsContainer.hasChildNodes()) {
+                article.appendChild(postTagsContainer);
+            }
+            article.appendChild(postContentElement);
+            
+            if (post.linkPreview && post.linkPreview.url) {
+                // ... link preview logic ...
+            }
+
+            const postActionsDiv = document.createElement('div');
+            postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
+            
+            const likeButtonPost = document.createElement('button');
+            likeButtonPost.className = `like-button flex items-center space-x-1 ${post.isLiked ? 'like-button-active' : ''}`;
+            likeButtonPost.innerHTML = `
+                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+            <span id="post-like-count-${post.id}">${post.likes || 0} Likes</span>
+            `;
+            likeButtonPost.onclick = () => toggleLike('post', post.id);
+            postActionsDiv.appendChild(likeButtonPost);
+            
+            article.appendChild(postActionsDiv);
+            article.appendChild(commentsSection);
+            
+            container.appendChild(article);
+
+            setupVideoObserver();
+        }
+
+        window.onpopstate = function(event) {
+            if (event.state && event.state.postId) {
+                renderSinglePost(event.state.postId);
+            } else {
+                showMainFeed();
+            }
+        };
+
+        const lightboxModal = document.getElementById('lightbox-modal');
+        const lightboxImage = document.getElementById('lightbox-image');
+        const lightboxClose = document.getElementById('lightbox-close');
+        const lightboxPrev = document.getElementById('lightbox-prev');
+        const lightboxNext = document.getElementById('lightbox-next');
+
+        let currentImageIndex = 0;
+        let currentImageList = [];
+
+        function openLightbox(images, index) {
+            currentImageList = images;
+            currentImageIndex = index;
+            updateLightboxImage();
+            lightboxModal.classList.remove('hidden');
+        }
+
+        function closeLightbox() {
+            lightboxModal.classList.add('hidden');
+        }
+
+        function updateLightboxImage() {
+            lightboxImage.src = currentImageList[currentImageIndex];
+        }
+
+        function showPrevImage() {
+            currentImageIndex = (currentImageIndex - 1 + currentImageList.length) % currentImageList.length;
+            updateLightboxImage();
+        }
+
+        function showNextImage() {
+            currentImageIndex = (currentImageIndex + 1) % currentImageList.length;
+            updateLightboxImage();
+        }
+
+        lightboxClose.addEventListener('click', closeLightbox);
+        lightboxPrev.addEventListener('click', showPrevImage);
+        lightboxNext.addEventListener('click', showNextImage);
+
+        document.addEventListener('keydown', (e) => {
+            if (lightboxModal.classList.contains('hidden')) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') showPrevImage();
+            if (e.key === 'ArrowRight') showNextImage();
+        });
+
+        let videoObserver;
+        let currentlyPlayingVideo = null;
+
+        function setupVideoObserver() {
+            const options = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.8,
+            };
+
+            videoObserver = new IntersectionObserver(handleVideoIntersection, options);
+            const videos = document.querySelectorAll('.post-video');
+            videos.forEach(video => videoObserver.observe(video));
+        }
+
+        function handleVideoIntersection(entries, observer) {
+            entries.forEach(entry => {
+                const video = entry.target;
+                if (entry.isIntersecting) {
+                    if (currentlyPlayingVideo && currentlyPlayingVideo !== video) {
+                        currentlyPlayingVideo.pause();
+                    }
+                    video.play().catch(e => console.error("Video play failed:", e));
+                    currentlyPlayingVideo = video;
+                } else {
+                    video.pause();
+                    if (currentlyPlayingVideo === video) {
+                        currentlyPlayingVideo = null;
+                    }
+                }
+            });
+        }
+
+        async function loadProfileContent() {
             const userId = getUserIdFromUrl();
             if (!userId) return;
 
             const contentType = document.querySelector('.filter-btn.active').dataset.contentType;
             const sortBy = document.getElementById('sort-by-select').value;
-            const feedContainer = document.getElementById('user-content-feed');
-            const loadingIndicator = document.getElementById('user-content-loading');
+            const feedContainer = document.getElementById('posts-container');
+            const emptyState = document.getElementById('empty-state');
 
-            feedContainer.innerHTML = '';
-            loadingIndicator.classList.remove('hidden');
+            feedContainer.innerHTML = '<p class="text-center p-8">Loading content...</p>';
+            emptyState.classList.add('hidden');
 
             try {
                 const response = await fetch(`/api/users/${userId}/content?contentType=${contentType}&sortBy=${sortBy}`);
@@ -1035,68 +2719,75 @@
                     throw new Error('Failed to load content');
                 }
                 const content = await response.json();
-                renderUserContent(content, contentType);
+                if (contentType === 'posts') {
+                    posts = content;
+                    renderPosts();
+                } else {
+                    renderComments(content);
+                }
             } catch (error) {
                 console.error('Error loading user content:', error);
-                feedContainer.innerHTML = '<p class="text-center text-red-500">Failed to load content.</p>';
-            } finally {
-                loadingIndicator.classList.add('hidden');
+                feedContainer.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                emptyState.querySelector('h3').textContent = 'Could not load content';
+                emptyState.querySelector('p').textContent = 'There was an error fetching this user\'s content.';
             }
         }
 
-        function renderUserContent(content, contentType) {
-            const feedContainer = document.getElementById('user-content-feed');
-            if (content.length === 0) {
-                feedContainer.innerHTML = `<p class="text-center text-gray-500">No ${contentType} found.</p>`;
+        function renderComments(comments) {
+            const container = document.getElementById('posts-container');
+            container.innerHTML = '';
+            const emptyState = document.getElementById('empty-state');
+            if (comments.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.querySelector('h3').textContent = 'No Comments Found';
+                emptyState.querySelector('p').textContent = 'This user has not made any comments.';
                 return;
             }
-
-            content.forEach(item => {
-                if (contentType === 'posts') {
-                    const postElement = createPostElement(item);
-                    feedContainer.appendChild(postElement);
-                } else {
-                    const commentElement = createCommentElement(item);
-                    feedContainer.appendChild(commentElement);
-                }
+            emptyState.classList.add('hidden');
+            comments.forEach(comment => {
+                const commentElement = createCommentElement(comment);
+                container.appendChild(commentElement);
             });
-        }
-
-        function createPostElement(post) {
-            const postElement = document.createElement('div');
-            postElement.className = 'post-card';
-            postElement.innerHTML = `
-                <div class="p-4">
-                    <h3 class="font-bold text-lg">${escapeHtml(post.title)}</h3>
-                    <p class="text-gray-600 text-sm">
-                        ${new Date(post.createdAt).toLocaleString()} | 
-                        ${post.likes.length} likes | 
-                        ${post.commentCount} comments
-                    </p>
-                    <div class="mt-2">${escapeHtml(post.content)}</div>
-                </div>
-            `;
-            return postElement;
         }
 
         function createCommentElement(comment) {
             const commentElement = document.createElement('div');
-            commentElement.className = 'comment-card';
+            commentElement.className = 'bg-white dark:bg-gray-800 rounded-lg shadow-md p-4';
             const postTitle = comment.post ? escapeHtml(comment.post.title) : '[Post deleted]';
             commentElement.innerHTML = `
-                <div class="p-4">
-                    <p class="text-sm text-gray-500">
-                        Commented on <strong>${postTitle}</strong>
-                    </p>
-                    <div class="mt-2">${escapeHtml(comment.content)}</div>
-                    <p class="text-gray-600 text-sm mt-2">
-                        ${new Date(comment.createdAt).toLocaleString()} | 
-                        ${comment.likes.length} likes
-                    </p>
+                <div class="text-sm text-gray-500">
+                    Commented on <strong>${postTitle}</strong>
+                </div>
+                <div class="mt-2 whitespace-pre-wrap">${escapeHtml(comment.content)}</div>
+                <div class="text-xs text-gray-400 mt-2">
+                    ${new Date(comment.createdAt).toLocaleString()} | 
+                    ${comment.likes.length} likes
                 </div>
             `;
             return commentElement;
         }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            avatarContainer = document.getElementById('profile-avatar-container');
+            await checkAuthStatusForProfilePage(); 
+            await loadProfileData();
+            loadProfileContent();
+
+            document.getElementById('filter-posts-btn').addEventListener('click', () => {
+                document.getElementById('filter-posts-btn').classList.add('active');
+                document.getElementById('filter-comments-btn').classList.remove('active');
+                loadProfileContent();
+            });
+
+            document.getElementById('filter-comments-btn').addEventListener('click', () => {
+                document.getElementById('filter-comments-btn').classList.add('active');
+                document.getElementById('filter-posts-btn').classList.remove('active');
+                loadProfileContent();
+            });
+
+            document.getElementById('sort-by-select').addEventListener('change', loadProfileContent);
+        });
 
     </script>
 </body>

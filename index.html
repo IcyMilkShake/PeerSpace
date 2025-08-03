@@ -211,7 +211,7 @@
                 </button>
             </form>
         </div>
-        <div id="filter-bar" class="sticky top-0 z-40 mb-6 p-4 rounded-b-lg shadow-lg backdrop-blur-md">
+        <div id="filter-bar" class="sticky top-20 z-40 mb-6 p-4 rounded-b-lg shadow-lg backdrop-blur-md bg-white/80 dark:bg-gray-900/80" style="transition: top 0.3s ease-in-out;">
             <div class="flex flex-wrap gap-x-3 gap-y-2 items-center">
                 <span class="font-medium mr-2 text-sm">Filter by:</span>
                 <button data-filter-type="all" class="filter-btn active-filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md">All</button>
@@ -2233,12 +2233,24 @@
 
             const backButton = document.createElement('button');
             backButton.className = 'back-to-posts-btn text-blue-600 hover:underline mb-4';
-            backButton.innerHTML = '&larr; Back to all posts';
-            backButton.onclick = () => {
-                history.pushState({ postId: null }, "", "/");
-                showMainFeed();
-                renderPosts();
-            };
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const ref = urlParams.get('ref');
+            const refId = urlParams.get('refId');
+
+            if (ref === 'profile' && refId) {
+                backButton.innerHTML = '&larr; Back to profile';
+                backButton.onclick = () => {
+                    window.location.href = `/profile.html?id=${refId}`;
+                };
+            } else {
+                backButton.innerHTML = '&larr; Back to all posts';
+                backButton.onclick = () => {
+                    history.pushState({ postId: null }, "", "/");
+                    showMainFeed();
+                    renderPosts();
+                };
+            }
             container.appendChild(backButton);
 
             const postHeader = document.createElement('div');
