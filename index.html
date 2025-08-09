@@ -536,6 +536,8 @@
             const welcomeMessage = document.getElementById('welcome-message');
             const createPostForm = document.getElementById('create-post-form');
             const userProfile = document.getElementById('user-profile');
+            const friendsContainer = document.getElementById('friends-container-main');
+            const inboxContainer = document.getElementById('inbox-container-main');
 
             if (currentUser) {
                 const navProfileImg = createProfileImage(currentUser.photo, currentUser.displayName, "w-8 h-8", "text-xs");
@@ -569,7 +571,15 @@
                 logoutBtn.addEventListener('click', logout);
 
                 welcomeMessage.classList.add('hidden');
-                createPostForm.classList.remove('hidden');
+                
+                const friendsVisible = friendsContainer && !friendsContainer.classList.contains('hidden');
+                const inboxVisible = inboxContainer && !inboxContainer.classList.contains('hidden');
+
+                if (friendsVisible || inboxVisible) {
+                    createPostForm.classList.add('hidden');
+                } else {
+                    createPostForm.classList.remove('hidden');
+                }
 
             } else {
                 authSection.innerHTML = `
