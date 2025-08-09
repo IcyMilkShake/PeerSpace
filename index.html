@@ -1058,9 +1058,16 @@
         // Creates a new post.
         async function createPost(title, content, postType, pollOptions, files) {
             try {
+                let processedContent = content;
+                const mentionedUsers = mentionsMap.get('post-content') || [];
+                mentionedUsers.forEach(user => {
+                    const regex = new RegExp(`@${escapeRegExp(user.username)}(?![\\[\\w])`, 'g');
+                    processedContent = processedContent.replace(regex, `@${user.username}[${user._id}]`);
+                });
+
                 const formData = new FormData();
                 formData.append('title', title);
-                formData.append('content', content);
+                formData.append('content', processedContent);
                 formData.append('postType', postType);
 
                 if (postType === 'poll' && pollOptions.length > 0) {
@@ -1083,6 +1090,7 @@
                 const response = await Promise.race([fetchPromise, timeoutPromise]);
 
                 if (response.ok) {
+                    mentionsMap.delete('post-content');
                     const newPost = await response.json();
                     const defaultPostFields = {
                         likes: 0,
@@ -1125,13 +1133,20 @@
             if (!content) return;
 
             try {
+                let processedContent = content;
+                const mentionedUsers = mentionsMap.get(textareaId) || [];
+                mentionedUsers.forEach(user => {
+                    const regex = new RegExp(`@${escapeRegExp(user.username)}(?![\\[\\w])`, 'g');
+                    processedContent = processedContent.replace(regex, `@${user.username}[${user._id}]`);
+                });
+
                 let url, body;
                 if (parentCommentId) {
                     url = `/api/comments/${parentCommentId}/replies`;
-                    body = JSON.stringify({ content });
+                    body = JSON.stringify({ content: processedContent });
                 } else {
                     url = `/api/posts/${postId}/comments`;
-                    body = JSON.stringify({ content });
+                    body = JSON.stringify({ content: processedContent });
                 }
 
                 const response = await fetch(url, {
@@ -1143,6 +1158,7 @@
                 });
 
                 if (response.ok) {
+                    mentionsMap.delete(textareaId);
                     const newComment = await response.json();
                     const postIndex = posts.findIndex(p => p.id === postId);
                     if (postIndex !== -1) {
@@ -1180,7 +1196,8 @@
                     if (post) {
                         const commentCountSpan = document.querySelector(`#post-${postId} .comment-count`);
                         if (commentCountSpan) {
-                            commentCountSpan.textContent = `${post.comments.length} Comments`;
+                            const totalComments = countAllComments(post.comments);
+                            commentCountSpan.textContent = `${totalComments} Comments`;
                         }
                     }
                 } else {
@@ -1582,6 +1599,11 @@
         let activeSuggestionIndex = -1;
         let mentionStartIndex = -1;
         let currentTextarea = null;
+        let mentionsMap = new Map();
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
 
         // Handles the logic for when a user types @ to mention someone.
         function handleMention(textarea) {
@@ -1671,7 +1693,15 @@
             const before = text.substring(0, mentionStartIndex);
             const after = text.substring(currentTextarea.selectionStart);
             
-            currentTextarea.value = `${before}@${user.username}[${user._id}] ${after}`;
+            currentTextarea.value = `${before}@${user.username} ${after}`;
+
+            if (!mentionsMap.has(currentTextarea.id)) {
+                mentionsMap.set(currentTextarea.id, []);
+            }
+            if (!mentionsMap.get(currentTextarea.id).find(u => u._id === user._id)) {
+                mentionsMap.get(currentTextarea.id).push(user);
+            }
+
             hideSuggestions();
             currentTextarea.focus();
         }
@@ -1740,12 +1770,12 @@
                     return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${url}</a>`;
                 });
 
-                const mentionWithIdRegex = /@([\w.]+)\[([a-f\d]{24})\]/g;
+                const mentionWithIdRegex = /@([\w.-]+)\[([a-f\d]{24})\]/g;
                 escapedText = escapedText.replace(mentionWithIdRegex, (match, username, userId) => {
                     return `<a href="/profile.html?id=${userId}" class="mention-link" onclick="event.stopPropagation()">@${username}</a>`;
                 });
 
-                const oldMentionRegex = /@([\w.]+)(?!\[[a-f\d]{24}\])/g;
+                const oldMentionRegex = /@([\w.-]+)(?!\[[a-f\d]{24}\])/g;
                 escapedText = escapedText.replace(oldMentionRegex, (match, username) => {
                     return `<a href="/profile.html?username=${username}" class="mention-link" onclick="event.stopPropagation()">${match}</a>`;
                 });
