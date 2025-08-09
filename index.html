@@ -77,9 +77,9 @@
 <body class="min-h-screen">
     <nav class="navigation-bar">
       <div class="nav-container">
-        <a href="#" class="nav-item">
+        <a href="/" class="nav-item">
           <i class="fas fa-home" style="color: var(--notification-info-bg);"></i>
-          <span class="nav-text">Home (forgot to wire)</span>
+          <span class="nav-text">Home</span>
         </a>
         <a href="#" class="nav-item">
           <i class="fas fa-user" style="color: var(--notification-info-bg);"></i>
@@ -378,7 +378,7 @@
                 resultItem.style.borderBottomColor = 'var(--border-color)';
                 resultItem.innerHTML = `
                     <div class="font-bold">${escapeHtml(post.title)}</div>
-                    <div class="text-sm text-gray-500 truncate">${escapeHtml(post.content)}</div>
+                    <div class="text-sm text-gray-500 truncate">${escapeHtml(post.content, true)}</div>
                 `;
                 resultItem.addEventListener('click', (e) => {
                     e.preventDefault();
