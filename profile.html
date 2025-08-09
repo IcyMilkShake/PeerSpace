@@ -1584,7 +1584,33 @@
                 const linkPreviewsContainer = document.createElement('div');
                 linkPreviewsContainer.className = 'link-previews';
                 article.appendChild(linkPreviewsContainer);
-                renderLinkPreviews(post.content, linkPreviewsContainer);
+
+                if (post.linkPreview && post.linkPreview.url) {
+                    const preview = post.linkPreview;
+                    const previewContainer = document.createElement('a');
+                    previewContainer.href = preview.url;
+                    previewContainer.target = '_blank';
+                    previewContainer.rel = 'noopener noreferrer';
+                    previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-2 text-sm';
+                    previewContainer.style.textDecoration = 'none';
+                    previewContainer.onclick = (e) => e.stopPropagation();
+
+                    let imageHtml = '';
+                    if (preview.image) {
+                        imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-16 h-16 sm:w-20 sm:h-20 object-cover flex-shrink-0">`;
+                    }
+
+                    previewContainer.innerHTML = `
+                        ${imageHtml}
+                        <div class="p-2 overflow-hidden">
+                            <div class="font-bold truncate">${escapeHtml(preview.title || '')}</div>
+                            <div class="text-gray-600 text-xs truncate">${escapeHtml(preview.description || '')}</div>
+                        </div>
+                    `;
+                    linkPreviewsContainer.appendChild(previewContainer);
+                } else {
+                    renderLinkPreviews(post.content, linkPreviewsContainer);
+                }
 
                 const postActionsDiv = document.createElement('div');
                 postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
@@ -2300,38 +2326,6 @@
             return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }
 
-        function escapeHtml(text, allowLinks = false) {
-            let escapedText = text.replace(/[&<>"']/g, function (match) {
-                return {
-                    '&': '&amp;',
-                    '<': '&lt;',
-                    '>': '&gt;',
-                    '"': '&quot;',
-                    "'": '&#39;'
-                }[match];
-            });
-
-            if (allowLinks) {
-                const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])|(\bwww\.[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
-                escapedText = escapedText.replace(urlRegex, function(url) {
-                    let fullUrl = url;
-                    if (!url.match(/^[a-zA-Z]+:\/\//)) {
-                        fullUrl = 'http://' + url;
-                    }
-                    const safeHref = fullUrl.replace(/[&<>"']/g, function (match) {
-                        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
-                    });
-                    return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${url}</a>`;
-                });
-
-                const mentionRegex = /@(\w+)/g;
-                escapedText = escapedText.replace(mentionRegex, function(match, username) {
-                    return `<a href="/profile.html?username=${username}" class="mention-link" onclick="event.stopPropagation()"><strong>${match}</strong></a>`;
-                });
-            }
-            return escapedText;
-        }
-
         const confirmationModalOverlay = document.getElementById('confirmation-modal-overlay');
         const confirmationModalElement = document.getElementById('confirmation-modal');
         const confirmationModalMessage = document.getElementById('confirmation-modal-message');
@@ -2809,7 +2803,32 @@
             `;
 
             const linkPreviewsContainer = commentElement.querySelector('.link-previews');
-            renderLinkPreviews(comment.content, linkPreviewsContainer);
+            if (comment.linkPreview && comment.linkPreview.url) {
+                const preview = comment.linkPreview;
+                const previewContainer = document.createElement('a');
+                previewContainer.href = preview.url;
+                previewContainer.target = '_blank';
+                previewContainer.rel = 'noopener noreferrer';
+                previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-2 text-sm';
+                previewContainer.style.textDecoration = 'none';
+                previewContainer.onclick = (e) => e.stopPropagation();
+
+                let imageHtml = '';
+                if (preview.image) {
+                    imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-16 h-16 sm:w-20 sm:h-20 object-cover flex-shrink-0">`;
+                }
+
+                previewContainer.innerHTML = `
+                    ${imageHtml}
+                    <div class="p-2 overflow-hidden">
+                        <div class="font-bold truncate">${escapeHtml(preview.title || '')}</div>
+                        <div class="text-gray-600 text-xs truncate">${escapeHtml(preview.description || '')}</div>
+                    </div>
+                `;
+                linkPreviewsContainer.appendChild(previewContainer);
+            } else {
+                renderLinkPreviews(comment.content, linkPreviewsContainer);
+            }
 
             return commentElement;
         }

@@ -600,7 +600,10 @@ app.get('/api/users/:userId/content', async (req, res) => {
                 .populate('author', 'username displayName profilePicture')
                 .populate({ path: 'post', select: 'title' })
                 .sort(sortOption);
-            return res.json(comments);
+            
+            const validComments = comments.filter(comment => comment.post);
+
+            return res.json(validComments);
         } else {
             return res.status(400).json({ error: 'Invalid content type' });
         }
