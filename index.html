@@ -12,6 +12,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="navigation.css">
     <style>
+        #search-bar::placeholder {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+        #search-bar.placeholder-fade::placeholder {
+            opacity: 0;
+            transform: translateX(10px);
+        }
+        #search-bar.placeholder-reappear::placeholder {
+            opacity: 0;
+            transform: translateX(10px);
+        }
         .mentions-suggestions {
             border: 1px solid var(--dropdown-border);
             background-color: var(--dropdown-bg);
@@ -3177,6 +3188,31 @@
                 }
             });
         }
+
+        const placeholderTexts = [
+            "Search posts...",
+            "Search people...",
+            "Search topics...",
+        ];
+        let placeholderIndex = 0;
+        const searchBarForPlaceholder = document.getElementById('search-bar');
+
+        setInterval(() => {
+            searchBarForPlaceholder.classList.add('placeholder-fade');
+            
+            setTimeout(() => {
+                placeholderIndex = (placeholderIndex + 1) % placeholderTexts.length;
+                searchBarForPlaceholder.placeholder = placeholderTexts[placeholderIndex];
+
+                searchBarForPlaceholder.classList.add('placeholder-reappear');
+                searchBarForPlaceholder.classList.remove('placeholder-fade');
+
+                setTimeout(() => {
+                    searchBarForPlaceholder.classList.remove('placeholder-reappear');
+                }, 10);
+
+            }, 500);
+        }, 3000);
     </script>
 </body>
 </html>
