@@ -433,7 +433,7 @@ app.get('/api/user', (req, res) => {
 });
 
 // Searches for users to mention in a post or comment.
-app.get('/api/users/search', isAuthenticated, async (req, res) => {
+app.get('/api/users/search', async (req, res) => {
   try {
     const { query } = req.query;
     if (!query) {
@@ -444,8 +444,16 @@ app.get('/api/users/search', isAuthenticated, async (req, res) => {
         { username: { $regex: query, $options: 'i' } },
         { displayName: { $regex: query, $options: 'i' } }
       ]
-    }).select('_id username displayName').limit(10);
-    res.json(users);
+    }).select('_id username displayName profilePicture').limit(10);
+    
+    const results = users.map(user => ({
+        _id: user._id,
+        username: user.username,
+        displayName: user.displayName,
+        photo: user.profilePicture ? user.profilePicture.path : null
+    }));
+
+    res.json(results);
   } catch (error) {
     console.error('Error searching users:', error);
     res.status(500).json({ error: 'Failed to search users' });
@@ -601,9 +609,7 @@ app.get('/api/users/:userId/content', async (req, res) => {
                 .populate({ path: 'post', select: 'title' })
                 .sort(sortOption);
             
-            const validComments = comments.filter(comment => comment.post);
-
-            return res.json(validComments);
+            return res.json(comments);
         } else {
             return res.status(400).json({ error: 'Invalid content type' });
         }
@@ -1463,6 +1469,39 @@ app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error liking/unliking comment:', error);
     res.status(500).json({ error: 'Failed to update comment like status.' });
+  }
+});
+
+// Searches for posts.
+app.get('/api/posts/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    if (!q) {
+      return res.json([]);
+    }
+
+    const posts = await Post.find({
+      $or: [
+        { title: { $regex: q, $options: 'i' } },
+        { content: { $regex: q, $options: 'i' } }
+      ]
+    })
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .select('title content');
+
+    const results = posts.map(post => ({
+      id: post._id,
+      title: post.title,
+      content: post.content.substring(0, 100) + (post.content.length > 100 ? '...' : '')
+    }));
+    
+    res.json(results);
+
+  } catch (error) {
+    console.error('Error searching posts:', error);
+    res.status(500).json({ error: 'Failed to search posts' });
   }
 });
 
