@@ -1775,24 +1775,13 @@
             }
 
             mentionSuggestions.forEach((user, index) => {
-                const resultItem = document.createElement('div');
-                resultItem.className = 'flex items-center p-3 themed-hover-bg border-b cursor-pointer';
-                resultItem.style.borderBottomColor = 'var(--border-color)';
-                
-                const userImage = createProfileImage(user.photo, user.displayName, "w-8 h-8", "text-xs");
-                userImage.classList.add('mr-3');
-
-                const userInfo = document.createElement('div');
-                userInfo.innerHTML = `
-                    <div class="font-bold">${escapeHtml(user.displayName)}</div>
-                    <div class="text-sm text-gray-500">@${escapeHtml(user.username)}</div>
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <div class="font-bold">${user.displayName}</div>
+                    <div class="text-sm text-gray-500">@${user.username}</div>
                 `;
-                
-                resultItem.appendChild(userImage);
-                resultItem.appendChild(userInfo);
-
-                resultItem.onclick = () => selectSuggestion(index);
-                suggestionsBox.appendChild(resultItem);
+                div.onclick = () => selectSuggestion(index);
+                suggestionsBox.appendChild(div);
             });
 
             const rect = currentTextarea.getBoundingClientRect();
