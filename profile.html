@@ -76,9 +76,6 @@
         .notification-item.font-bold {
             background-color: var(--accent-color-subtle);
         }
-        .mention-link strong {
-            font-weight: 600;
-        }
     </style>
 </head>
 <body class="min-h-screen"> 
@@ -710,12 +707,12 @@
                     return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${url}</a>`;
                 });
 
-                const mentionWithIdRegex = /@([\w.]+)\[([a-f\d]{24})\]/g;
+                const mentionWithIdRegex = /@([\w.-]+)\[([a-f\d]{24})\]/g;
                 escapedText = escapedText.replace(mentionWithIdRegex, (match, username, userId) => {
                     return `<a href="/profile.html?id=${userId}" class="mention-link" onclick="event.stopPropagation()">@${username}</a>`;
                 });
 
-                const oldMentionRegex = /@([\w.]+)(?!\[[a-f\d]{24}\])/g;
+                const oldMentionRegex = /@([\w.-]+)(?!\[[a-f\d]{24}\])/g;
                 escapedText = escapedText.replace(oldMentionRegex, (match, username) => {
                     return `<a href="/profile.html?username=${username}" class="mention-link" onclick="event.stopPropagation()">${match}</a>`;
                 });

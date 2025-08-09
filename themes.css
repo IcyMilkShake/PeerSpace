@@ -275,7 +275,7 @@
 .mention-link {
     color: var(--accent-color);
     font-weight: bold;
-    text-decoration: none;
+    text-decoration: none !important;
 }
 
 .mention-link:hover {
