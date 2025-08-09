@@ -15,7 +15,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 require('dotenv').config();
 
-const { User, Post, Comment, Notification } = require('./schema');
+const { User, Post, Comment, Notification, FriendRequest } = require('./schema');
 
 const app = express();
 
@@ -897,6 +897,208 @@ app.post('/api/user/profile-picture', isAuthenticated, upload.single('profilePic
   }
 });
 
+// FRIEND REQUESTS
+
+// Send a friend request
+app.post('/api/friend-request', isAuthenticated, async (req, res) => {
+    const { recipientId } = req.body;
+    const requesterId = req.user._id;
+
+    if (requesterId.equals(recipientId)) {
+        return res.status(400).json({ error: "You cannot send a friend request to yourself." });
+    }
+
+    try {
+        const existingRequest = await FriendRequest.findOne({
+            $or: [
+                { requester: requesterId, recipient: recipientId },
+                { requester: recipientId, recipient: requesterId }
+            ]
+        });
+
+        if (existingRequest) {
+            return res.status(400).json({ error: "A friend request already exists between you and this user." });
+        }
+        
+        const recipient = await User.findById(recipientId);
+        if (!recipient) {
+            return res.status(404).json({ error: 'Recipient not found' });
+        }
+
+        const areFriends = recipient.friends.includes(requesterId);
+        if (areFriends) {
+            return res.status(400).json({ error: 'You are already friends with this user.' });
+        }
+
+        const newRequest = new FriendRequest({
+            requester: requesterId,
+            recipient: recipientId
+        });
+
+        await newRequest.save();
+        res.status(201).json({ success: true, message: 'Friend request sent.' });
+
+    } catch (error) {
+        console.error('Error sending friend request:', error);
+        res.status(500).json({ error: 'Failed to send friend request.' });
+    }
+});
+
+// Get pending friend requests
+app.get('/api/friend-requests', isAuthenticated, async (req, res) => {
+    try {
+        const requests = await FriendRequest.find({ recipient: req.user._id, status: 'pending' })
+            .populate('requester', 'username displayName profilePicture');
+        res.json(requests);
+    } catch (error) {
+        console.error('Error fetching friend requests:', error);
+        res.status(500).json({ error: 'Failed to fetch friend requests.' });
+    }
+});
+
+// Accept a friend request
+app.put('/api/friend-requests/:requestId/accept', isAuthenticated, async (req, res) => {
+    try {
+        const { requestId } = req.params;
+        const recipientId = req.user._id;
+
+        const request = await FriendRequest.findById(requestId);
+
+        if (!request || !request.recipient.equals(recipientId) || request.status !== 'pending') {
+            return res.status(404).json({ error: 'Friend request not found or you are not authorized to accept it.' });
+        }
+
+        const requesterId = request.requester;
+
+        await User.findByIdAndUpdate(requesterId, { $addToSet: { friends: recipientId } });
+        await User.findByIdAndUpdate(recipientId, { $addToSet: { friends: requesterId } });
+
+        await FriendRequest.findByIdAndDelete(requestId);
+
+        res.json({ success: true, message: 'Friend request accepted.' });
+
+    } catch (error) {
+        console.error('Error accepting friend request:', error);
+        res.status(500).json({ error: 'Failed to accept friend request.' });
+    }
+});
+
+// Decline a friend request
+app.put('/api/friend-requests/:requestId/decline', isAuthenticated, async (req, res) => {
+    try {
+        const { requestId } = req.params;
+        const userId = req.user._id;
+
+        const request = await FriendRequest.findById(requestId);
+
+        if (!request || (!request.recipient.equals(userId) && !request.requester.equals(userId)) || request.status !== 'pending') {
+            return res.status(404).json({ error: 'Friend request not found or you are not authorized to decline it.' });
+        }
+
+        await FriendRequest.findByIdAndDelete(requestId);
+
+        res.json({ success: true, message: 'Friend request declined.' });
+
+    } catch (error) {
+        console.error('Error declining friend request:', error);
+        res.status(500).json({ error: 'Failed to decline friend request.' });
+    }
+});
+
+// Get friends list
+app.get('/api/friends', isAuthenticated, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).populate('friends', 'username displayName profilePicture');
+        res.json(user.friends);
+    } catch (error) {
+        console.error('Error fetching friends list:', error);
+        res.status(500).json({ error: 'Failed to fetch friends list.' });
+    }
+});
+
+// Unfriend a user
+app.delete('/api/friends/:friendId', isAuthenticated, async (req, res) => {
+    try {
+        const { friendId } = req.params;
+        const currentUserId = req.user._id;
+
+        // Remove friend from current user's list
+        await User.findByIdAndUpdate(currentUserId, { $pull: { friends: friendId } });
+
+        // Remove current user from friend's list
+        await User.findByIdAndUpdate(friendId, { $pull: { friends: currentUserId } });
+
+        res.json({ success: true, message: 'Friend removed.' });
+
+    } catch (error) {
+        console.error('Error removing friend:', error);
+        res.status(500).json({ error: 'Failed to remove friend.' });
+    }
+});
+
+// Cancel a friend request
+app.delete('/api/friend-request/:recipientId', isAuthenticated, async (req, res) => {
+    try {
+        const { recipientId } = req.params;
+        const requesterId = req.user._id;
+
+        const result = await FriendRequest.findOneAndDelete({
+            requester: requesterId,
+            recipient: recipientId,
+            status: 'pending'
+        });
+
+        if (!result) {
+            return res.status(404).json({ error: 'Friend request not found or already handled.' });
+        }
+
+        res.json({ success: true, message: 'Friend request cancelled.' });
+
+    } catch (error) {
+        console.error('Error cancelling friend request:', error);
+        res.status(500).json({ error: 'Failed to cancel friend request.' });
+    }
+});
+
+// Get friend status
+app.get('/api/friend-status/:userId', isAuthenticated, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const currentUserId = req.user._id;
+
+        if (currentUserId.equals(userId)) {
+            return res.json({ status: 'self' });
+        }
+
+        const areFriends = req.user.friends.includes(userId);
+        if (areFriends) {
+            return res.json({ status: 'friends' });
+        }
+
+        const pendingRequest = await FriendRequest.findOne({
+            $or: [
+                { requester: currentUserId, recipient: userId },
+                { requester: userId, recipient: currentUserId }
+            ],
+            status: 'pending'
+        });
+
+        if (pendingRequest) {
+            if (pendingRequest.requester.equals(currentUserId)) {
+                return res.json({ status: 'sent' });
+            } else {
+                return res.json({ status: 'received' });
+            }
+        }
+
+        res.json({ status: 'none' });
+
+    } catch (error) {
+        console.error('Error fetching friend status:', error);
+        res.status(500).json({ error: 'Failed to fetch friend status.' });
+    }
+});
+
 // Uploads a new banner picture for the user.
 app.post('/api/user/banner-picture', isAuthenticated, upload.single('bannerPicture'), async (req, res) => {
   try {
@@ -954,11 +1156,18 @@ app.post('/api/user/banner-picture', isAuthenticated, upload.single('bannerPictu
 // Gets all posts and their details.
 app.get('/api/posts', async (req, res) => {
   try {
+    const currentUserId = req.user ? req.user._id : null;
+    let friends = [];
+    if (currentUserId) {
+        const user = await User.findById(currentUserId);
+        if (user) {
+            friends = user.friends;
+        }
+    }
+
     const posts = await Post.find()
       .populate('author', 'username displayName profilePicture')
       .sort({ createdAt: -1 });
-
-    const currentUserId = req.user ? req.user._id : null;
 
     const postsWithDetails = await Promise.all(
       posts.map(async (post) => {
@@ -1051,8 +1260,22 @@ app.get('/api/posts', async (req, res) => {
         };
       })
     );
+    
+    if (friends.length > 0) {
+        const friendPosts = postsWithDetails.filter(post => friends.some(friendId => friendId.equals(post.author.id)));
+        const otherPosts = postsWithDetails.filter(post => !friends.some(friendId => friendId.equals(post.author.id)));
+        
+        // Shuffle friend posts
+        for (let i = friendPosts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [friendPosts[i], friendPosts[j]] = [friendPosts[j], friendPosts[i]];
+        }
 
-    res.json(postsWithDetails);
+        res.json([...friendPosts, ...otherPosts]);
+    } else {
+        res.json(postsWithDetails);
+    }
+
   } catch (error) {
     console.error('Error fetching posts:', error);
     res.status(500).json({ error: 'Failed to fetch posts' });

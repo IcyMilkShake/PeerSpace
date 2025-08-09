@@ -225,6 +225,7 @@
                         </label>
                     </div>
                 </div>
+                <div id="friend-request-container" class="mt-4"></div>
             </div>
 
         </div>
@@ -998,6 +999,67 @@
                 changeUsernameButton.classList.add('hidden');
                 document.getElementById('change-picture-section').classList.add('hidden');
                 document.getElementById('change-banner-section').classList.add('hidden');
+
+                const friendRequestContainer = document.getElementById('friend-request-container');
+                if (currentUser && currentUser.id !== profile.id) {
+                    fetch(`/api/friend-status/${profile.id}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            friendRequestContainer.innerHTML = '';
+                            if (data.status === 'none') {
+                                const addFriendBtn = document.createElement('button');
+                                addFriendBtn.id = 'add-friend-btn';
+                                addFriendBtn.className = 'button-primary w-full';
+                                addFriendBtn.textContent = 'Add Friend';
+                                addFriendBtn.onclick = async () => {
+                                    try {
+                                        const response = await fetch('/api/friend-request', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ recipientId: profile.id })
+                                        });
+                                        if (response.ok) {
+                                            renderProfileData(profile); // Re-render to update button
+                                        } else {
+                                            const errorData = await response.json();
+                                            alert(errorData.error);
+                                        }
+                                    } catch (error) {
+                                        console.error('Error sending friend request:', error);
+                                    }
+                                };
+                                friendRequestContainer.appendChild(addFriendBtn);
+                            } else if (data.status === 'sent') {
+                                const sentRequestBtn = document.createElement('button');
+                                sentRequestBtn.className = 'button-secondary w-full';
+                                sentRequestBtn.textContent = 'Request Sent';
+                                sentRequestBtn.onclick = async () => {
+                                    try {
+                                        const response = await fetch(`/api/friend-request/${profile.id}`, {
+                                            method: 'DELETE'
+                                        });
+                                        if (response.ok) {
+                                            renderProfileData(profile); // Re-render to update button
+                                        } else {
+                                            const errorData = await response.json();
+                                            alert(errorData.error);
+                                        }
+                                    } catch (error) {
+                                        console.error('Error cancelling friend request:', error);
+                                    }
+                                };
+                                friendRequestContainer.appendChild(sentRequestBtn);
+                            } else if (data.status === 'received') {
+                                 const acceptRequestBtn = document.createElement('button');
+                                 acceptRequestBtn.className = 'button-primary w-full';
+                                 acceptRequestBtn.textContent = 'Accept Friend Request';
+                                 acceptRequestBtn.onclick = () => {
+                                     window.location.href = '/friends.html';
+                                 };
+                                 friendRequestContainer.appendChild(acceptRequestBtn);
+                            }
+                        });
+                }
             }
         }
 

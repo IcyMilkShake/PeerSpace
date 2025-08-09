@@ -72,6 +72,17 @@
         .notification-item.font-bold {
             background-color: var(--accent-color-subtle);
         }
+        #friends-container-main .active-tab {
+            border-bottom-color: var(--accent-color) !important;
+            color: var(--accent-color-text) !important;
+        }
+        #friends-container-main .inactive-tab {
+            border-bottom-color: transparent !important;
+            color: var(--text-secondary) !important;
+        }
+        #requests-list > div, #friends-list > div {
+            background-color: var(--post-card-bg);
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -85,10 +96,10 @@
           <i class="fas fa-user" style="color: var(--notification-info-bg);"></i>
           <span class="nav-text">Profile (havent coded)</span>
         </a>
-        <a href="#" class="nav-item">
-          <i class="fas fa-users" style="color: var(--notification-info-bg);"></i>
-          <span class="nav-text">Friends (U dont got any anyways)</span>
-        </a>
+        <button onclick="renderFriendsPage()" class="nav-item">
+            <i class="fas fa-users" style="color: var(--notification-info-bg);"></i>
+            <span class="nav-text">Friends</span>
+        </button>
         <a href="#" class="nav-item">
           <i class="fas fa-comments" style="color: var(--notification-info-bg);"></i>
           <span class="nav-text">Communities (Aint Done)</span>
@@ -281,6 +292,21 @@
         </div>
         <div id="inbox-error" class="hidden text-center py-12">
             <p>Could not load notifications. Please try again later.</p>
+        </div>
+    </div>
+    <div id="friends-container-main" class="hidden max-w-3xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-6">Friends</h1>
+        <div class="flex border-b mb-6">
+                <button id="requests-tab" class="py-2 px-4 font-semibold border-b-2 active-tab">Requests</button>
+                <button id="friends-tab" class="py-2 px-4 font-semibold border-b-2 inactive-tab">Friends</button>
+        </div>
+        <div id="requests-content">
+            <h2 class="text-2xl font-bold mb-4">Friend Requests</h2>
+            <div id="requests-list" class="space-y-4"></div>
+        </div>
+        <div id="friends-content" class="hidden">
+            <h2 class="text-2xl font-bold mb-4">Friends List</h2>
+            <div id="friends-list" class="space-y-4"></div>
         </div>
     </div>
     <div id="user-profile" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-2 border z-50 w-60" style="border-color: var(--border-color);">
@@ -2235,6 +2261,165 @@
                 checkAuth();
             }
         });
+
+        const requestsTab = document.getElementById('requests-tab');
+        const friendsTab = document.getElementById('friends-tab');
+        const requestsContent = document.getElementById('requests-content');
+        const friendsContent = document.getElementById('friends-content');
+        const requestsList = document.getElementById('requests-list');
+        const friendsList = document.getElementById('friends-list');
+
+        requestsTab.addEventListener('click', () => {
+            requestsTab.classList.add('active-tab');
+            requestsTab.classList.remove('inactive-tab');
+            friendsTab.classList.remove('active-tab');
+            friendsTab.classList.add('inactive-tab');
+            requestsContent.classList.remove('hidden');
+            friendsContent.classList.add('hidden');
+        });
+
+        friendsTab.addEventListener('click', () => {
+            friendsTab.classList.add('active-tab');
+            friendsTab.classList.remove('inactive-tab');
+            requestsTab.classList.remove('active-tab');
+            requestsTab.classList.add('inactive-tab');
+            friendsContent.classList.remove('hidden');
+            requestsContent.classList.add('hidden');
+        });
+
+        async function loadFriendRequests() {
+            try {
+                const response = await fetch('/api/friend-requests');
+                const requests = await response.json();
+                requestsList.innerHTML = '';
+                if (requests.length === 0) {
+                    requestsList.innerHTML = '<p>No new friend requests.</p>';
+                    return;
+                }
+                requests.forEach(request => {
+                    const requestElement = document.createElement('div');
+                    requestElement.className = 'flex items-center justify-between p-4 rounded-lg shadow-md';
+                    requestElement.innerHTML = `
+                        <div class="flex items-center">
+                            <img src="${request.requester.profilePicture.path || '/default-profile.png'}" alt="${request.requester.displayName}" class="w-10 h-10 rounded-full mr-4">
+                            <div>
+                                <p class="font-semibold">${request.requester.displayName}</p>
+                                <p class="text-sm text-gray-500">@${request.requester.username}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <button class="accept-btn bg-green-500 text-white px-4 py-2 rounded-lg" data-id="${request._id}">Accept</button>
+                            <button class="decline-btn bg-red-500 text-white px-4 py-2 rounded-lg" data-id="${request._id}">Decline</button>
+                        </div>
+                    `;
+                    requestsList.appendChild(requestElement);
+                });
+            } catch (error) {
+                console.error('Error loading friend requests:', error);
+            }
+        }
+
+        async function loadFriendsList() {
+            try {
+                const response = await fetch('/api/friends');
+                const friends = await response.json();
+                friendsList.innerHTML = '';
+                if (friends.length === 0) {
+                    friendsList.innerHTML = '<p>You have no friends yet.</p>';
+                    return;
+                }
+                friends.forEach(friend => {
+                    const friendElement = document.createElement('div');
+                    friendElement.className = 'flex items-center justify-between p-4 rounded-lg shadow-md';
+                    friendElement.innerHTML = `
+                        <a href="/profile.html?id=${friend._id}" class="flex items-center">
+                            <img src="${friend.profilePicture.path || '/default-profile.png'}" alt="${friend.displayName}" class="w-10 h-10 rounded-full mr-4">
+                            <div>
+                                <p class="font-semibold">${friend.displayName}</p>
+                                <p class="text-sm text-gray-500">@${friend.username}</p>
+                            </div>
+                        </a>
+                        <div class="relative">
+                            <button class="text-gray-500 hover:text-gray-700" onclick="toggleFriendMenu('${friend._id}')">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
+                            </button>
+                            <div id="friend-menu-${friend._id}" class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-20" style="background-color: var(--dropdown-bg);">
+                                <button class="unfriend-btn block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-100" data-id="${friend._id}">Unfriend</button>
+                            </div>
+                        </div>
+                    `;
+                    friendsList.appendChild(friendElement);
+                });
+            } catch (error) {
+                console.error('Error loading friends list:', error);
+            }
+        }
+
+        function toggleFriendMenu(friendId) {
+            const menu = document.getElementById(`friend-menu-${friendId}`);
+            if (menu) {
+                menu.classList.toggle('hidden');
+            }
+        }
+
+        friendsList.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('unfriend-btn')) {
+                const friendId = e.target.dataset.id;
+                if (confirm('Are you sure you want to unfriend this user?')) {
+                    try {
+                        const response = await fetch(`/api/friends/${friendId}`, {
+                            method: 'DELETE'
+                        });
+                        if (response.ok) {
+                            loadFriendsList();
+                        }
+                    } catch (error) {
+                        console.error('Error unfriending user:', error);
+                    }
+                }
+            }
+        });
+
+        requestsList.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('accept-btn')) {
+                const requestId = e.target.dataset.id;
+                try {
+                    const response = await fetch(`/api/friend-requests/${requestId}/accept`, {
+                        method: 'PUT'
+                    });
+                    if (response.ok) {
+                        loadFriendRequests();
+                        loadFriendsList();
+                    }
+                } catch (error) {
+                    console.error('Error accepting friend request:', error);
+                }
+            }
+            if (e.target.classList.contains('decline-btn')) {
+                const requestId = e.target.dataset.id;
+                try {
+                    const response = await fetch(`/api/friend-requests/${requestId}/decline`, {
+                        method: 'PUT'
+                    });
+                    if (response.ok) {
+                        loadFriendRequests();
+                    }
+                } catch (error) {
+                    console.error('Error declining friend request:', error);
+                }
+            }
+        });
+
+        function renderFriendsPage() {
+            document.getElementById('posts-container').classList.add('hidden');
+            document.getElementById('create-post-form').classList.add('hidden');
+            document.getElementById('filter-bar').classList.add('hidden');
+            document.getElementById('single-post-container').classList.add('hidden');
+            document.getElementById('inbox-container-main').classList.add('hidden');
+            document.getElementById('friends-container-main').classList.remove('hidden');
+            loadFriendRequests();
+            loadFriendsList();
+        }
 
         // Checks for authentication when the window is focused.
         window.addEventListener('focus', () => {

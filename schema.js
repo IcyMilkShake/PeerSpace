@@ -66,7 +66,11 @@ const userSchema = new mongoose.Schema({
   theme: {
     type: String,
     default: 'dark'
-  }
+  },
+  friends: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
 }, { collection: 'User' });
 
 // Post Schema
@@ -213,9 +217,35 @@ const notificationSchema = new mongoose.Schema({
 
 const Notification = mongoose.model('Notification', notificationSchema);
 
+// Friend Request Schema
+const friendRequestSchema = new mongoose.Schema({
+  requester: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  recipient: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'accepted', 'declined'],
+    default: 'pending'
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+const FriendRequest = mongoose.model('FriendRequest', friendRequestSchema);
+
 module.exports = {
   User,
   Post,
   Comment,
-  Notification
+  Notification,
+  FriendRequest
 };
