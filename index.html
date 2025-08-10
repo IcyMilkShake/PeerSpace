@@ -390,7 +390,11 @@
         let currentFilter = 'all';
 
         // --- WebRTC & Socket.IO Globals ---
-        const socket = io({ autoConnect: false });
+        const socketOptions = { autoConnect: false };
+        if (window.location.protocol === 'https:') {
+            socketOptions.transports = ['websocket'];
+        }
+        const socket = io(socketOptions);
         let localStream = null;
         let peerConnections = {}; // key: socketId, value: RTCPeerConnection
         let currentVoiceChannel = null; // { id: 'channelId', participants: [] }
