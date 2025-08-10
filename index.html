@@ -6,6 +6,7 @@
     <title>Forum - Simple Discussion Platform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
     <script src="theme-loader.js"></script>
     <link rel="stylesheet" href="themes.css">
@@ -388,6 +389,172 @@
         let posts = [];
         let currentFilter = 'all';
 
+        // --- WebRTC & Socket.IO Globals ---
+        const socket = io({ autoConnect: false });
+        let localStream = null;
+        let peerConnections = {}; // key: socketId, value: RTCPeerConnection
+        let currentVoiceChannel = null; // { id: 'channelId', participants: [] }
+
+        // Create a container for remote audio elements that will be hidden
+        const remoteAudioContainer = document.createElement('div');
+        remoteAudioContainer.id = 'remote-audio-container';
+        remoteAudioContainer.style.display = 'none';
+        document.body.appendChild(remoteAudioContainer);
+
+        socket.on('connect', () => {
+            console.log('Connected to socket.io server with ID:', socket.id);
+        });
+
+        socket.on('update-participants', (participants) => {
+            if (!currentVoiceChannel) return;
+            currentVoiceChannel.participants = participants;
+            
+            // --- Update the main voice channel UI (in the post/comment) ---
+            const participantsDiv = document.getElementById(`voice-participants-${currentVoiceChannel.id}`);
+            if (participantsDiv) {
+                participantsDiv.innerHTML = '';
+                if (participants.length === 0) {
+                    participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">No one is here yet.</span>';
+                } else {
+                    participants.forEach(p => {
+                        const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-white dark:border-gray-800');
+                        pfp.title = p.displayName;
+                        participantsDiv.appendChild(pfp);
+                    });
+                }
+            }
+
+            // --- Update the floating voice chat panel ---
+            const panelParticipantsList = document.getElementById('voice-chat-participants-list');
+            if (panelParticipantsList) {
+                panelParticipantsList.innerHTML = '';
+                participants.forEach(p => {
+                    const participantEl = document.createElement('div');
+                    participantEl.className = 'flex items-center justify-between text-sm';
+                    
+                    const userInfo = document.createElement('div');
+                    userInfo.className = 'flex items-center space-x-2';
+                    const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-6 h-6', 'text-xs');
+                    userInfo.appendChild(pfp);
+                    const name = document.createElement('span');
+                    name.textContent = p.displayName;
+                    userInfo.appendChild(name);
+                    
+                    participantEl.appendChild(userInfo);
+
+                    if (p.socketId !== socket.id) {
+                        const volumeControl = document.createElement('button');
+                        volumeControl.className = 'text-gray-400 hover:text-white';
+                        volumeControl.innerHTML = '<i class="fas fa-volume-up"></i>';
+                        volumeControl.onclick = () => {
+                            const audioEl = document.getElementById(`remote-audio-${p.socketId}`);
+                            if (audioEl) {
+                                audioEl.muted = !audioEl.muted;
+                                volumeControl.innerHTML = `<i class="fas ${audioEl.muted ? 'fa-volume-mute' : 'fa-volume-up'}"></i>`;
+                            }
+                        };
+                        participantEl.appendChild(volumeControl);
+                    }
+                    
+                    panelParticipantsList.appendChild(participantEl);
+                });
+            }
+        });
+
+        socket.on('user-left', ({ socketId }) => {
+            if (peerConnections[socketId]) {
+                peerConnections[socketId].close();
+                delete peerConnections[socketId];
+            }
+            const audioEl = document.getElementById(`remote-audio-${socketId}`);
+            if (audioEl) {
+                audioEl.remove();
+            }
+        });
+
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+
+        function createPeerConnection(targetSocketId) {
+            const pc = new RTCPeerConnection(rtcConfig);
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('ice-candidate', {
+                        targetSocketId: targetSocketId,
+                        candidate: event.candidate,
+                    });
+                }
+            };
+
+            pc.ontrack = (event) => {
+                const remoteAudioContainer = document.getElementById('remote-audio-container');
+                let audio = document.getElementById(`remote-audio-${targetSocketId}`);
+                if (!audio) {
+                    audio = document.createElement('audio');
+                    audio.id = `remote-audio-${targetSocketId}`;
+                    audio.className = 'remote-audio';
+                    audio.autoplay = true;
+                    remoteAudioContainer.appendChild(audio);
+                }
+                audio.srcObject = event.streams[0];
+            };
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    pc.addTrack(track, localStream);
+                });
+            }
+
+            peerConnections[targetSocketId] = pc;
+            return pc;
+        }
+
+        socket.on('existing-participants', ({ participants }) => {
+            participants.forEach(async (p) => {
+                const pc = createPeerConnection(p.socketId);
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                socket.emit('offer', {
+                    targetSocketId: p.socketId,
+                    offer: pc.localDescription
+                });
+            });
+        });
+
+        socket.on('offer', async ({ fromSocketId, offer }) => {
+            const pc = createPeerConnection(fromSocketId);
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit('answer', {
+                targetSocketId: fromSocketId,
+                answer: pc.localDescription,
+            });
+        });
+
+        socket.on('answer', async ({ fromSocketId, answer }) => {
+            const pc = peerConnections[fromSocketId];
+            if (pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            }
+        });
+
+        socket.on('ice-candidate', async ({ fromSocketId, candidate }) => {
+            const pc = peerConnections[fromSocketId];
+            if (pc && candidate) {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (error) {
+                    console.error('Error adding received ice candidate', error);
+                }
+            }
+        });
+
         const searchBar = document.getElementById('search-bar');
         const searchResultsContainer = document.getElementById('search-results');
         let searchTimeout;
@@ -538,6 +705,153 @@
         function getInitials(displayName) {
             if (!displayName) return '?';
             return displayName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        // Creates the UI element for a voice channel.
+        function createVoiceChannelElement(item) {
+            const channelId = item.voiceChannel;
+            if (!channelId) return null;
+
+            const container = document.createElement('div');
+            container.className = 'voice-channel-container border rounded-lg p-4 my-4';
+            container.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div class="flex-grow">
+                        <h4 class="font-bold text-lg">Voice Channel</h4>
+                        <div id="voice-participants-${channelId}" class="flex items-center -space-x-2 overflow-hidden">
+                            <!-- Participant PFPs will go here -->
+                            <span class="text-sm text-gray-500 pl-2">No one is here yet.</span>
+                        </div>
+                    </div>
+                    <button onclick="joinVoiceChannel('${channelId}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex-shrink-0">
+                        <i class="fas fa-phone-alt mr-2"></i>Join
+                    </button>
+                </div>
+            `;
+            container.onclick = (e) => e.stopPropagation();
+            return container;
+        }
+
+        // --- Voice Channel Functions ---
+
+        async function joinVoiceChannel(channelId) {
+            if (!currentUser) {
+                return showNotification('You must be logged in to join a voice channel.', 'warning');
+            }
+            if (currentVoiceChannel) {
+                return showNotification('You are already in a voice channel.', 'warning');
+            }
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                return showNotification('Could not access microphone. Please grant permission.', 'error');
+            }
+
+            if (!socket.connected) {
+                socket.connect();
+            }
+
+            currentVoiceChannel = { id: channelId, participants: [] };
+            createVoiceControlsUI(channelId);
+            
+            // We need to wait for the socket to be connected before emitting
+            if (socket.connected) {
+                socket.emit('join-channel', { channelId, userId: currentUser.id });
+            } else {
+                socket.once('connect', () => {
+                    socket.emit('join-channel', { channelId, userId: currentUser.id });
+                });
+            }
+        }
+
+        function leaveVoiceChannel() {
+            if (!currentVoiceChannel) return;
+
+            socket.emit('leave-channel');
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+
+            Object.values(peerConnections).forEach(pc => pc.close());
+            peerConnections = {};
+            
+            const panel = document.getElementById('voice-chat-panel');
+            if (panel) {
+                panel.remove();
+            }
+            
+            const remoteAudioContainer = document.getElementById('remote-audio-container');
+            if (remoteAudioContainer) {
+                remoteAudioContainer.innerHTML = '';
+            }
+            
+            const participantsDiv = document.getElementById(`voice-participants-${currentVoiceChannel.id}`);
+            if (participantsDiv) {
+                try {
+                    participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">No one is here yet.</span>';
+                } catch(e) {}
+            }
+
+            currentVoiceChannel = null;
+            if (socket.connected) {
+                socket.disconnect();
+            }
+        }
+
+        function createVoiceControlsUI(channelId) {
+            let panel = document.getElementById('voice-chat-panel');
+            if (panel) {
+                panel.remove();
+            }
+
+            panel = document.createElement('div');
+            panel.id = 'voice-chat-panel';
+            panel.className = 'fixed bottom-4 right-4 bg-gray-800 text-white rounded-lg shadow-lg w-64 flex flex-col z-[101]';
+            
+            panel.innerHTML = `
+                <div class="p-3 border-b border-gray-700">
+                    <p class="font-bold text-sm">Voice Connected</p>
+                    <p class="text-xs text-gray-400 truncate">Channel: ${channelId}</p>
+                </div>
+                <div id="voice-chat-participants-list" class="flex-grow p-3 space-y-2 overflow-y-auto" style="max-height: 200px;">
+                    <!-- Participants will be dynamically added here -->
+                </div>
+                <div class="p-2 bg-gray-900 rounded-b-lg flex items-center justify-around">
+                     <button id="mute-btn" class="hover:bg-gray-700 p-2 rounded-full" title="Mute/Unmute">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <button id="deafen-btn" data-deafened="false" class="hover:bg-gray-700 p-2 rounded-full" title="Deafen/Undeafen">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                    <button onclick="leaveVoiceChannel()" class="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full" title="Disconnect">
+                        <i class="fas fa-phone-slash"></i>
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(panel);
+
+            const muteBtn = document.getElementById('mute-btn');
+            muteBtn.addEventListener('click', () => {
+                if (!localStream) return;
+                const enabled = localStream.getAudioTracks()[0].enabled;
+                localStream.getAudioTracks()[0].enabled = !enabled;
+                muteBtn.innerHTML = `<i class="fas ${!enabled ? 'fa-microphone' : 'fa-microphone-slash'}"></i>`;
+            });
+
+            const deafenBtn = document.getElementById('deafen-btn');
+            deafenBtn.addEventListener('click', () => {
+                const audioElements = document.querySelectorAll('audio.remote-audio');
+                const isDeafened = deafenBtn.dataset.deafened === 'true';
+                audioElements.forEach(audio => {
+                    audio.muted = !isDeafened;
+                });
+                deafenBtn.dataset.deafened = !isDeafened;
+                deafenBtn.innerHTML = `<i class="fas ${!isDeafened ? 'fa-volume-mute' : 'fa-volume-up'}"></i>`;
+            });
         }
 
         // Checks if a user is currently logged in.
@@ -992,6 +1306,11 @@
                     article.appendChild(previewContainer);
                 }
 
+                if (post.voiceChannel) {
+                    const voiceChannelElement = createVoiceChannelElement(post);
+                    if (voiceChannelElement) article.appendChild(voiceChannelElement);
+                }
+
                 const postActionsDiv = document.createElement('div');
                 postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
                 
@@ -1132,6 +1451,11 @@
                         </div>
                     `;
                     commentBody.appendChild(previewContainer);
+                }
+
+                if (comment.voiceChannel) {
+                    const voiceChannelElement = createVoiceChannelElement(comment);
+                    if (voiceChannelElement) commentBody.appendChild(voiceChannelElement);
                 }
 
                 const commentActionsDiv = document.createElement('div');
@@ -3070,6 +3394,11 @@
                     </div>
                 `;
                 article.appendChild(previewContainer);
+            }
+
+            if (post.voiceChannel) {
+                const voiceChannelElement = createVoiceChannelElement(post);
+                if (voiceChannelElement) article.appendChild(voiceChannelElement);
             }
 
             const postActionsDiv = document.createElement('div');

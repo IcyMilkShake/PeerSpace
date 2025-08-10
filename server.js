@@ -7,15 +7,17 @@ const MongoStore = require('connect-mongo');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
+const { Server } = require("socket.io");
 const AWS = require('aws-sdk');
 const ffmpeg = require('fluent-ffmpeg');
 const axios = require('axios');
 const cheerio = require('cheerio');
 require('dotenv').config();
 
-const { User, Post, Comment, Notification, FriendRequest } = require('./schema');
+const { User, Post, Comment, Notification, FriendRequest, VoiceChannel } = require('./schema');
 
 const app = express();
 
@@ -92,6 +94,13 @@ const postAttachmentUpload = multer({
 
 // Recursively deletes a comment and all its replies.
 async function deleteCommentAndChildren(commentId) {
+  const comment = await Comment.findById(commentId);
+  if (!comment) return;
+
+  if (comment.voiceChannel) {
+    await VoiceChannel.findByIdAndDelete(comment.voiceChannel);
+  }
+
   // Find and delete all replies to this comment first.
   const children = await Comment.find({ parentComment: commentId });
   for (const child of children) {
@@ -587,6 +596,7 @@ app.get('/api/users/:userId/content', async (req, res) => {
                         likes: comment.likes.length, isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
                         createdAt: comment.createdAt.toISOString(), parentComment: comment.parentComment,
                         replyingTo: replyingTo, linkPreview: comment.linkPreview,
+                  voiceChannel: comment.voiceChannel,
                         replies: buildCommentTree(comment._id)
                       };
                     });
@@ -600,6 +610,7 @@ app.get('/api/users/:userId/content', async (req, res) => {
                         likes: comment.likes.length, isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
                         createdAt: comment.createdAt.toISOString(), parentComment: null, replyingTo: null,
                         linkPreview: comment.linkPreview,
+                  voiceChannel: comment.voiceChannel,
                         replies: buildCommentTree(comment._id)
                     }));
 
@@ -608,6 +619,7 @@ app.get('/api/users/:userId/content', async (req, res) => {
                   linkPreview: post.linkPreview, postType: post.postType,
                   attachments: post.attachments,
                   pollOptions: post.pollOptions ? post.pollOptions.map(opt => ({ option: opt.option, votes: opt.votes })) : [],
+                  voiceChannel: post.voiceChannel,
                   author: { id: post.author._id, username: post.author.username, displayName: post.author.displayName, photo: post.author.profilePicture.path || '/default-profile.png' },
                   likes: post.likes.length, isLiked: currentUserId ? post.likes.includes(currentUserId) : false,
                   createdAt: post.createdAt.toISOString(),
@@ -1276,6 +1288,7 @@ app.get('/api/posts', async (req, res) => {
             option: opt.option,
             votes: opt.votes,
           })) : [],
+            voiceChannel: post.voiceChannel,
           author: {
             id: post.author._id,
             username: post.author.username,
@@ -1431,8 +1444,19 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       }
     }
 
+    if (content.includes('!voice')) {
+      const voiceChannel = new VoiceChannel({ post: null });
+      await voiceChannel.save();
+      newPostData.voiceChannel = voiceChannel._id;
+    }
+
     const post = new Post(newPostData);
     await post.save();
+
+    if (post.voiceChannel) {
+      await VoiceChannel.findByIdAndUpdate(post.voiceChannel, { post: post._id });
+    }
+
     await post.populate('author', 'username displayName profilePicture');
     await createNotificationsForMentions(content, post._id, null, req.user._id);
 
@@ -1444,6 +1468,7 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       attachments: post.attachments,
       pollOptions: post.pollOptions,
       linkPreview: post.linkPreview,
+      voiceChannel: post.voiceChannel,
       author: {
         id: post.author._id,
         username: post.author.username,
@@ -1496,7 +1521,18 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
       comment.linkPreview = linkPreview;
     }
 
+    if (content.includes('!voice')) {
+      const voiceChannel = new VoiceChannel({ post: postId, comment: null });
+      await voiceChannel.save();
+      comment.voiceChannel = voiceChannel._id;
+    }
+
     await comment.save();
+
+    if (comment.voiceChannel) {
+      await VoiceChannel.findByIdAndUpdate(comment.voiceChannel, { comment: comment._id });
+    }
+
     await comment.populate('author', 'username displayName profilePicture');
     await createNotificationsForMentions(content, postId, comment._id, req.user._id);
 
@@ -1515,6 +1551,7 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
       parentComment: null,
       replyingTo: null,
       linkPreview: comment.linkPreview,
+      voiceChannel: comment.voiceChannel,
       replies: []
     };
 
@@ -1556,7 +1593,18 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
       reply.linkPreview = linkPreview;
     }
 
+    if (content.includes('!voice')) {
+      const voiceChannel = new VoiceChannel({ post: parentComment.post, comment: null });
+      await voiceChannel.save();
+      reply.voiceChannel = voiceChannel._id;
+    }
+
     await reply.save();
+
+    if (reply.voiceChannel) {
+      await VoiceChannel.findByIdAndUpdate(reply.voiceChannel, { comment: reply._id });
+    }
+
     await reply.populate('author', 'username displayName profilePicture');
     await createNotificationsForMentions(content, parentComment.post, reply._id, req.user._id);
 
@@ -1578,6 +1626,7 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
         username: parentComment.author.username
       },
       linkPreview: reply.linkPreview,
+      voiceChannel: reply.voiceChannel,
       replies: []
     };
 
@@ -1773,7 +1822,7 @@ app.get('/api/posts/:postId', async (req, res) => {
             .sort({ createdAt: 'asc' });
 
         const postWithComments = post.toObject();
-        postWithComments.comments = comments;
+        postWithComments.comments = comments.map(c => c.toObject());
 
         res.json(postWithComments);
     } catch (error) {
@@ -1798,7 +1847,15 @@ app.delete('/api/posts/:postId', isAuthenticated, async (req, res) => {
       return res.status(403).json({ error: 'User not authorized to delete this post.' });
     }
 
-    await Comment.deleteMany({ post: postId });
+    if (post.voiceChannel) {
+      await VoiceChannel.findByIdAndDelete(post.voiceChannel);
+    }
+
+    const comments = await Comment.find({ post: postId });
+    for (const comment of comments) {
+      await deleteCommentAndChildren(comment._id);
+    }
+
     await Post.findByIdAndDelete(postId);
 
     res.json({ success: true, message: 'Post and associated comments deleted successfully.' });
@@ -1833,10 +1890,106 @@ app.use((error, req, res, next) => {
 
 
 // Starts the server.
-app.listen(PORT, () => {
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: development ? "http://localhost:8082" : "https://peerspace.ipo-servers.net",
+    methods: ["GET", "POST"]
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log(`User connected: ${socket.id}`);
+
+  const leaveChannel = async (channelId, userId) => {
+    try {
+      if (!channelId || !userId) return;
+      console.log(`User ${userId} (${socket.id}) leaving channel ${channelId}`);
+      socket.leave(channelId);
+
+      await VoiceChannel.findByIdAndUpdate(channelId, { $pull: { participants: userId } });
+
+      socket.to(channelId).emit('user-left', { socketId: socket.id });
+
+      const channel = await VoiceChannel.findById(channelId).populate('participants', 'username displayName profilePicture');
+      if (channel) {
+        io.in(channelId).emit('update-participants', channel.participants);
+      }
+    } catch (error) {
+      console.error('Error in leaveChannel:', error);
+    }
+  };
+
+  socket.on('join-channel', async ({ channelId, userId }) => {
+    try {
+      console.log(`User ${userId} (${socket.id}) joining channel ${channelId}`);
+      socket.join(channelId);
+      socket.userId = userId;
+      socket.channelId = channelId;
+
+      await VoiceChannel.findByIdAndUpdate(channelId, { $addToSet: { participants: userId } });
+
+      const socketsInRoom = await io.in(channelId).fetchSockets();
+      const usersInRoom = socketsInRoom.map(s => ({ userId: s.userId, socketId: s.id }));
+      
+      const userIds = usersInRoom.map(u => u.userId).filter(Boolean);
+      const userObjects = await User.find({ '_id': { $in: userIds } }).select('username displayName profilePicture');
+
+      const participants = userObjects.map(user => {
+          const socketInfo = usersInRoom.find(u => u.userId === user._id.toString());
+          return { ...user.toObject(), socketId: socketInfo ? socketInfo.socketId : null };
+      }).filter(p => p.socketId);
+      
+      // Send other participants to the new user
+      socket.emit('existing-participants', { participants: participants.filter(p => p.socketId !== socket.id) });
+      
+      // Let existing participants know about the new user
+      const newUser = participants.find(p => p.socketId === socket.id);
+      if (newUser) {
+          socket.to(channelId).emit('user-joined', { user: newUser });
+      }
+      
+      // Broadcast updated participant list to everyone
+      io.in(channelId).emit('update-participants', participants);
+
+    } catch (error) {
+      console.error('Error in join-channel:', error);
+    }
+  });
+
+  socket.on('offer', ({ targetSocketId, offer }) => {
+    socket.to(targetSocketId).emit('offer', { fromSocketId: socket.id, offer });
+  });
+
+  socket.on('answer', ({ targetSocketId, answer }) => {
+    socket.to(targetSocketId).emit('answer', { fromSocketId: socket.id, answer });
+  });
+
+  socket.on('ice-candidate', ({ targetSocketId, candidate }) => {
+    socket.to(targetSocketId).emit('ice-candidate', { fromSocketId: socket.id, candidate });
+  });
+
+  socket.on('leave-channel', async () => {
+    if (socket.channelId && socket.userId) {
+      await leaveChannel(socket.channelId, socket.userId);
+    }
+  });
+
+  socket.on('disconnecting', async () => {
+    if (socket.channelId && socket.userId) {
+      await leaveChannel(socket.channelId, socket.userId);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
+
+server.listen(PORT, () => {
   if (development) {
-    console.log(`Development server running on http://localhost:${PORT}`);
+    console.log(`Development server with socket.io running on http://localhost:${PORT}`);
   } else {
-    console.log(`HTTPS Server running on https://peerspace.ipo-servers.net:${PORT}`);
+    console.log(`HTTPS Server with socket.io running on https://peerspace.ipo-servers.net:${PORT}`);
   }
 });

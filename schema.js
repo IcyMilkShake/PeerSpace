@@ -129,7 +129,12 @@ const postSchema = new mongoose.Schema({
   usersWhoVoted: [{ // To track who voted on a poll and for which option
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     optionIndex: { type: Number, required: true }
-  }]
+  }],
+  voiceChannel: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'VoiceChannel',
+    default: null
+  }
 });
 
 // Comment Schema
@@ -171,6 +176,11 @@ const commentSchema = new mongoose.Schema({
   isDeleted: {
     type: Boolean,
     default: false
+  },
+  voiceChannel: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'VoiceChannel',
+    default: null
   }
 });
 
@@ -242,10 +252,35 @@ const friendRequestSchema = new mongoose.Schema({
 
 const FriendRequest = mongoose.model('FriendRequest', friendRequestSchema);
 
+// VoiceChannel Schema
+const voiceChannelSchema = new mongoose.Schema({
+  post: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Post',
+    required: false // A voice channel can be in a post or a comment
+  },
+  comment: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Comment',
+    required: false
+  },
+  participants: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+const VoiceChannel = mongoose.model('VoiceChannel', voiceChannelSchema);
+
 module.exports = {
   User,
   Post,
   Comment,
   Notification,
-  FriendRequest
+  FriendRequest,
+  VoiceChannel
 };
