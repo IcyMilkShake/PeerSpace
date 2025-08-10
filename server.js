@@ -340,6 +340,22 @@ app.get('/api/notifications', isAuthenticated, async (req, res) => {
   }
 });
 
+// Gets the number of unread notifications and pending friend requests.
+app.get('/api/notification-counts', isAuthenticated, async (req, res) => {
+    try {
+        const unreadNotifications = await Notification.countDocuments({ user: req.user._id, read: false });
+        const pendingFriendRequests = await FriendRequest.countDocuments({ recipient: req.user._id, status: 'pending' });
+
+        res.json({
+            unreadNotifications,
+            pendingFriendRequests
+        });
+    } catch (error) {
+        console.error('Error fetching notification counts:', error);
+        res.status(500).json({ error: 'Failed to fetch notification counts' });
+    }
+});
+
 // Gets the number of unread notifications for the logged-in user.
 app.get('/api/notifications/unread-count', isAuthenticated, async (req, res) => {
     try {
@@ -609,7 +625,9 @@ app.get('/api/users/:userId/content', async (req, res) => {
                 .populate({ path: 'post', select: 'title' })
                 .sort(sortOption);
             
-            return res.json(comments);
+            const commentsWithExistingPosts = comments.filter(comment => comment.post);
+            
+            return res.json(commentsWithExistingPosts);
         } else {
             return res.status(400).json({ error: 'Invalid content type' });
         }
@@ -953,6 +971,18 @@ app.get('/api/friend-requests', isAuthenticated, async (req, res) => {
     } catch (error) {
         console.error('Error fetching friend requests:', error);
         res.status(500).json({ error: 'Failed to fetch friend requests.' });
+    }
+});
+
+// Get sent friend requests that are pending
+app.get('/api/friend-requests/sent', isAuthenticated, async (req, res) => {
+    try {
+        const requests = await FriendRequest.find({ requester: req.user._id, status: 'pending' })
+            .populate('recipient', 'username displayName profilePicture');
+        res.json(requests);
+    } catch (error) {
+        console.error('Error fetching sent friend requests:', error);
+        res.status(500).json({ error: 'Failed to fetch sent friend requests.' });
     }
 });
 

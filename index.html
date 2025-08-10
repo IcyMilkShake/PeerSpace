@@ -91,8 +91,23 @@
             border-bottom-color: transparent !important;
             color: var(--text-secondary) !important;
         }
-        #requests-list > div, #friends-list > div {
+        #requests-list > div, #friends-list > div, #pending-list > div {
             background-color: var(--post-card-bg);
+        }
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--notification-info-bg);
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: bold;
+            display: none; /* Hidden by default */
+        }
+        .nav-item {
+            position: relative;
         }
     </style>
 </head>
@@ -110,6 +125,7 @@
         <button onclick="renderFriendsPage()" class="nav-item">
             <i class="fas fa-users" style="color: var(--notification-info-bg);"></i>
             <span class="nav-text">Friends</span>
+            <span id="friends-notification-badge" class="notification-badge"></span>
         </button>
         <a href="#" class="nav-item">
           <i class="fas fa-comments" style="color: var(--notification-info-bg);"></i>
@@ -118,6 +134,7 @@
         <button onclick="renderInbox()" class="nav-item">
             <i class="fas fa-inbox" style="color: var(--notification-info-bg);"></i>
             <span class="nav-text">Inbox</span>
+            <span id="inbox-notification-badge" class="notification-badge"></span>
         </button>
         <div class="nav-item dropdown" style="color: var(--notification-info-bg);">
           <i class="fas fa-ellipsis-h" style="color: var(--notification-info-bg);"></i>
@@ -146,14 +163,14 @@
     </div>
     <nav class="shadow-lg border-b sticky top-0 z-50" style="background-color: var(--nav-bg);">
         <div class="max-w-4xl mx-auto px-2 sm:px-4 py-4">
-            <div class="flex flex-col sm:flex-row sm:justify-between items-center space-y-3 sm:space-y-0 sm:space-x-4 flex-nowrap">
+            <div class="flex flex-row justify-between items-center space-x-4 sm:space-y-0 flex-nowrap">
                 <div class="hidden sm:flex items-center space-x-2 flex-shrink-0">
                     <div class="w-6 h-6 sm:w-8 sm:h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                         <span class="text-white font-bold text-base sm:text-lg">F</span>
                     </div>
                     <h1 class="text-xl sm:text-2xl font-bold">Forum</h1>
                 </div>
-                <div class="relative flex-1 max-w-md order-3 sm:order-2">
+                <div class="relative flex-1 max-w-md order-1 sm:order-2">
                     <input type="text" id="search-bar" placeholder="Search posts..." class="w-full px-4 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base" style="background-color: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-color);">
                     <div id="search-results" class="absolute top-full left-0 right-0 mt-1 rounded-lg shadow-lg z-50 hidden" style="background-color: var(--dropdown-bg); border: 1px solid var(--dropdown-border);"></div>
                     <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -311,6 +328,7 @@
         <div class="flex border-b mb-6">
                 <button id="requests-tab" class="py-2 px-4 font-semibold border-b-2 active-tab">Requests</button>
                 <button id="friends-tab" class="py-2 px-4 font-semibold border-b-2 inactive-tab">Friends</button>
+                <button id="pending-tab" class="py-2 px-4 font-semibold border-b-2 inactive-tab">Pending</button>
         </div>
         <div id="requests-content">
             <h2 class="text-2xl font-bold mb-4">Friend Requests</h2>
@@ -319,6 +337,10 @@
         <div id="friends-content" class="hidden">
             <h2 class="text-2xl font-bold mb-4">Friends List</h2>
             <div id="friends-list" class="space-y-4"></div>
+        </div>
+        <div id="pending-content" class="hidden">
+            <h2 class="text-2xl font-bold mb-4">Sent Requests</h2>
+            <div id="pending-list" class="space-y-4"></div>
         </div>
     </div>
     <div id="user-profile" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-2 border z-50 w-60" style="border-color: var(--border-color);">
@@ -592,6 +614,8 @@
                 } else {
                     createPostForm.classList.remove('hidden');
                 }
+                
+                fetchNotificationCounts();
 
             } else {
                 authSection.innerHTML = `
@@ -2243,18 +2267,42 @@
             }
         });
 
-        // Fetches the number of unread notifications.
-        async function fetchUnreadNotificationCount() {
+        // Fetches the number of unread notifications and pending friend requests.
+        async function fetchNotificationCounts() {
             if (!currentUser) return;
 
             try {
-                const response = await fetch('/api/notifications/unread-count');
+                const response = await fetch('/api/notification-counts');
                 if (response.ok) {
                     const data = await response.json();
-                    const count = data.count;
+                    updateNotificationBadges(data.unreadNotifications, data.pendingFriendRequests);
                 }
             } catch (error) {
-                console.error('Failed to fetch unread notification count:', error);
+                console.error('Failed to fetch notification counts:', error);
+            }
+        }
+
+        // Updates the notification badges in the UI.
+        function updateNotificationBadges(unreadCount, friendRequestCount) {
+            const inboxBadge = document.getElementById('inbox-notification-badge');
+            const friendsBadge = document.getElementById('friends-notification-badge');
+
+            if (inboxBadge) {
+                if (unreadCount > 0) {
+                    inboxBadge.textContent = unreadCount;
+                    inboxBadge.style.display = 'block';
+                } else {
+                    inboxBadge.style.display = 'none';
+                }
+            }
+
+            if (friendsBadge) {
+                if (friendRequestCount > 0) {
+                    friendsBadge.textContent = friendRequestCount;
+                    friendsBadge.style.display = 'block';
+                } else {
+                    friendsBadge.style.display = 'none';
+                }
             }
         }
 
@@ -2262,7 +2310,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
             loadPosts();
-            fetchUnreadNotificationCount();
 
             const filterButtons = document.querySelectorAll('#filter-bar .filter-btn');
             filterButtons.forEach(button => {
@@ -2286,18 +2333,24 @@
 
         const requestsTab = document.getElementById('requests-tab');
         const friendsTab = document.getElementById('friends-tab');
+        const pendingTab = document.getElementById('pending-tab');
         const requestsContent = document.getElementById('requests-content');
         const friendsContent = document.getElementById('friends-content');
+        const pendingContent = document.getElementById('pending-content');
         const requestsList = document.getElementById('requests-list');
         const friendsList = document.getElementById('friends-list');
+        const pendingList = document.getElementById('pending-list');
 
         requestsTab.addEventListener('click', () => {
             requestsTab.classList.add('active-tab');
             requestsTab.classList.remove('inactive-tab');
             friendsTab.classList.remove('active-tab');
             friendsTab.classList.add('inactive-tab');
+            pendingTab.classList.remove('active-tab');
+            pendingTab.classList.add('inactive-tab');
             requestsContent.classList.remove('hidden');
             friendsContent.classList.add('hidden');
+            pendingContent.classList.add('hidden');
         });
 
         friendsTab.addEventListener('click', () => {
@@ -2305,8 +2358,24 @@
             friendsTab.classList.remove('inactive-tab');
             requestsTab.classList.remove('active-tab');
             requestsTab.classList.add('inactive-tab');
+            pendingTab.classList.remove('active-tab');
+            pendingTab.classList.add('inactive-tab');
             friendsContent.classList.remove('hidden');
             requestsContent.classList.add('hidden');
+            pendingContent.classList.add('hidden');
+        });
+
+        pendingTab.addEventListener('click', () => {
+            pendingTab.classList.add('active-tab');
+            pendingTab.classList.remove('inactive-tab');
+            requestsTab.classList.remove('active-tab');
+            requestsTab.classList.add('inactive-tab');
+            friendsTab.classList.remove('active-tab');
+            friendsTab.classList.add('inactive-tab');
+            pendingContent.classList.remove('hidden');
+            requestsContent.classList.add('hidden');
+            friendsContent.classList.add('hidden');
+            loadSentFriendRequests();
         });
 
         async function loadFriendRequests() {
@@ -2384,21 +2453,76 @@
             }
         }
 
+        async function loadSentFriendRequests() {
+            try {
+                const response = await fetch('/api/friend-requests/sent');
+                const requests = await response.json();
+                pendingList.innerHTML = '';
+                if (requests.length === 0) {
+                    pendingList.innerHTML = '<p>You have no pending sent requests.</p>';
+                    return;
+                }
+                requests.forEach(request => {
+                    const requestElement = document.createElement('div');
+                    requestElement.className = 'flex items-center justify-between p-4 rounded-lg shadow-md';
+                    requestElement.innerHTML = `
+                        <div class="flex items-center">
+                            <img src="${request.recipient.profilePicture.path || '/default-profile.png'}" alt="${request.recipient.displayName}" class="w-10 h-10 rounded-full mr-4">
+                            <div>
+                                <p class="font-semibold">${request.recipient.displayName}</p>
+                                <p class="text-sm text-gray-500">@${request.recipient.username}</p>
+                            </div>
+                        </div>
+                        <div>
+                            <button class="cancel-request-btn bg-gray-500 text-white px-4 py-2 rounded-lg" data-id="${request.recipient._id}">Cancel</button>
+                        </div>
+                    `;
+                    pendingList.appendChild(requestElement);
+                });
+            } catch (error) {
+                console.error('Error loading sent friend requests:', error);
+            }
+        }
+
+        pendingList.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('cancel-request-btn')) {
+                const recipientId = e.target.dataset.id;
+                showConfirmationDialog(
+                    'Are you sure you want to cancel this friend request?',
+                    async () => {
+                        try {
+                            const response = await fetch(`/api/friend-request/${recipientId}`, {
+                                method: 'DELETE'
+                            });
+                            if (response.ok) {
+                                loadSentFriendRequests();
+                            }
+                        } catch (error) {
+                            console.error('Error cancelling friend request:', error);
+                        }
+                    }
+                );
+            }
+        });
+
         friendsList.addEventListener('click', async (e) => {
             if (e.target.classList.contains('unfriend-btn')) {
                 const friendId = e.target.dataset.id;
-                if (confirm('Are you sure you want to unfriend this user?')) {
-                    try {
-                        const response = await fetch(`/api/friends/${friendId}`, {
-                            method: 'DELETE'
-                        });
-                        if (response.ok) {
-                            loadFriendsList();
+                showConfirmationDialog(
+                    'Are you sure you want to unfriend this user?',
+                    async () => {
+                        try {
+                            const response = await fetch(`/api/friends/${friendId}`, {
+                                method: 'DELETE'
+                            });
+                            if (response.ok) {
+                                loadFriendsList();
+                            }
+                        } catch (error) {
+                            console.error('Error unfriending user:', error);
                         }
-                    } catch (error) {
-                        console.error('Error unfriending user:', error);
                     }
-                }
+                );
             }
         });
 
@@ -3011,6 +3135,7 @@
             document.getElementById('create-post-form').classList.add('hidden');
             document.getElementById('filter-bar').classList.add('hidden');
             document.getElementById('single-post-container').classList.add('hidden');
+            document.getElementById('friends-container-main').classList.add('hidden');
             const inboxContainer = document.getElementById('inbox-container-main');
             inboxContainer.classList.remove('hidden');
 
