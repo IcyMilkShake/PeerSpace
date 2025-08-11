@@ -850,6 +850,7 @@
             }
 
             currentVoiceChannel = { id: channelId, participants: [] };
+            sessionStorage.setItem('inVoiceChannel', channelId);
             createVoiceControlsUI(channelId);
             
             // We need to wait for the socket to be connected before emitting
@@ -864,6 +865,7 @@
 
         function leaveVoiceChannel() {
             if (!currentVoiceChannel) return;
+            const channelId = currentVoiceChannel.id;
 
             socket.emit('leave-channel');
 
@@ -891,14 +893,28 @@
                 remoteAudioContainer.innerHTML = '';
             }
             
-            const participantsDiv = document.getElementById(`voice-participants-${currentVoiceChannel.id}`);
-            if (participantsDiv) {
-                try {
-                    participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">No one is here yet.</span>';
-                } catch(e) {}
-            }
+            fetch(`/api/voice-channel/${channelId}`)
+                .then(res => res.json())
+                .then(participants => {
+                    const participantsDiv = document.getElementById(`voice-participants-${channelId}`);
+                    if (participantsDiv) {
+                        participantsDiv.innerHTML = '';
+                        if (participants.length === 0) {
+                            participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">No one is here yet.</span>';
+                        } else {
+                            participants.forEach(p => {
+                                const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-white dark:border-gray-800');
+                                pfp.title = p.displayName;
+                                pfp.dataset.socketId = p.socketId;
+                                participantsDiv.appendChild(pfp);
+                            });
+                        }
+                    }
+                });
 
             currentVoiceChannel = null;
+            sessionStorage.removeItem('inVoiceChannel');
+            sessionStorage.removeItem('voiceChannelRefresh');
             if (socket.connected) {
                 socket.disconnect();
             }
@@ -2732,10 +2748,22 @@
             }
         }
 
+        window.addEventListener('beforeunload', () => {
+            if (sessionStorage.getItem('inVoiceChannel')) {
+                sessionStorage.setItem('voiceChannelRefresh', 'true');
+            }
+        });
+
         // Initializes the page when the DOM is fully loaded.
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
             loadPosts();
+
+            if (sessionStorage.getItem('voiceChannelRefresh') === 'true') {
+                showNotification(`You were disconnected from the voice channel due to a page refresh.`, 'warning', 5000);
+                sessionStorage.removeItem('voiceChannelRefresh');
+                sessionStorage.removeItem('inVoiceChannel');
+            }
 
             const filterButtons = document.querySelectorAll('#filter-bar .filter-btn');
             filterButtons.forEach(button => {
