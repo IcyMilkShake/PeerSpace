@@ -1969,6 +1969,18 @@ io.on('connection', (socket) => {
     socket.to(targetSocketId).emit('ice-candidate', { fromSocketId: socket.id, candidate });
   });
 
+  socket.on('speaking', () => {
+    if (socket.channelId) {
+      socket.to(socket.channelId).emit('speaking', { socketId: socket.id });
+    }
+  });
+
+  socket.on('stopped-speaking', () => {
+    if (socket.channelId) {
+      socket.to(socket.channelId).emit('stopped-speaking', { socketId: socket.id });
+    }
+  });
+
   socket.on('leave-channel', async () => {
     if (socket.channelId && socket.userId) {
       await leaveChannel(socket.channelId, socket.userId);

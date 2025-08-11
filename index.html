@@ -110,6 +110,10 @@
         .nav-item {
             position: relative;
         }
+        .speaking {
+            border: 2px solid #4ade80; /* A nice green color */
+            box-shadow: 0 0 8px #4ade80;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -398,6 +402,9 @@
         let localStream = null;
         let peerConnections = {}; // key: socketId, value: RTCPeerConnection
         let currentVoiceChannel = null; // { id: 'channelId', participants: [] }
+        let audioContext, meter, speakingTimer;
+        let isSpeaking = false;
+
 
         // Create a container for remote audio elements that will be hidden
         const remoteAudioContainer = document.createElement('div');
@@ -423,6 +430,7 @@
                     participants.forEach(p => {
                         const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-white dark:border-gray-800');
                         pfp.title = p.displayName;
+                        pfp.dataset.socketId = p.socketId;
                         participantsDiv.appendChild(pfp);
                     });
                 }
@@ -439,6 +447,7 @@
                     const userInfo = document.createElement('div');
                     userInfo.className = 'flex items-center space-x-2';
                     const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-6 h-6', 'text-xs');
+                    pfp.dataset.socketId = p.socketId;
                     userInfo.appendChild(pfp);
                     const name = document.createElement('span');
                     name.textContent = p.displayName;
@@ -558,6 +567,38 @@
                 }
             }
         });
+
+        socket.on('speaking', ({ socketId }) => {
+            console.log("aaaaa")
+            document.querySelectorAll(`[data-socket-id="${socketId}"]`).forEach(el => {
+                el.classList.add('speaking');
+            });
+        });
+
+        socket.on('stopped-speaking', ({ socketId }) => {
+            document.querySelectorAll(`[data-socket-id="${socketId}"]`).forEach(el => {
+                el.classList.remove('speaking');
+            });
+        });
+
+        function createAudioMeter(stream, onVolumeChange) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+            const processor = audioContext.createScriptProcessor(2048, 1, 1);
+
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+
+            processor.onaudioprocess = function(e) {
+                const input = e.inputBuffer.getChannelData(0);
+                let sum = 0.0;
+                for (let i = 0; i < input.length; ++i) {
+                    sum += input[i] * input[i];
+                }
+                const rms = Math.sqrt(sum / input.length);
+                onVolumeChange(rms);
+            };
+        }
 
         const searchBar = document.getElementById('search-bar');
         const searchResultsContainer = document.getElementById('search-results');
@@ -753,6 +794,20 @@
                 return showNotification('Could not access microphone. Please grant permission.', 'error');
             }
 
+            createAudioMeter(localStream, (volume) => {
+                const speakingThreshold = 0.02; 
+                if (volume > speakingThreshold && !isSpeaking) {
+                    isSpeaking = true;
+                    socket.emit('speaking');
+                    clearTimeout(speakingTimer);
+                } else if (volume <= speakingThreshold && isSpeaking) {
+                    speakingTimer = setTimeout(() => {
+                        isSpeaking = false;
+                        socket.emit('stopped-speaking');
+                    }, 500); // delay to prevent flickering
+                }
+            });
+
             if (!socket.connected) {
                 socket.connect();
             }
@@ -779,6 +834,12 @@
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            clearTimeout(speakingTimer);
+            isSpeaking = false;
 
             Object.values(peerConnections).forEach(pc => pc.close());
             peerConnections = {};
