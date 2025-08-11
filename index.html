@@ -581,23 +581,23 @@
             });
         });
 
-        function createAudioMeter(stream, onVolumeChange) {
+        async function createAudioMeter(stream, onVolumeChange) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            audioContext.resume();
             const source = audioContext.createMediaStreamSource(stream);
-            const processor = audioContext.createScriptProcessor(2048, 1, 1);
 
-            source.connect(processor);
-            processor.connect(audioContext.destination);
-
-            processor.onaudioprocess = function(e) {
-                const input = e.inputBuffer.getChannelData(0);
-                let sum = 0.0;
-                for (let i = 0; i < input.length; ++i) {
-                    sum += input[i] * input[i];
+            try {
+                await audioContext.audioWorklet.addModule('volume-meter.js');
+                const meterNode = new AudioWorkletNode(audioContext, 'volume-meter-processor');
+                meterNode.port.onmessage = event => {
+                    if (event.data.volume) {
+                        onVolumeChange(event.data.volume);
+                    }
                 }
-                const rms = Math.sqrt(sum / input.length);
-                onVolumeChange(rms);
-            };
+                source.connect(meterNode).connect(audioContext.destination);
+            } catch (e) {
+                console.error('Error setting up audio worklet.', e);
+            }
         }
 
         const searchBar = document.getElementById('search-bar');
@@ -794,17 +794,29 @@
                 return showNotification('Could not access microphone. Please grant permission.', 'error');
             }
 
-            createAudioMeter(localStream, (volume) => {
-                const speakingThreshold = 0.02; 
-                if (volume > speakingThreshold && !isSpeaking) {
-                    isSpeaking = true;
-                    socket.emit('speaking');
+            await createAudioMeter(localStream, (volume) => {
+                const speakingThreshold = 0.02;
+                if (volume > speakingThreshold) {
                     clearTimeout(speakingTimer);
-                } else if (volume <= speakingThreshold && isSpeaking) {
-                    speakingTimer = setTimeout(() => {
-                        isSpeaking = false;
-                        socket.emit('stopped-speaking');
-                    }, 500); // delay to prevent flickering
+                    speakingTimer = null;
+                    if (!isSpeaking) {
+                        isSpeaking = true;
+                        socket.emit('speaking');
+                        document.querySelectorAll(`[data-socket-id="${socket.id}"]`).forEach(el => {
+                            el.classList.add('speaking');
+                        });
+                    }
+                } else { // volume <= threshold
+                    if (isSpeaking && !speakingTimer) {
+                        speakingTimer = setTimeout(() => {
+                            isSpeaking = false;
+                            socket.emit('stopped-speaking');
+                            document.querySelectorAll(`[data-socket-id="${socket.id}"]`).forEach(el => {
+                                el.classList.remove('speaking');
+                            });
+                            speakingTimer = null;
+                        }, 500);
+                    }
                 }
             });
 
