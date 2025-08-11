@@ -1911,10 +1911,17 @@ io.on('connection', (socket) => {
 
       socket.to(channelId).emit('user-left', { socketId: socket.id });
 
-      const channel = await VoiceChannel.findById(channelId).populate('participants', 'username displayName profilePicture');
-      if (channel) {
-        io.in(channelId).emit('update-participants', channel.participants);
-      }
+      // Use the same logic as join-channel to get the updated participant list
+      const socketsInRoom = await io.in(channelId).fetchSockets();
+      const usersInRoom = socketsInRoom.map(s => ({ userId: s.userId, socketId: s.id }));
+      const userIds = usersInRoom.map(u => u.userId).filter(Boolean);
+      const userObjects = await User.find({ '_id': { $in: userIds } }).select('username displayName profilePicture');
+      const participants = userObjects.map(user => {
+          const socketInfo = usersInRoom.find(u => u.userId === user._id.toString());
+          return { ...user.toObject(), socketId: socketInfo ? socketInfo.socketId : null };
+      }).filter(p => p.socketId);
+
+      io.in(channelId).emit('update-participants', participants);
     } catch (error) {
       console.error('Error in leaveChannel:', error);
     }
