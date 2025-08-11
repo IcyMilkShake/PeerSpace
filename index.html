@@ -392,6 +392,9 @@
         let currentUser = null;
         let posts = [];
         let currentFilter = 'all';
+        let currentPage = 1;
+        let hasMorePosts = true;
+        let isLoadingPosts = false;
 
         // --- WebRTC & Socket.IO Globals ---
         const socketOptions = { autoConnect: false };
@@ -483,6 +486,26 @@
             if (audioEl) {
                 audioEl.remove();
             }
+        });
+
+        socket.on('voice-channel-updated', ({ channelId, participants }) => {
+            const participantElements = document.querySelectorAll(`#voice-participants-${channelId}`);
+            
+            participantElements.forEach(participantsDiv => {
+                if (participantsDiv) {
+                    participantsDiv.innerHTML = ''; // Clear existing content
+                    if (participants.length === 0) {
+                        participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">No one is here yet.</span>';
+                    } else {
+                        participants.forEach(p => {
+                            const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-white dark:border-gray-800');
+                            pfp.title = p.displayName;
+                            pfp.dataset.socketId = p.socketId;
+                            participantsDiv.appendChild(pfp);
+                        });
+                    }
+                }
+            });
         });
 
         const rtcConfig = {
@@ -1097,12 +1120,51 @@
 
         // Fetches all posts from the server.
         async function loadPosts() {
+            if (isLoadingPosts) return;
+            isLoadingPosts = true;
+            currentPage = 1;
+            
+            const container = document.getElementById('posts-container');
+            container.innerHTML = '';
+            const endMessage = document.getElementById('end-of-feed');
+            if (endMessage) endMessage.remove();
+
             try {
-                const response = await fetch('/api/posts');
-                posts = await response.json();
+                const response = await fetch(`/api/posts?page=1&limit=10&filter=${currentFilter}`);
+                const data = await response.json();
+                posts = data.posts;
+                hasMorePosts = data.hasMore;
                 renderPosts();
             } catch (error) {
                 console.error('Failed to load posts:', error);
+            } finally {
+                isLoadingPosts = false;
+            }
+        }
+
+        async function loadMorePosts() {
+            if (isLoadingPosts || !hasMorePosts) return;
+            isLoadingPosts = true;
+            currentPage++;
+
+            try {
+                const response = await fetch(`/api/posts?page=${currentPage}&limit=10&filter=${currentFilter}`);
+                const data = await response.json();
+                
+                if (data.posts && data.posts.length > 0) {
+                    posts.push(...data.posts);
+                    renderPosts(true); // Append new posts
+                }
+                
+                hasMorePosts = data.hasMore;
+                if (!hasMorePosts) {
+                    renderPosts(true);
+                }
+
+            } catch (error) {
+                console.error('Failed to load more posts:', error);
+            } finally {
+                isLoadingPosts = false;
             }
         }
 
@@ -1111,15 +1173,9 @@
             const container = document.getElementById('posts-container');
             const emptyState = document.getElementById('empty-state');
 
-            const filteredPosts = posts.filter(post => {
-                if (currentFilter === 'all') {
-                    return true;
-                }
-                return post.postType === currentFilter || (currentFilter === 'normal' && (!post.postType || post.postType === 'normal'));
-            });
+            container.innerHTML = '';
 
-            if (filteredPosts.length === 0) {
-                container.innerHTML = '';
+            if (posts.length === 0) {
                 emptyState.classList.remove('hidden');
                 if (currentFilter !== 'all') {
                     emptyState.querySelector('h3').textContent = `No posts found for "${currentFilter.charAt(0).toUpperCase() + currentFilter.slice(1)}"`;
@@ -1132,9 +1188,8 @@
             }
 
             emptyState.classList.add('hidden');
-            container.innerHTML = '';
             
-            filteredPosts.forEach(post => {
+            posts.forEach(post => {
                 const article = document.createElement('article');
                 article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in';
                 article.classList.add("cursor-pointer");
@@ -1459,6 +1514,17 @@
                 
                 container.appendChild(article);
             });
+
+            if (!hasMorePosts && posts.length > 0) {
+                let endMessage = document.getElementById('end-of-feed');
+                if (!endMessage) {
+                    endMessage = document.createElement('div');
+                    endMessage.id = 'end-of-feed';
+                    endMessage.className = 'text-center py-8 text-gray-500 opacity-75';
+                    endMessage.innerHTML = "You've reached the end 🙂";
+                    container.appendChild(endMessage);
+                }
+            }
 
             setupVideoObserver();
         }
@@ -2769,12 +2835,16 @@
             filterButtons.forEach(button => {
                 button.addEventListener('click', () => {
                     currentFilter = button.getAttribute('data-filter-type');
-                    
                     filterButtons.forEach(btn => btn.classList.remove('active-filter-btn'));
                     button.classList.add('active-filter-btn');
-                    
-                    renderPosts();
+                    loadPosts();
                 });
+            });
+
+            window.addEventListener('scroll', () => {
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
+                    loadMorePosts();
+                }
             });
         });
 

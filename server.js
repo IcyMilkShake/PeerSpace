@@ -1199,17 +1199,28 @@ app.post('/api/user/banner-picture', isAuthenticated, upload.single('bannerPictu
 app.get('/api/posts', async (req, res) => {
   try {
     const currentUserId = req.user ? req.user._id : null;
-    let friends = [];
-    if (currentUserId) {
-        const user = await User.findById(currentUserId);
-        if (user) {
-            friends = user.friends;
-        }
+    
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const filter = req.query.filter || 'all';
+    let query = {};
+    if (filter !== 'all') {
+      if (filter === 'normal') {
+        query.$or = [{ postType: 'normal' }, { postType: { $exists: false } }];
+      } else {
+        query.postType = filter;
+      }
     }
 
-    const posts = await Post.find()
+    const totalPosts = await Post.countDocuments(query);
+    
+    const posts = await Post.find(query)
       .populate('author', 'username displayName profilePicture')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     const postsWithDetails = await Promise.all(
       posts.map(async (post) => {
@@ -1288,7 +1299,7 @@ app.get('/api/posts', async (req, res) => {
             option: opt.option,
             votes: opt.votes,
           })) : [],
-            voiceChannel: post.voiceChannel,
+          voiceChannel: post.voiceChannel,
           author: {
             id: post.author._id,
             username: post.author.username,
@@ -1304,20 +1315,10 @@ app.get('/api/posts', async (req, res) => {
       })
     );
     
-    if (friends.length > 0) {
-        const friendPosts = postsWithDetails.filter(post => friends.some(friendId => friendId.equals(post.author.id)));
-        const otherPosts = postsWithDetails.filter(post => !friends.some(friendId => friendId.equals(post.author.id)));
-        
-        // Shuffle friend posts
-        for (let i = friendPosts.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [friendPosts[i], friendPosts[j]] = [friendPosts[j], friendPosts[i]];
-        }
-
-        res.json([...friendPosts, ...otherPosts]);
-    } else {
-        res.json(postsWithDetails);
-    }
+    res.json({
+        posts: postsWithDetails,
+        hasMore: (skip + posts.length) < totalPosts
+    });
 
   } catch (error) {
     console.error('Error fetching posts:', error);
@@ -1948,6 +1949,7 @@ io.on('connection', (socket) => {
       }).filter(p => p.socketId);
 
       io.in(channelId).emit('update-participants', participants);
+      io.emit('voice-channel-updated', { channelId, participants });
     } catch (error) {
       console.error('Error in leaveChannel:', error);
     }
@@ -1984,6 +1986,7 @@ io.on('connection', (socket) => {
       
       // Broadcast updated participant list to everyone
       io.in(channelId).emit('update-participants', participants);
+      io.emit('voice-channel-updated', { channelId, participants });
 
     } catch (error) {
       console.error('Error in join-channel:', error);
