@@ -114,6 +114,15 @@
             border: 2px solid #4ade80; /* A nice green color */
             box-shadow: 0 0 8px #4ade80;
         }
+        @media (max-width: 1000px) {
+            #voice-chat-panel {
+                bottom: 76px;
+                right: 50%;
+                transform: translateX(50%);
+                width: calc(100% - 32px);
+                max-width: 400px;
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -395,6 +404,7 @@
         let currentPage = 1;
         let hasMorePosts = true;
         let isLoadingPosts = false;
+        let prioritizedPostIds = [];
 
         // --- WebRTC & Socket.IO Globals ---
         const socketOptions = { autoConnect: false };
@@ -1126,6 +1136,7 @@
             if (isLoadingPosts) return;
             isLoadingPosts = true;
             currentPage = 1;
+            prioritizedPostIds = []; // Reset
             
             const container = document.getElementById('posts-container');
             container.innerHTML = '';
@@ -1133,10 +1144,23 @@
             if (endMessage) endMessage.remove();
 
             try {
-                const response = await fetch(`/api/posts?page=1&limit=10&filter=${currentFilter}`);
-                const data = await response.json();
-                posts = data.posts;
-                hasMorePosts = data.hasMore;
+                const [friendPostsResponse, regularPostsResponse] = await Promise.all([
+                    fetch('/api/posts/friends-recent'),
+                    fetch(`/api/posts?page=1&limit=10&filter=${currentFilter}`)
+                ]);
+
+                const friendPosts = await friendPostsResponse.json();
+                const regularPostsData = await regularPostsResponse.json();
+
+                if(friendPosts.length > 0) {
+                    prioritizedPostIds = friendPosts.map(p => p.id);
+                }
+                
+                const regularPostsFiltered = regularPostsData.posts.filter(p => !prioritizedPostIds.includes(p.id));
+
+                posts = [...friendPosts, ...regularPostsFiltered];
+                hasMorePosts = regularPostsData.hasMore;
+                
                 renderPosts();
             } catch (error) {
                 console.error('Failed to load posts:', error);
@@ -1151,7 +1175,8 @@
             currentPage++;
 
             try {
-                const response = await fetch(`/api/posts?page=${currentPage}&limit=10&filter=${currentFilter}`);
+                const excludeIdsParam = prioritizedPostIds.length > 0 ? `&exclude_ids=${prioritizedPostIds.join(',')}` : '';
+                const response = await fetch(`/api/posts?page=${currentPage}&limit=10&filter=${currentFilter}${excludeIdsParam}`);
                 const data = await response.json();
                 
                 if (data.posts && data.posts.length > 0) {

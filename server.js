@@ -1195,6 +1195,97 @@ app.post('/api/user/banner-picture', isAuthenticated, upload.single('bannerPictu
 });
 
 
+// Helper function to populate post details
+async function populatePostDetails(post, currentUserId) {
+    const allCommentsRaw = await Comment.find({ post: post._id })
+        .populate('author', '_id username displayName profilePicture')
+        .sort({ createdAt: 1 });
+
+    const buildCommentTree = (parentId) => {
+        return allCommentsRaw
+            .filter(comment => String(comment.parentComment) === String(parentId))
+            .map(comment => {
+                let replyingTo = null;
+                if (comment.parentComment) {
+                    const parentCommentObject = allCommentsRaw.find(c => String(c._id) === String(comment.parentComment));
+                    if (parentCommentObject) {
+                        replyingTo = { id: parentCommentObject.author._id, username: parentCommentObject.author.username };
+                    } else {
+                        replyingTo = { id: null, username: "Reply deleted" };
+                    }
+                }
+                return {
+                    id: comment._id, content: comment.content,
+                    author: { id: comment.author._id, username: comment.author.username, displayName: comment.author.displayName, photo: comment.author.profilePicture.path || '/default-profile.png' },
+                    likes: comment.likes.length, isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
+                    createdAt: comment.createdAt.toISOString(), parentComment: comment.parentComment,
+                    replyingTo: replyingTo, linkPreview: comment.linkPreview,
+                    voiceChannel: comment.voiceChannel,
+                    replies: buildCommentTree(comment._id)
+                };
+            });
+    };
+    
+    const topLevelComments = allCommentsRaw
+        .filter(comment => !comment.parentComment)
+        .map(comment => ({
+            id: comment._id, content: comment.content,
+            author: { id: comment.author._id, username: comment.author.username, displayName: comment.author.displayName, photo: comment.author.profilePicture.path || '/default-profile.png' },
+            likes: comment.likes.length, isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
+            createdAt: comment.createdAt.toISOString(), parentComment: null, replyingTo: null,
+            linkPreview: comment.linkPreview,
+            voiceChannel: comment.voiceChannel,
+            replies: buildCommentTree(comment._id)
+        }));
+
+    return {
+        id: post._id, title: post.title, content: post.content,
+        linkPreview: post.linkPreview, postType: post.postType,
+        attachments: post.attachments,
+        pollOptions: post.pollOptions ? post.pollOptions.map(opt => ({ option: opt.option, votes: opt.votes })) : [],
+        voiceChannel: post.voiceChannel,
+        author: { id: post.author._id, username: post.author.username, displayName: post.author.displayName, photo: post.author.profilePicture.path || '/default-profile.png' },
+        likes: post.likes.length, isLiked: currentUserId ? post.likes.includes(currentUserId) : false,
+        createdAt: post.createdAt.toISOString(),
+        comments: topLevelComments,
+        usersWhoVoted: post.postType === 'poll' ? post.usersWhoVoted : undefined
+    };
+}
+
+app.get('/api/posts/friends-recent', isAuthenticated, async (req, res) => {
+    try {
+        const currentUserId = req.user._id;
+        const friends = req.user.friends;
+
+        if (!friends || friends.length === 0) {
+            return res.json([]);
+        }
+
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+        const recentFriendPosts = await Post.find({
+            author: { $in: friends },
+            createdAt: { $gte: threeDaysAgo }
+        }).populate('author', 'username displayName profilePicture');
+
+        for (let i = recentFriendPosts.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [recentFriendPosts[i], recentFriendPosts[j]] = [recentFriendPosts[j], recentFriendPosts[i]];
+        }
+        
+        const postsWithDetails = await Promise.all(
+            recentFriendPosts.map(post => populatePostDetails(post, currentUserId))
+        );
+
+        res.json(postsWithDetails);
+
+    } catch (error) {
+        console.error('Error fetching recent friend posts:', error);
+        res.status(500).json({ error: 'Failed to fetch recent friend posts' });
+    }
+});
+
 // Gets all posts and their details.
 app.get('/api/posts', async (req, res) => {
   try {
@@ -1214,6 +1305,14 @@ app.get('/api/posts', async (req, res) => {
       }
     }
 
+    const excludeIdsStr = req.query.exclude_ids || '';
+    if (excludeIdsStr) {
+        const excludedIds = excludeIdsStr.split(',').filter(id => mongoose.Types.ObjectId.isValid(id));
+        if (excludedIds.length > 0) {
+            query._id = { $nin: excludedIds };
+        }
+    }
+
     const totalPosts = await Post.countDocuments(query);
     
     const posts = await Post.find(query)
@@ -1223,96 +1322,7 @@ app.get('/api/posts', async (req, res) => {
       .limit(limit);
 
     const postsWithDetails = await Promise.all(
-      posts.map(async (post) => {
-        const allCommentsRaw = await Comment.find({ post: post._id })
-          .populate('author', '_id username displayName profilePicture')
-          .sort({ createdAt: 1 });
-
-        const buildCommentTree = (parentId) => {
-          return allCommentsRaw
-            .filter(comment => String(comment.parentComment) === String(parentId))
-            .map(comment => {
-              let replyingTo = null;
-              if (comment.parentComment) {
-                const parentCommentObject = allCommentsRaw.find(c => String(c._id) === String(comment.parentComment));
-                if (parentCommentObject) {
-                  replyingTo = {
-                    id: parentCommentObject.author._id,
-                    username: parentCommentObject.author.username
-                  };
-                } else {
-                  replyingTo = {
-                    id: null,
-                    username: "Reply deleted"
-                  };
-                }
-              }
-              return {
-                id: comment._id,
-                content: comment.content,
-                author: {
-                  id: comment.author._id,
-                  username: comment.author.username,
-                  displayName: comment.author.displayName,
-                  photo: comment.author.profilePicture.path || '/default-profile.png'
-                },
-                likes: comment.likes.length,
-                isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
-                createdAt: comment.createdAt.toISOString(),
-                parentComment: comment.parentComment,
-                replyingTo: replyingTo,
-                linkPreview: comment.linkPreview,
-                replies: buildCommentTree(comment._id)
-              };
-            });
-        };
-        
-        const topLevelComments = allCommentsRaw
-            .filter(comment => !comment.parentComment)
-            .map(comment => ({
-                id: comment._id,
-                content: comment.content,
-                author: {
-                    id: comment.author._id,
-                    username: comment.author.username,
-                    displayName: comment.author.displayName,
-                    photo: comment.author.profilePicture.path || '/default-profile.png'
-                },
-                likes: comment.likes.length,
-                isLiked: currentUserId ? comment.likes.includes(currentUserId) : false,
-                createdAt: comment.createdAt.toISOString(),
-                parentComment: null,
-                replyingTo: null,
-                linkPreview: comment.linkPreview,
-                replies: buildCommentTree(comment._id)
-            }));
-
-
-        return {
-          id: post._id,
-          title: post.title,
-          content: post.content,
-          linkPreview: post.linkPreview,
-          postType: post.postType,
-          attachments: post.attachments,
-          pollOptions: post.pollOptions ? post.pollOptions.map(opt => ({
-            option: opt.option,
-            votes: opt.votes,
-          })) : [],
-          voiceChannel: post.voiceChannel,
-          author: {
-            id: post.author._id,
-            username: post.author.username,
-            displayName: post.author.displayName,
-            photo: post.author.profilePicture.path || '/default-profile.png'
-          },
-          likes: post.likes.length,
-          isLiked: currentUserId ? post.likes.includes(currentUserId) : false,
-          createdAt: post.createdAt.toISOString(),
-          comments: topLevelComments,
-          usersWhoVoted: post.postType === 'poll' ? post.usersWhoVoted : undefined
-        };
-      })
+        posts.map(post => populatePostDetails(post, currentUserId))
     );
     
     res.json({
