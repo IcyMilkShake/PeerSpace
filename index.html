@@ -938,9 +938,6 @@
             currentVoiceChannel = null;
             sessionStorage.removeItem('inVoiceChannel');
             sessionStorage.removeItem('voiceChannelRefresh');
-            if (socket.connected) {
-                socket.disconnect();
-            }
         }
 
         function createVoiceControlsUI(channelId) {
@@ -1159,13 +1156,10 @@
                 
                 if (data.posts && data.posts.length > 0) {
                     posts.push(...data.posts);
-                    renderPosts(true); // Append new posts
                 }
                 
                 hasMorePosts = data.hasMore;
-                if (!hasMorePosts) {
-                    renderPosts(true);
-                }
+                renderPosts();
 
             } catch (error) {
                 console.error('Failed to load more posts:', error);
