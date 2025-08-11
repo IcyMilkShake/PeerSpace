@@ -1070,6 +1070,9 @@
                     createPostForm.classList.remove('hidden');
                 }
                 
+                if (!socket.connected) {
+                    socket.connect();
+                }
                 fetchNotificationCounts();
 
             } else {
@@ -1110,6 +1113,9 @@
         async function logout() {
             try {
                 await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+                if (socket.connected) {
+                    socket.disconnect();
+                }
                 currentUser = null;
                 updateUI();
                 loadPosts();
