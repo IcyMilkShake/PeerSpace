@@ -764,8 +764,7 @@
                     <div class="flex-grow">
                         <h4 class="font-bold text-lg">Voice Channel</h4>
                         <div id="voice-participants-${channelId}" class="flex items-center -space-x-2 overflow-hidden">
-                            <!-- Participant PFPs will go here -->
-                            <span class="text-sm text-gray-500 pl-2">No one is here yet.</span>
+                            <span class="text-sm text-gray-500 pl-2">Loading participants...</span>
                         </div>
                     </div>
                     <button onclick="joinVoiceChannel('${channelId}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex-shrink-0">
@@ -774,6 +773,32 @@
                 </div>
             `;
             container.onclick = (e) => e.stopPropagation();
+
+            const participantsDiv = container.querySelector(`#voice-participants-${channelId}`);
+            fetch(`/api/voice-channel/${channelId}`)
+                .then(res => res.json())
+                .then(participants => {
+                    if (participantsDiv) {
+                        participantsDiv.innerHTML = '';
+                        if (participants.length === 0) {
+                            participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">No one is here yet.</span>';
+                        } else {
+                            participants.forEach(p => {
+                                const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-white dark:border-gray-800');
+                                pfp.title = p.displayName;
+                                pfp.dataset.socketId = p.socketId;
+                                participantsDiv.appendChild(pfp);
+                            });
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error(`Failed to fetch participants for channel ${channelId}`, err);
+                    if (participantsDiv) {
+                        participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">Error loading participants.</span>';
+                    }
+                });
+
             return container;
         }
 

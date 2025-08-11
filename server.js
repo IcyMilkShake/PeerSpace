@@ -1831,6 +1831,32 @@ app.get('/api/posts/:postId', async (req, res) => {
     }
 });
 
+// Gets the current participants of a voice channel.
+app.get('/api/voice-channel/:channelId', async (req, res) => {
+  try {
+    const { channelId } = req.params;
+    const socketsInRoom = await io.in(channelId).fetchSockets();
+    const usersInRoom = socketsInRoom.map(s => ({ userId: s.userId, socketId: s.id }));
+      
+    const userIds = usersInRoom.map(u => u.userId).filter(Boolean);
+    if (userIds.length === 0) {
+      return res.json([]);
+    }
+
+    const userObjects = await User.find({ '_id': { $in: userIds } }).select('username displayName profilePicture');
+
+    const participants = userObjects.map(user => {
+        const socketInfo = usersInRoom.find(u => u.userId === user._id.toString());
+        return { ...user.toObject(), socketId: socketInfo ? socketInfo.socketId : null };
+    }).filter(p => p.socketId);
+
+    res.json(participants);
+  } catch (error) {
+    console.error('Error fetching voice channel participants:', error);
+    res.status(500).json({ error: 'Failed to fetch participants' });
+  }
+});
+
 // Deletes a post and all its comments.
 app.delete('/api/posts/:postId', isAuthenticated, async (req, res) => {
   try {
