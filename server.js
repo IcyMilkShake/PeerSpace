@@ -1287,7 +1287,7 @@ app.get('/api/posts/friends-recent', isAuthenticated, async (req, res) => {
         const recentFriendPosts = await Post.find({
             author: { $in: friends },
             createdAt: { $gte: threeDaysAgo }
-        }).populate('author', 'username displayName profilePicture').populate('voiceChannel');
+        }).populate('author', 'username displayName profilePicture');
 
         for (let i = recentFriendPosts.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -1337,7 +1337,6 @@ app.get('/api/posts', async (req, res) => {
     
     const posts = await Post.find(query)
       .populate('author', 'username displayName profilePicture')
-      .populate('voiceChannel')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -1779,6 +1778,9 @@ app.post('/api/posts/:postId/voice-channel', isAuthenticated, async (req, res) =
     if (!post) {
       return res.status(404).json({ error: 'Post not found.' });
     }
+    if (post.author.toString() !== userId.toString()) {
+      return res.status(403).json({ error: 'You are not authorized to create a voice channel on this post.' });
+    }
     if (post.voiceChannel) {
       return res.status(409).json({ error: 'This post already has a voice channel.' });
     }
@@ -1861,6 +1863,9 @@ app.post('/api/comments/:commentId/voice-channel', isAuthenticated, async (req, 
         if (!comment) {
             return res.status(404).json({ error: 'Comment not found.' });
         }
+        if (comment.author.toString() !== userId.toString()) {
+            return res.status(403).json({ error: 'You are not authorized to create a voice channel on this comment.' });
+        }
         if (comment.voiceChannel) {
             return res.status(409).json({ error: 'This comment already has a voice channel.' });
         }
@@ -1928,8 +1933,7 @@ app.get('/api/posts/search', async (req, res) => {
 app.get('/api/posts/:postId', async (req, res) => {
     try {
         const post = await Post.findById(req.params.postId)
-        .populate('author', 'username displayName profilePicture')
-        .populate('voiceChannel');
+            .populate('author', 'username displayName profilePicture');
 
         if (!post) {
             return res.status(404).json({ error: 'Post not found' });

@@ -1533,7 +1533,7 @@
                     dropdownMenu.appendChild(reportButton);
                 }
                 
-                if (currentUser && !post.voiceChannel) {
+                if (currentUser && currentUser.id === post.author.id && !post.voiceChannel) {
                     const createVoiceChannelButton = document.createElement('button');
                     createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
                     createVoiceChannelButton.innerHTML = `
@@ -1995,7 +1995,7 @@
                     dropdownMenu.appendChild(reportButton);
                 }
                 
-                if (currentUser && !comment.voiceChannel) {
+                if (currentUser && currentUser.id === comment.author.id && !comment.voiceChannel) {
                     const createVoiceChannelButton = document.createElement('button');
                     createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
                     createVoiceChannelButton.innerHTML = `
@@ -3775,7 +3775,7 @@
                 dropdownMenu.appendChild(reportButton);
             }
             
-            if (currentUser && !post.voiceChannel) {
+            if (currentUser && currentUser.id === post.author.id && !post.voiceChannel) {
                 const createVoiceChannelButton = document.createElement('button');
                 createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
                 createVoiceChannelButton.innerHTML = `
