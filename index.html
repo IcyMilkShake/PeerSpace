@@ -1317,13 +1317,18 @@
                 const postTextParagraph = document.createElement('p');
                 postTextParagraph.className = "text-gray-700 mb-4 whitespace-pre-wrap";
 
-                if (post.content.length > 300) {
+                let content = post.content;
+                if (post.voiceChannel) {
+                    content = content.replace('!voice', '');
+                }
+
+                if (content.length > 300) {
                     const seeMoreContainer = document.createElement('div');
                     seeMoreContainer.className = 'see-more-container post-see-more';
 
                     const fullContent = document.createElement('p');
                     fullContent.className = 'text-gray-700 mb-4 whitespace-pre-wrap';
-                    fullContent.innerHTML = escapeHtml(post.content, true);
+                    fullContent.innerHTML = escapeHtml(content, true);
 
                     seeMoreContainer.appendChild(fullContent);
 
@@ -1343,7 +1348,7 @@
                     postContentElement.appendChild(seeMoreContainer);
                     postContentElement.appendChild(seeMoreBtn);
                 } else {
-                    postTextParagraph.innerHTML = escapeHtml(post.content, true);
+                    postTextParagraph.innerHTML = escapeHtml(content, true);
                     postContentElement.appendChild(postTextParagraph);
                 }
 
@@ -1608,13 +1613,18 @@
                 const commentText = document.createElement('p');
                 commentText.className = "text-gray-700 whitespace-pre-wrap break-all";
                 
-                if (comment.content.length > 300) {
+                let content = comment.content;
+                if (comment.voiceChannel) {
+                    content = content.replace('!voice', '');
+                }
+
+                if (content.length > 300) {
                     const seeMoreContainer = document.createElement('div');
                     seeMoreContainer.className = `see-more-container ${depth === 0 ? 'comment-see-more' : 'reply-see-more'}`;
 
                     const fullContent = document.createElement('p');
                     fullContent.className = 'text-gray-700 whitespace-pre-wrap break-all';
-                    fullContent.innerHTML = escapeHtml(comment.content, true);
+                    fullContent.innerHTML = escapeHtml(content, true);
 
                     seeMoreContainer.appendChild(fullContent);
 
@@ -1633,7 +1643,7 @@
                     commentBody.appendChild(seeMoreContainer);
                     commentBody.appendChild(seeMoreBtn);
                 } else {
-                    commentText.innerHTML = escapeHtml(comment.content, true);
+                    commentText.innerHTML = escapeHtml(content, true);
                     commentBody.appendChild(commentText);
                 }
 
@@ -3384,12 +3394,17 @@
             const seeMoreContainer = document.createElement('div');
             seeMoreContainer.className = 'see-more-container post-see-more';
 
+            let content = post.content;
+            if (post.voiceChannel) {
+                content = content.replace('!voice', '');
+            }
+
             const fullContent = document.createElement('p');
             fullContent.className = 'text-gray-700 mb-4 whitespace-pre-wrap';
-            fullContent.innerHTML = escapeHtml(post.content, true);
+            fullContent.innerHTML = escapeHtml(content, true);
 
             seeMoreContainer.appendChild(fullContent);
-            if (post.content.length > 500) {
+            if (content.length > 500) {
                 const seeMoreBtn = document.createElement('button');
                 seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
                 seeMoreBtn.textContent = 'See More';
@@ -3405,7 +3420,7 @@
                 postContentElement.appendChild(seeMoreContainer);
                 postContentElement.appendChild(seeMoreBtn);
             } else {
-                postTextParagraph.innerHTML = escapeHtml(post.content, true);
+                postTextParagraph.innerHTML = escapeHtml(content, true);
                 postContentElement.appendChild(postTextParagraph);
             }
 

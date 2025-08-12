@@ -127,6 +127,33 @@
                 </div>
             </div>
         </section>
+
+        <section id="audio-settings" class="setting-card shadow-md rounded-lg p-6 mt-8">
+            <h2 class="text-xl font-semibold mb-4">Audio Settings</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="input-device" class="block text-sm font-medium text-gray-700">Input Device (Microphone)</label>
+                    <select id="input-device" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"></select>
+                </div>
+                <div>
+                    <label for="output-device" class="block text-sm font-medium text-gray-700">Output Device (Speakers)</label>
+                    <select id="output-device" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"></select>
+                </div>
+                <div>
+                    <label for="mic-volume" class="block text-sm font-medium text-gray-700">Microphone Volume</label>
+                    <input type="range" id="mic-volume" min="0" max="100" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="test-mic-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Test Microphone</button>
+                    <div id="mic-meter" class="w-full h-4 bg-gray-200 rounded-lg overflow-hidden hidden">
+                        <div id="mic-meter-fill" class="h-full bg-green-500" style="width: 0%;"></div>
+                    </div>
+                </div>
+                <div>
+                    <button id="test-speaker-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Speaker Test</button>
+                </div>
+            </div>
+        </section>
     </main>
 
     <script>
@@ -328,6 +355,150 @@
                         }
                     });
                 });
+
+                // Audio settings logic
+                const inputDeviceSelect = document.getElementById('input-device');
+                const outputDeviceSelect = document.getElementById('output-device');
+                const micVolumeSlider = document.getElementById('mic-volume');
+                const testAudioBtn = document.getElementById('test-audio-btn');
+
+                async function getAudioDevices() {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
+                    const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
+
+                    inputDeviceSelect.innerHTML = '';
+                    audioInputDevices.forEach(device => {
+                        const option = document.createElement('option');
+                        option.value = device.deviceId;
+                        option.text = device.label || `Microphone ${inputDeviceSelect.length + 1}`;
+                        inputDeviceSelect.appendChild(option);
+                    });
+
+                    outputDeviceSelect.innerHTML = '';
+                    audioOutputDevices.forEach(device => {
+                        const option = document.createElement('option');
+                        option.value = device.deviceId;
+                        option.text = device.label || `Speakers ${outputDeviceSelect.length + 1}`;
+                        outputDeviceSelect.appendChild(option);
+                    });
+
+                    if (currentLoggedInUserConfig && currentLoggedInUserConfig.audioSettings) {
+                        inputDeviceSelect.value = currentLoggedInUserConfig.audioSettings.inputDevice;
+                        outputDeviceSelect.value = currentLoggedInUserConfig.audioSettings.outputDevice;
+                        micVolumeSlider.value = currentLoggedInUserConfig.audioSettings.micVolume;
+                    }
+                }
+
+                async function saveAudioSettings(reload = false) {
+                    if (!currentLoggedInUserConfig) return;
+                    const settings = {
+                        inputDevice: inputDeviceSelect.value,
+                        outputDevice: outputDeviceSelect.value,
+                        micVolume: micVolumeSlider.value
+                    };
+                    try {
+                        await fetch('/api/user/audio-settings', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(settings),
+                        });
+                        if (reload) {
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        console.error('Failed to save audio settings:', error);
+                    }
+                }
+
+                inputDeviceSelect.addEventListener('change', () => saveAudioSettings(true));
+                outputDeviceSelect.addEventListener('change', () => saveAudioSettings(true));
+                micVolumeSlider.addEventListener('change', saveAudioSettings);
+
+                const testMicBtn = document.getElementById('test-mic-btn');
+                const micMeter = document.getElementById('mic-meter');
+                const micMeterFill = document.getElementById('mic-meter-fill');
+                const testSpeakerBtn = document.getElementById('test-speaker-btn');
+
+                let micTestActive = false;
+                let audioContext;
+                let stream;
+                let analyser;
+
+                testMicBtn.addEventListener('click', async () => {
+                    if (micTestActive) {
+                        micTestActive = false;
+                        testMicBtn.textContent = 'Test Microphone';
+                        micMeter.classList.add('hidden');
+                        if (stream) {
+                            stream.getTracks().forEach(track => track.stop());
+                        }
+                        if (audioContext) {
+                            audioContext.close();
+                        }
+                        return;
+                    }
+
+                    micTestActive = true;
+                    testMicBtn.textContent = 'Stop Test';
+                    micMeter.classList.remove('hidden');
+
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: inputDeviceSelect.value } });
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        analyser = audioContext.createAnalyser();
+                        const source = audioContext.createMediaStreamSource(stream);
+                        source.connect(analyser);
+
+                        analyser.fftSize = 256;
+                        const bufferLength = analyser.frequencyBinCount;
+                        const dataArray = new Uint8Array(bufferLength);
+
+                        function draw() {
+                            if (!micTestActive) return;
+                            requestAnimationFrame(draw);
+                            analyser.getByteFrequencyData(dataArray);
+                            let sum = 0;
+                            for (let i = 0; i < bufferLength; i++) {
+                                sum += dataArray[i];
+                            }
+                            let avg = sum / bufferLength;
+                            micMeterFill.style.width = `${avg}%`;
+                        }
+                        draw();
+                    } catch (err) {
+                        console.error('Error accessing microphone:', err);
+                        micTestActive = false;
+                        testMicBtn.textContent = 'Test Microphone';
+                        micMeter.classList.add('hidden');
+                    }
+                });
+
+                testSpeakerBtn.addEventListener('click', async () => {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    if (outputDeviceSelect.value) {
+                        try {
+                            await audioContext.setSinkId(outputDeviceSelect.value);
+                        } catch (err) {
+                            console.error('Error setting sink ID:', err);
+                        }
+                    }
+
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5 note
+                    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                });
+
+                getAudioDevices();
             });
         });
 

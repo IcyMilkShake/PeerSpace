@@ -70,7 +70,12 @@ const userSchema = new mongoose.Schema({
   friends: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  audioSettings: {
+    inputDevice: { type: String, default: 'default' },
+    outputDevice: { type: String, default: 'default' },
+    micVolume: { type: Number, default: 100 }
+  }
 }, { collection: 'User' });
 
 // Post Schema

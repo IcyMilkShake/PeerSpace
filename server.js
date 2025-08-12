@@ -1141,6 +1141,23 @@ app.get('/api/friend-status/:userId', isAuthenticated, async (req, res) => {
     }
 });
 
+// Updates the audio settings for the logged-in user.
+app.put('/api/user/audio-settings', isAuthenticated, async (req, res) => {
+  try {
+    const { inputDevice, outputDevice, micVolume } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    user.audioSettings = { inputDevice, outputDevice, micVolume };
+    await user.save();
+    res.json({ success: true, audioSettings: user.audioSettings });
+  } catch (error) {
+    console.error('Error updating audio settings:', error);
+    res.status(500).json({ error: 'Failed to update audio settings' });
+  }
+});
+
 // Uploads a new banner picture for the user.
 app.post('/api/user/banner-picture', isAuthenticated, upload.single('bannerPicture'), async (req, res) => {
   try {
