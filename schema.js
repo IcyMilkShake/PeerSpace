@@ -186,7 +186,13 @@ const commentSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'VoiceChannel',
     default: null
-  }
+  },
+  reports: [{
+    reporter: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    reasonType: { type: String, required: true },
+    reasonDetails: { type: String },
+    reportedAt: { type: Date, default: Date.now }
+  }]
 });
 
 // Create models
@@ -268,6 +274,16 @@ const voiceChannelSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Comment',
     required: false
+  },
+  name: {
+    type: String,
+    required: true,
+    default: 'Voice Channel'
+  },
+  creator: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
   participants: [{
     type: mongoose.Schema.Types.ObjectId,

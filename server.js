@@ -42,6 +42,7 @@ AWS.config.update({
 
 const s3 = new AWS.S3();
 const BUCKET_NAME = 'peerspace-database';
+const channelTimeouts = {};
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/PeerSpace', {
@@ -552,7 +553,7 @@ app.get('/api/users/:userId/content', async (req, res) => {
                     { $project: { _id: 1 } }
                 ]);
                 const ids = postIds.map(p => p._id);
-                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture');
+                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture').populate('voiceChannel');
                 sortedPosts = ids.map(id => unsortedPosts.find(p => p._id.equals(id)));
             } else if (sortBy === 'comments') {
                 const postIds = await Post.aggregate([
@@ -563,12 +564,13 @@ app.get('/api/users/:userId/content', async (req, res) => {
                     { $project: { _id: 1 } }
                 ]);
                 const ids = postIds.map(p => p._id);
-                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture');
+                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture').populate('voiceChannel');
                 sortedPosts = ids.map(id => unsortedPosts.find(p => p._id.equals(id)));
             } else {
                 const sortOption = (sortBy === 'oldest') ? { createdAt: 1 } : { createdAt: -1 };
                 sortedPosts = await Post.find({ author: authorId })
                     .populate('author', 'username displayName profilePicture')
+                    .populate('voiceChannel')
                     .sort(sortOption);
             }
             
@@ -1285,7 +1287,7 @@ app.get('/api/posts/friends-recent', isAuthenticated, async (req, res) => {
         const recentFriendPosts = await Post.find({
             author: { $in: friends },
             createdAt: { $gte: threeDaysAgo }
-        }).populate('author', 'username displayName profilePicture');
+        }).populate('author', 'username displayName profilePicture').populate('voiceChannel');
 
         for (let i = recentFriendPosts.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -1335,6 +1337,7 @@ app.get('/api/posts', async (req, res) => {
     
     const posts = await Post.find(query)
       .populate('author', 'username displayName profilePicture')
+      .populate('voiceChannel')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -1473,12 +1476,6 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       }
     }
 
-    if (content.includes('!voice')) {
-      const voiceChannel = new VoiceChannel({ post: null });
-      await voiceChannel.save();
-      newPostData.voiceChannel = voiceChannel._id;
-    }
-
     const post = new Post(newPostData);
     await post.save();
 
@@ -1550,12 +1547,6 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
       comment.linkPreview = linkPreview;
     }
 
-    if (content.includes('!voice')) {
-      const voiceChannel = new VoiceChannel({ post: postId, comment: null });
-      await voiceChannel.save();
-      comment.voiceChannel = voiceChannel._id;
-    }
-
     await comment.save();
 
     if (comment.voiceChannel) {
@@ -1620,12 +1611,6 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
     const linkPreview = await generateLinkPreview(content);
     if (linkPreview) {
       reply.linkPreview = linkPreview;
-    }
-
-    if (content.includes('!voice')) {
-      const voiceChannel = new VoiceChannel({ post: parentComment.post, comment: null });
-      await voiceChannel.save();
-      reply.voiceChannel = voiceChannel._id;
     }
 
     await reply.save();
@@ -1772,6 +1757,57 @@ app.post('/api/posts/:postId/like', isAuthenticated, async (req, res) => {
   }
 });
 
+// Creates a voice channel for a post.
+app.post('/api/posts/:postId/voice-channel', isAuthenticated, async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { name } = req.body;
+    const userId = req.user._id;
+
+    // Check if user already has an active voice channel
+    const existingChannel = await VoiceChannel.findOne({ creator: userId });
+    if (existingChannel) {
+      return res.status(409).json({
+        error: 'You have already created a voice channel.',
+        channelId: existingChannel._id,
+        postId: existingChannel.post,
+        commentId: existingChannel.comment
+      });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found.' });
+    }
+    if (post.voiceChannel) {
+      return res.status(409).json({ error: 'This post already has a voice channel.' });
+    }
+
+    const voiceChannel = new VoiceChannel({
+      post: postId,
+      name: name || 'Voice Channel',
+      creator: userId,
+      participants: []
+    });
+    await voiceChannel.save();
+
+    post.voiceChannel = voiceChannel._id;
+    await post.save();
+
+    io.emit('voice-channel-created', {
+        itemType: 'post',
+        itemId: postId,
+        voiceChannel: voiceChannel
+    });
+
+    res.status(201).json({ success: true, voiceChannelId: voiceChannel._id });
+
+  } catch (error) {
+    console.error('Error creating voice channel for post:', error);
+    res.status(500).json({ error: 'Failed to create voice channel.' });
+  }
+});
+
 // Likes or unlikes a comment.
 app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
   try {
@@ -1801,6 +1837,58 @@ app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
     console.error('Error liking/unliking comment:', error);
     res.status(500).json({ error: 'Failed to update comment like status.' });
   }
+});
+
+// Creates a voice channel for a comment.
+app.post('/api/comments/:commentId/voice-channel', isAuthenticated, async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        const { name } = req.body;
+        const userId = req.user._id;
+
+        // Check if user already has an active voice channel
+        const existingChannel = await VoiceChannel.findOne({ creator: userId });
+        if (existingChannel) {
+            return res.status(409).json({
+                error: 'You have already created a voice channel.',
+                channelId: existingChannel._id,
+                postId: existingChannel.post,
+                commentId: existingChannel.comment
+            });
+        }
+
+        const comment = await Comment.findById(commentId);
+        if (!comment) {
+            return res.status(404).json({ error: 'Comment not found.' });
+        }
+        if (comment.voiceChannel) {
+            return res.status(409).json({ error: 'This comment already has a voice channel.' });
+        }
+
+        const voiceChannel = new VoiceChannel({
+            post: comment.post,
+            comment: commentId,
+            name: name || 'Voice Channel',
+            creator: userId,
+            participants: []
+        });
+        await voiceChannel.save();
+
+        comment.voiceChannel = voiceChannel._id;
+        await comment.save();
+
+        io.emit('voice-channel-created', {
+            itemType: 'comment',
+            itemId: commentId,
+            voiceChannel: voiceChannel
+        });
+
+        res.status(201).json({ success: true, voiceChannelId: voiceChannel._id });
+
+    } catch (error) {
+        console.error('Error creating voice channel for comment:', error);
+        res.status(500).json({ error: 'Failed to create voice channel.' });
+    }
 });
 
 // Searches for posts.
@@ -1840,7 +1928,8 @@ app.get('/api/posts/search', async (req, res) => {
 app.get('/api/posts/:postId', async (req, res) => {
     try {
         const post = await Post.findById(req.params.postId)
-            .populate('author', 'username displayName profilePicture');
+        .populate('author', 'username displayName profilePicture')
+        .populate('voiceChannel');
 
         if (!post) {
             return res.status(404).json({ error: 'Post not found' });
@@ -1858,6 +1947,41 @@ app.get('/api/posts/:postId', async (req, res) => {
         console.error('Error fetching post:', error);
         res.status(500).json({ error: 'Failed to fetch post' });
     }
+});
+
+// Deletes a voice channel.
+app.delete('/api/voice-channel/:channelId', isAuthenticated, async (req, res) => {
+  try {
+    const { channelId } = req.params;
+    const userId = req.user._id;
+
+    const voiceChannel = await VoiceChannel.findById(channelId);
+
+    if (!voiceChannel) {
+      return res.status(404).json({ error: 'Voice channel not found.' });
+    }
+
+    if (voiceChannel.creator.toString() !== userId.toString()) {
+      return res.status(403).json({ error: 'You are not authorized to delete this voice channel.' });
+    }
+
+    await VoiceChannel.findByIdAndDelete(channelId);
+
+    if (voiceChannel.post) {
+        await Post.findByIdAndUpdate(voiceChannel.post, { $unset: { voiceChannel: "" } });
+        io.emit('voice-channel-deleted', { channelId: channelId, postId: voiceChannel.post });
+    } else if (voiceChannel.comment) {
+        await Comment.findByIdAndUpdate(voiceChannel.comment, { $unset: { voiceChannel: "" } });
+        io.emit('voice-channel-deleted', { channelId: channelId, commentId: voiceChannel.comment });
+    }
+    
+    console.log(`User ${userId} deleted voice channel ${channelId}`);
+    res.json({ success: true, message: 'Voice channel deleted successfully.' });
+
+  } catch (error) {
+    console.error('Error deleting voice channel:', error);
+    res.status(500).json({ error: 'Failed to delete voice channel.' });
+  }
 });
 
 // Gets the current participants of a voice channel.
@@ -1962,7 +2086,43 @@ io.on('connection', (socket) => {
       console.log(`User ${userId} (${socket.id}) leaving channel ${channelId}`);
       socket.leave(channelId);
 
-      await VoiceChannel.findByIdAndUpdate(channelId, { $pull: { participants: userId } });
+      const updatedChannel = await VoiceChannel.findByIdAndUpdate(
+        channelId,
+        { $pull: { participants: userId } },
+        { new: true }
+      );
+
+      if (updatedChannel && updatedChannel.participants.length === 0) {
+        console.log(`Channel ${channelId} is now empty. Starting deletion timer.`);
+        const timeoutId = setTimeout(async () => {
+          try {
+            const finalCheckChannel = await VoiceChannel.findById(channelId);
+            if (finalCheckChannel && finalCheckChannel.participants.length === 0) {
+                console.log(`Timer expired for ${channelId}. Deleting channel.`);
+                await VoiceChannel.findByIdAndDelete(channelId);
+                
+                if (finalCheckChannel.post) {
+                    await Post.findByIdAndUpdate(finalCheckChannel.post, { $unset: { voiceChannel: "" } });
+                    io.emit('voice-channel-deleted', { channelId: channelId, postId: finalCheckChannel.post });
+                } else if (finalCheckChannel.comment) {
+                    await Comment.findByIdAndUpdate(finalCheckChannel.comment, { $unset: { voiceChannel: "" } });
+                    io.emit('voice-channel-deleted', { channelId: channelId, commentId: finalCheckChannel.comment });
+                }
+                console.log(`Deleted empty voice channel ${channelId}`);
+            } else {
+                console.log(`Timer expired for ${channelId}, but it is no longer empty. Deletion cancelled.`);
+            }
+          } catch (error) {
+            console.error(`Error during voice channel auto-deletion for ${channelId}:`, error);
+          } finally {
+            delete channelTimeouts[channelId.toString()];
+          }
+        }, 60000);
+
+        channelTimeouts[channelId.toString()] = timeoutId;
+      } else if (updatedChannel) {
+        console.log(`User left channel ${channelId}. ${updatedChannel.participants.length} participants remaining.`);
+      }
 
       socket.to(channelId).emit('user-left', { socketId: socket.id });
 
@@ -1985,6 +2145,11 @@ io.on('connection', (socket) => {
 
   socket.on('join-channel', async ({ channelId, userId }) => {
     try {
+      if (channelTimeouts[channelId]) {
+        clearTimeout(channelTimeouts[channelId]);
+        delete channelTimeouts[channelId];
+        console.log(`[JOIN] Cleared auto-delete timeout for channel ${channelId}`);
+      }
       const channel = await VoiceChannel.findById(channelId);
       if (!channel) {
         // Or emit an error event to the client

@@ -13,6 +13,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="navigation.css">
     <style>
+        .modal-overlay {
+            background-color: var(--modal-overlay-bg);
+            backdrop-filter: blur(4px);
+        }
         #search-bar::placeholder {
             transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
         }
@@ -78,6 +82,19 @@
             border: 1px solid var(--border-color);
         }
         #report-modal input[type="text"]:focus, #report-modal textarea:focus {
+             border-color: var(--accent-color);
+             box-shadow: 0 0 0 2px var(--accent-color-subtle);
+        }
+        #name-vc-modal {
+            background-color: var(--modal-content-bg);
+            color: var(--text-primary);
+        }
+        #name-vc-modal input[type="text"] {
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        #name-vc-modal input[type="text"]:focus {
              border-color: var(--accent-color);
              box-shadow: 0 0 0 2px var(--accent-color-subtle);
         }
@@ -182,6 +199,20 @@
                 </button>
                 <button id="confirmation-modal-confirm-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
                     Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="name-vc-modal-overlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[90] p-4">
+        <div id="name-vc-modal" class="rounded-lg shadow-xl p-6 max-w-sm w-full">
+            <h3 id="name-vc-modal-title" class="text-lg font-semibold mb-4">Name your Voice Channel</h3>
+            <input type="text" id="vc-name-input" placeholder="Channel Name" class="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex justify-end space-x-3 mt-4">
+                <button id="name-vc-modal-cancel-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button id="name-vc-modal-confirm-btn" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+                    Create
                 </button>
             </div>
         </div>
@@ -297,6 +328,7 @@
                 <h3 id="report-modal-title" class="text-lg font-semibold mb-4">Report Post</h3>
                 <form id="report-form">
                     <input type="hidden" id="report-post-id">
+                    <input type="hidden" id="report-comment-id">
                     <div class="mb-4">
                         <label for="report-reason-type" class="block text-sm font-medium mb-1">Reason:</label>
                         <select id="report-reason-type" name="report-reason-type" class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -662,6 +694,72 @@
             leaveVoiceChannel();
         });
 
+        socket.on('voice-channel-created', ({ itemType, itemId, voiceChannel }) => {
+            let postToUpdate;
+            if (itemType === 'post') {
+                const postIndex = posts.findIndex(p => p.id === itemId);
+                if (postIndex !== -1) {
+                    posts[postIndex].voiceChannel = voiceChannel;
+                    postToUpdate = posts[postIndex];
+                }
+            } else if (itemType === 'comment') {
+                for (const p of posts) {
+                    const found = findComment(p.comments, itemId);
+                    if (found) {
+                        found.voiceChannel = voiceChannel;
+                        postToUpdate = p;
+                        break;
+                    }
+                }
+            }
+
+            if (postToUpdate) {
+                const singlePostContainer = document.getElementById('single-post-container');
+                if (!singlePostContainer.classList.contains('hidden') && singlePostContainer.querySelector(`article`)) {
+                     renderSinglePost(postToUpdate.id);
+                } else {
+                    renderPosts();
+                }
+            }
+        });
+
+        socket.on('voice-channel-deleted', ({ channelId, postId, commentId }) => {
+            const voiceChannelElement = document.querySelector(`.voice-channel-container #voice-participants-${channelId}`);
+            if (voiceChannelElement) {
+                voiceChannelElement.closest('.voice-channel-container').remove();
+            }
+
+            if (postId) {
+                const postIndex = posts.findIndex(p => p.id === postId);
+                if (postIndex !== -1) {
+                    posts[postIndex].voiceChannel = null;
+                }
+            } else if (commentId) {
+                for (const p of posts) {
+                    const found = findComment(p.comments, commentId);
+                    if (found) {
+                        found.voiceChannel = null;
+                        break;
+                    }
+                }
+            }
+        });
+
+        function findComment(comments, commentId) {
+            for (const c of comments) {
+                if (c.id === commentId) {
+                    return c;
+                }
+                if (c.replies) {
+                    const found = findComment(c.replies, commentId);
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
+            return null;
+        }
+
         async function createAudioMeter(stream, onVolumeChange) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             audioContext.resume();
@@ -835,20 +933,21 @@
 
         // Creates the UI element for a voice channel.
         function createVoiceChannelElement(item) {
-            const channelId = item.voiceChannel;
-            if (!channelId) return null;
+            const voiceChannel = item.voiceChannel;
+            if (!voiceChannel) return null;
+            const channelId = voiceChannel._id;
 
             const container = document.createElement('div');
-            container.className = 'voice-channel-container border rounded-lg p-4 my-4';
+            container.className = 'voice-channel-container border rounded-lg p-4 flex items-center justify-between';
             container.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <div class="flex-grow">
-                        <h4 class="font-bold text-lg">Voice Channel</h4>
-                        <div id="voice-participants-${channelId}" class="flex items-center -space-x-2 overflow-hidden">
-                            <span class="text-sm text-gray-500 pl-2">Loading participants...</span>
-                        </div>
+                <div class="flex-grow">
+                    <h4 class="font-bold text-lg">${escapeHtml(voiceChannel.name || 'Voice Channel')}</h4>
+                    <div id="voice-participants-${channelId}" class="flex items-center -space-x-2 overflow-hidden">
+                        <span class="text-sm text-gray-500 pl-2">Loading participants...</span>
                     </div>
-                    <button onclick="joinVoiceChannel('${channelId}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex-shrink-0">
+                </div>
+                <div id="voice-channel-buttons-${channelId}" class="flex items-center space-x-2 flex-shrink-0">
+                    <button onclick="joinVoiceChannel('${channelId}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">
                         <i class="fas fa-phone-alt mr-2"></i>Join
                     </button>
                 </div>
@@ -856,6 +955,20 @@
             container.onclick = (e) => e.stopPropagation();
 
             const participantsDiv = container.querySelector(`#voice-participants-${channelId}`);
+            const buttonsContainer = container.querySelector(`#voice-channel-buttons-${channelId}`);
+
+            if (currentUser && voiceChannel.creator && currentUser.id === voiceChannel.creator.toString()) {
+                const deleteButton = document.createElement('button');
+                deleteButton.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteVoiceChannel(channelId);
+                };
+                deleteButton.className = 'bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors';
+                deleteButton.innerHTML = `<i class="fas fa-trash-alt"></i>`;
+                deleteButton.title = "Delete Voice Channel";
+                buttonsContainer.appendChild(deleteButton);
+            }
+
             fetch(`/api/voice-channel/${channelId}`)
                 .then(res => res.json())
                 .then(participants => {
@@ -1005,6 +1118,31 @@
             currentVoiceChannel = null;
             sessionStorage.removeItem('inVoiceChannel');
             sessionStorage.removeItem('voiceChannelRefresh');
+        }
+
+        async function deleteVoiceChannel(channelId) {
+            if (!currentUser) return;
+
+            showConfirmationDialog(
+                "Are you sure you want to delete this voice channel? This action cannot be undone.",
+                async () => {
+                    try {
+                        const response = await fetch(`/api/voice-channel/${channelId}`, {
+                            method: 'DELETE',
+                        });
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({ error: "Server error" }));
+                            showNotification(`Failed to delete voice channel: ${errorData.error}`, 'error');
+                        }
+                        // The UI will be updated by the voice-channel-deleted socket event
+                    } catch (error) {
+                        console.error('Error deleting voice channel:', error);
+                        showNotification('An error occurred while deleting the voice channel.', 'error');
+                    }
+                },
+                null,
+                "Delete Voice Channel"
+            );
         }
 
         function createDesktopVoiceControlsUI(channelId) {
@@ -1395,6 +1533,21 @@
                     dropdownMenu.appendChild(reportButton);
                 }
                 
+                if (currentUser && !post.voiceChannel) {
+                    const createVoiceChannelButton = document.createElement('button');
+                    createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
+                    createVoiceChannelButton.innerHTML = `
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 14.5a3.5 3.5 0 10-7 0v-1.586a1 1 0 01.293-.707l4.414-4.414a1 1 0 01.707-.293H15.5V14.5zM12 18a4 4 0 100-8 4 4 0 000 8z"></path></svg>
+                        Create Voice Channel
+                    `;
+                    createVoiceChannelButton.onclick = (e) => {
+                        e.stopPropagation();
+                        createVoiceChannel('post', post.id);
+                        closeAllPostActionMenus();
+                    };
+                    dropdownMenu.appendChild(createVoiceChannelButton);
+                }
+
                 if (dropdownMenu.hasChildNodes()) {
                     postActions.appendChild(dropdownMenu);
                     postHeader.appendChild(postActions);
@@ -1422,11 +1575,7 @@
                 const postTextParagraph = document.createElement('p');
                 postTextParagraph.className = "text-gray-700 mb-4 whitespace-pre-wrap";
 
-                let content = post.content;
-                if (post.voiceChannel) {
-                    content = content.replace('!voice', '');
-                }
-
+                const content = post.content;
                 if (content.length > 300) {
                     const seeMoreContainer = document.createElement('div');
                     seeMoreContainer.className = 'see-more-container post-see-more';
@@ -1674,7 +1823,7 @@
                 commentDiv.className = 'flex items-start space-x-3 bg-gray-50 p-3 rounded-lg shadow-sm'; 
 
                 const commentBody = document.createElement('div');
-                commentBody.className = 'flex-1 overflow-hidden';
+                commentBody.className = 'flex-1';
 
                 const commentAuthorProfileLink = document.createElement('a');
                 commentAuthorProfileLink.href = `/profile.html?id=${comment.author.id}`;
@@ -1718,11 +1867,7 @@
                 const commentText = document.createElement('p');
                 commentText.className = "text-gray-700 whitespace-pre-wrap break-all";
                 
-                let content = comment.content;
-                if (comment.voiceChannel) {
-                    content = content.replace('!voice', '');
-                }
-
+                const content = comment.content;
                 if (content.length > 300) {
                     const seeMoreContainer = document.createElement('div');
                     seeMoreContainer.className = `see-more-container ${depth === 0 ? 'comment-see-more' : 'reply-see-more'}`;
@@ -1800,16 +1945,75 @@
                     replyButton.textContent = 'Reply';
                     replyButton.onclick = () => toggleReplyForm(comment.id, postId);
                     commentActionsDiv.appendChild(replyButton);
-
-                    if (currentUser.id === comment.author.id) { 
-                        const deleteButton = document.createElement('button');
-                        deleteButton.className = 'hover:text-red-600 font-medium text-xs ml-2';
-                        deleteButton.textContent = 'Delete';
-                        deleteButton.onclick = () => confirmDeleteComment(comment.id, !comment.parentComment);
-                        commentActionsDiv.appendChild(deleteButton);
-                    }
                 }
                 commentBody.appendChild(commentActionsDiv);
+
+                const commentMenuButton = document.createElement('button');
+                commentMenuButton.className = 'text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
+                commentMenuButton.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
+                commentMenuButton.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleCommentActionMenu(comment.id);
+                };
+                
+                const commentActions = document.createElement('div');
+                commentActions.className = 'ml-auto relative';
+                commentActions.appendChild(commentMenuButton);
+
+                const dropdownMenu = document.createElement('div');
+                dropdownMenu.id = `comment-action-menu-${comment.id}`;
+                dropdownMenu.className = 'hidden absolute right-0 mt-2 min-w-max rounded-md shadow-lg py-1 z-20 comment-action-menu';
+                dropdownMenu.style.backgroundColor = 'var(--dropdown-bg)';
+
+                if (currentUser && currentUser.id === comment.author.id) {
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'block w-full text-left px-4 py-2 text-sm profile-menu-item profile-menu-item-danger';
+                    deleteButton.innerHTML = `
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        Delete
+                    `;
+                    deleteButton.onclick = (e) => {
+                        e.stopPropagation();
+                        confirmDeleteComment(comment.id, !comment.parentComment);
+                        closeAllCommentActionMenus();
+                    };
+                    dropdownMenu.appendChild(deleteButton);
+                }
+
+                if (currentUser && currentUser.id !== comment.author.id) {
+                    const reportButton = document.createElement('button');
+                    reportButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
+                    reportButton.innerHTML = `
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4.25L16.25 3.5a2.121 2.121 0 013 3L6.25 19H3zm9-13l3 3"></path></svg>
+                        Report
+                    `;
+                    reportButton.onclick = (e) => {
+                        e.stopPropagation();
+                        openReportModal(null, comment.id);
+                        closeAllCommentActionMenus();
+                    };
+                    dropdownMenu.appendChild(reportButton);
+                }
+                
+                if (currentUser && !comment.voiceChannel) {
+                    const createVoiceChannelButton = document.createElement('button');
+                    createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
+                    createVoiceChannelButton.innerHTML = `
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 14.5a3.5 3.5 0 10-7 0v-1.586a1 1 0 01.293-.707l4.414-4.414a1 1 0 01.707-.293H15.5V14.5zM12 18a4 4 0 100-8 4 4 0 000 8z"></path></svg>
+                        Create Voice Channel
+                    `;
+                    createVoiceChannelButton.onclick = (e) => {
+                        e.stopPropagation();
+                        createVoiceChannel('comment', comment.id);
+                        closeAllCommentActionMenus();
+                    };
+                    dropdownMenu.appendChild(createVoiceChannelButton);
+                }
+
+                if (dropdownMenu.hasChildNodes()) {
+                    commentActions.appendChild(dropdownMenu);
+                    commentHeader.appendChild(commentActions);
+                }
                 
                 const replyFormContainerId = `reply-form-container-${comment.id}`;
                 const replyFormContainer = document.createElement('div');
@@ -2055,6 +2259,75 @@
         }
 
         // Shows or hides the action menu for a post.
+        async function createVoiceChannel(type, id) {
+            if (!currentUser) {
+                showNotification("Please sign in to create a voice channel.", "warning");
+                return;
+            }
+
+            const nameVcModalOverlay = document.getElementById('name-vc-modal-overlay');
+            const nameVcModalCancelBtn = document.getElementById('name-vc-modal-cancel-btn');
+            const nameVcModalConfirmBtn = document.getElementById('name-vc-modal-confirm-btn');
+            const vcNameInput = document.getElementById('vc-name-input');
+            
+            nameVcModalOverlay.classList.remove('hidden');
+
+            const onConfirm = async () => {
+                const name = vcNameInput.value.trim();
+                if (!name) {
+                    showNotification("Please enter a name for the voice channel.", "warning");
+                    return;
+                }
+
+                let url;
+                if (type === 'post') {
+                    url = `/api/posts/${id}/voice-channel`;
+                } else if (type === 'comment') {
+                    url = `/api/comments/${id}/voice-channel`;
+                } else {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name })
+                    });
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        showNotification("Voice channel created successfully!", "success");
+                    } else {
+                        if (response.status === 409) {
+                            showNotification('You already have a voice channel open.', 'error');
+                        } else {
+                            showNotification(`Error: ${data.error || 'Failed to create voice channel.'}`, 'error');
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error creating voice channel for ${type} ${id}:`, error);
+                    showNotification('An error occurred while creating the voice channel.', 'error');
+                } finally {
+                    closeNameVcModal();
+                }
+            };
+            
+            const onCancel = () => {
+                closeNameVcModal();
+            };
+
+            const closeNameVcModal = () => {
+                nameVcModalOverlay.classList.add('hidden');
+                vcNameInput.value = '';
+                nameVcModalConfirmBtn.removeEventListener('click', onConfirm);
+                nameVcModalCancelBtn.removeEventListener('click', onCancel);
+            };
+
+            nameVcModalConfirmBtn.addEventListener('click', onConfirm);
+            nameVcModalCancelBtn.addEventListener('click', onCancel);
+        }
+        
         function togglePostActionMenu(postId) {
             const singlePostContainer = document.getElementById('single-post-container');
             let menu;
@@ -2082,11 +2355,31 @@
             });
         }
 
+        function toggleCommentActionMenu(commentId) {
+            const menu = document.getElementById(`comment-action-menu-${commentId}`);
+            if (menu) {
+                const isHidden = menu.classList.contains('hidden');
+                closeAllCommentActionMenus();
+                if (isHidden) {
+                    menu.classList.remove('hidden');
+                }
+            }
+        }
+
+        function closeAllCommentActionMenus() {
+            document.querySelectorAll('.comment-action-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        }
+
         // Closes post action menus when clicking outside of them.
         document.addEventListener('click', (event) => {
             const isActionsButton = event.target.closest('button') && event.target.closest('button').innerHTML.includes('M10 6a2');
             if (!isActionsButton && !event.target.closest('[id^="post-action-menu-"]')) {
                 closeAllPostActionMenus();
+            }
+            if (!isActionsButton && !event.target.closest('[id^="comment-action-menu-"]')) {
+                closeAllCommentActionMenus();
             }
         });
 
@@ -2101,12 +2394,21 @@
         const reportDescriptionInput = document.getElementById('report-description');
 
         // Opens the modal for reporting a post.
-        function openReportModal(postId) {
+        function openReportModal(postId, commentId) {
             if (!currentUser) {
-                showNotification("Please sign in to report posts.", "warning");
+                showNotification("Please sign in to report content.", "warning");
                 return;
             }
-            reportPostIdInput.value = postId;
+            document.getElementById('report-post-id').value = postId || '';
+            document.getElementById('report-comment-id').value = commentId || ''; 
+
+            const modalTitle = document.getElementById('report-modal-title');
+            if(postId) {
+                modalTitle.textContent = 'Report Post';
+            } else {
+                modalTitle.textContent = 'Report Comment';
+            }
+
             reportReasonTypeSelect.value = 'not_type';
             reportReasonOtherContainer.classList.add('hidden');
             reportReasonOtherInput.value = '';
@@ -2136,7 +2438,8 @@
 
         reportForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const postId = reportPostIdInput.value;
+            const postId = document.getElementById('report-post-id').value;
+            const commentId = document.getElementById('report-comment-id').value;
             let reasonType = reportReasonTypeSelect.value;
             let reasonDetails = reportDescriptionInput.value.trim();
 
@@ -2149,21 +2452,24 @@
                 reasonType = `other: ${otherReason}`;
             }
             
+            const url = postId ? `/api/posts/${postId}/report` : `/api/comments/${commentId}/report`;
+            const type = postId ? 'Post' : 'Comment';
+
             try {
-                const response = await fetch(`/api/posts/${postId}/report`, {
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reasonType, reasonDetails })
                 });
                 if (response.ok) {
-                    showNotification('Post reported successfully. Thank you for your feedback.', 'success');
+                    showNotification(`${type} reported successfully. Thank you for your feedback.`, 'success');
                     closeReportModal();
                 } else {
-                    const errorData = await response.json().catch(() => ({ error: 'Failed to submit report.' }));
+                    const errorData = await response.json().catch(() => ({ error: `Failed to submit report.` }));
                     showNotification(`Error: ${errorData.error}`, 'error');
                 }
             } catch (error) {
-                console.error('Failed to submit report:', error);
+                console.error(`Failed to submit report for ${type}:`, error);
                 showNotification('An error occurred while submitting the report.', 'error');
             }
         });
@@ -3250,7 +3556,7 @@
             notification.className = `notification notification-${type}`;
             
             const messageSpan = document.createElement('span');
-            messageSpan.textContent = message;
+            messageSpan.innerHTML = message;
             notification.appendChild(messageSpan);
 
             const closeButton = document.createElement('button');
@@ -3469,6 +3775,20 @@
                 dropdownMenu.appendChild(reportButton);
             }
             
+            if (currentUser && !post.voiceChannel) {
+                const createVoiceChannelButton = document.createElement('button');
+                createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
+                createVoiceChannelButton.innerHTML = `
+                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 14.5a3.5 3.5 0 10-7 0v-1.586a1 1 0 01.293-.707l4.414-4.414a1 1 0 01.707-.293H15.5V14.5zM12 18a4 4 0 100-8 4 4 0 000 8z"></path></svg>
+                    Create Voice Channel
+                `;
+                createVoiceChannelButton.onclick = (e) => {
+                    e.stopPropagation();
+                    createVoiceChannel('post', post.id);
+                    closeAllPostActionMenus();
+                };
+                dropdownMenu.appendChild(createVoiceChannelButton);
+            }
             if (dropdownMenu.hasChildNodes()) {
                 postActionsMenu.appendChild(dropdownMenu);
                 postHeader.appendChild(postActionsMenu);
@@ -3499,11 +3819,7 @@
             const seeMoreContainer = document.createElement('div');
             seeMoreContainer.className = 'see-more-container post-see-more';
 
-            let content = post.content;
-            if (post.voiceChannel) {
-                content = content.replace('!voice', '');
-            }
-
+            const content = post.content;
             const fullContent = document.createElement('p');
             fullContent.className = 'text-gray-700 mb-4 whitespace-pre-wrap';
             fullContent.innerHTML = escapeHtml(content, true);
