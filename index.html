@@ -114,13 +114,24 @@
             border: 2px solid #4ade80; /* A nice green color */
             box-shadow: 0 0 8px #4ade80;
         }
+        .muted-pfp {
+            opacity: 0.5;
+            cursor: pointer;
+        }
+        #desktop-voice-panel {
+            display: flex;
+        }
+        #mobile-voice-panel {
+            display: none;
+        }
         @media (max-width: 1000px) {
-            #voice-chat-panel {
+            #desktop-voice-panel {
+                display: none;
+            }
+            #mobile-voice-panel {
+                display: flex;
                 bottom: 76px;
-                right: 50%;
-                transform: translateX(50%);
-                width: calc(100% - 32px);
-                max-width: 400px;
+                right: 16px;
             }
         }
     </style>
@@ -449,10 +460,10 @@
                 }
             }
 
-            // --- Update the floating voice chat panel ---
-            const panelParticipantsList = document.getElementById('voice-chat-participants-list');
-            if (panelParticipantsList) {
-                panelParticipantsList.innerHTML = '';
+            // --- Update desktop floating voice chat panel ---
+            const desktopPanelParticipantsList = document.getElementById('desktop-voice-chat-participants-list');
+            if (desktopPanelParticipantsList) {
+                desktopPanelParticipantsList.innerHTML = '';
                 participants.forEach(p => {
                     const participantEl = document.createElement('div');
                     participantEl.className = 'flex items-center justify-between text-sm';
@@ -482,7 +493,40 @@
                         participantEl.appendChild(volumeControl);
                     }
                     
-                    panelParticipantsList.appendChild(participantEl);
+                    desktopPanelParticipantsList.appendChild(participantEl);
+                });
+            }
+
+            // --- Update mobile floating voice chat panel ---
+            const mobilePanelParticipantsList = document.getElementById('mobile-voice-chat-participants-list');
+            if (mobilePanelParticipantsList) {
+                mobilePanelParticipantsList.innerHTML = '';
+                participants.forEach(p => {
+                    const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-gray-600');
+                    pfp.title = p.displayName;
+                    pfp.dataset.socketId = p.socketId;
+
+                    if (p.socketId !== socket.id) {
+                        pfp.style.cursor = 'pointer';
+                        pfp.onclick = () => {
+                            const audioEl = document.getElementById(`remote-audio-${p.socketId}`);
+                            if (audioEl) {
+                                audioEl.muted = !audioEl.muted;
+                                if (audioEl.muted) {
+                                    pfp.classList.add('muted-pfp');
+                                } else {
+                                    pfp.classList.remove('muted-pfp');
+                                }
+                            }
+                        };
+                        // Check initial muted state
+                        const audioEl = document.getElementById(`remote-audio-${p.socketId}`);
+                        if (audioEl && audioEl.muted) {
+                            pfp.classList.add('muted-pfp');
+                        }
+                    }
+
+                    mobilePanelParticipantsList.appendChild(pfp);
                 });
             }
         });
@@ -602,16 +646,20 @@
         });
 
         socket.on('speaking', ({ socketId }) => {
-            console.log("aaaaa")
-            document.querySelectorAll(`[data-socket-id="${socketId}"]`).forEach(el => {
+            document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socketId}"], #mobile-voice-panel [data-socket-id="${socketId}"]`).forEach(el => {
                 el.classList.add('speaking');
             });
         });
 
         socket.on('stopped-speaking', ({ socketId }) => {
-            document.querySelectorAll(`[data-socket-id="${socketId}"]`).forEach(el => {
+            document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socketId}"], #mobile-voice-panel [data-socket-id="${socketId}"]`).forEach(el => {
                 el.classList.remove('speaking');
             });
+        });
+
+        socket.on('channel-full', () => {
+            showNotification('This voice channel is full and cannot be joined at this time.', 'error');
+            leaveVoiceChannel();
         });
 
         async function createAudioMeter(stream, onVolumeChange) {
@@ -864,7 +912,7 @@
                     if (!isSpeaking) {
                         isSpeaking = true;
                         socket.emit('speaking');
-                        document.querySelectorAll(`[data-socket-id="${socket.id}"]`).forEach(el => {
+                        document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socket.id}"], #mobile-voice-panel [data-socket-id="${socket.id}"]`).forEach(el => {
                             el.classList.add('speaking');
                         });
                     }
@@ -873,7 +921,7 @@
                         speakingTimer = setTimeout(() => {
                             isSpeaking = false;
                             socket.emit('stopped-speaking');
-                            document.querySelectorAll(`[data-socket-id="${socket.id}"]`).forEach(el => {
+                            document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socket.id}"], #mobile-voice-panel [data-socket-id="${socket.id}"]`).forEach(el => {
                                 el.classList.remove('speaking');
                             });
                             speakingTimer = null;
@@ -888,7 +936,8 @@
 
             currentVoiceChannel = { id: channelId, participants: [] };
             sessionStorage.setItem('inVoiceChannel', channelId);
-            createVoiceControlsUI(channelId);
+            createDesktopVoiceControlsUI(channelId);
+            createMobileVoiceControlsUI(channelId);
             
             // We need to wait for the socket to be connected before emitting
             if (socket.connected) {
@@ -920,9 +969,13 @@
             Object.values(peerConnections).forEach(pc => pc.close());
             peerConnections = {};
             
-            const panel = document.getElementById('voice-chat-panel');
-            if (panel) {
-                panel.remove();
+            const desktopPanel = document.getElementById('desktop-voice-panel');
+            if (desktopPanel) {
+                desktopPanel.remove();
+            }
+            const mobilePanel = document.getElementById('mobile-voice-panel');
+            if (mobilePanel) {
+                mobilePanel.remove();
             }
             
             const remoteAudioContainer = document.getElementById('remote-audio-container');
@@ -954,29 +1007,29 @@
             sessionStorage.removeItem('voiceChannelRefresh');
         }
 
-        function createVoiceControlsUI(channelId) {
-            let panel = document.getElementById('voice-chat-panel');
+        function createDesktopVoiceControlsUI(channelId) {
+            let panel = document.getElementById('desktop-voice-panel');
             if (panel) {
                 panel.remove();
             }
 
             panel = document.createElement('div');
-            panel.id = 'voice-chat-panel';
-            panel.className = 'fixed bottom-4 right-4 bg-gray-800 text-white rounded-lg shadow-lg w-64 flex flex-col z-[101]';
+            panel.id = 'desktop-voice-panel';
+            panel.className = 'fixed bottom-4 right-4 bg-gray-800 text-white rounded-lg shadow-lg w-64 flex-col z-[101]';
             
             panel.innerHTML = `
                 <div class="p-3 border-b border-gray-700">
                     <p class="font-bold text-sm">Voice Connected</p>
                     <p class="text-xs text-gray-400 truncate">Channel: ${channelId}</p>
                 </div>
-                <div id="voice-chat-participants-list" class="flex-grow p-3 space-y-2 overflow-y-auto" style="max-height: 200px;">
+                <div id="desktop-voice-chat-participants-list" class="flex-grow p-3 space-y-2 overflow-y-auto" style="max-height: 200px;">
                     <!-- Participants will be dynamically added here -->
                 </div>
                 <div class="p-2 bg-gray-900 rounded-b-lg flex items-center justify-around">
-                     <button id="mute-btn" class="hover:bg-gray-700 p-2 rounded-full" title="Mute/Unmute">
+                     <button id="desktop-mute-btn" class="hover:bg-gray-700 p-2 rounded-full" title="Mute/Unmute">
                         <i class="fas fa-microphone"></i>
                     </button>
-                    <button id="deafen-btn" data-deafened="false" class="hover:bg-gray-700 p-2 rounded-full" title="Deafen/Undeafen">
+                    <button id="desktop-deafen-btn" data-deafened="false" class="hover:bg-gray-700 p-2 rounded-full" title="Deafen/Undeafen">
                         <i class="fas fa-volume-up"></i>
                     </button>
                     <button onclick="leaveVoiceChannel()" class="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full" title="Disconnect">
@@ -986,7 +1039,7 @@
             `;
             document.body.appendChild(panel);
 
-            const muteBtn = document.getElementById('mute-btn');
+            const muteBtn = document.getElementById('desktop-mute-btn');
             muteBtn.addEventListener('click', () => {
                 if (!localStream) return;
                 const enabled = localStream.getAudioTracks()[0].enabled;
@@ -994,7 +1047,55 @@
                 muteBtn.innerHTML = `<i class="fas ${!enabled ? 'fa-microphone' : 'fa-microphone-slash'}"></i>`;
             });
 
-            const deafenBtn = document.getElementById('deafen-btn');
+            const deafenBtn = document.getElementById('desktop-deafen-btn');
+            deafenBtn.addEventListener('click', () => {
+                const audioElements = document.querySelectorAll('audio.remote-audio');
+                const isDeafened = deafenBtn.dataset.deafened === 'true';
+                audioElements.forEach(audio => {
+                    audio.muted = !isDeafened;
+                });
+                deafenBtn.dataset.deafened = !isDeafened;
+                deafenBtn.innerHTML = `<i class="fas ${!isDeafened ? 'fa-volume-mute' : 'fa-volume-up'}"></i>`;
+            });
+        }
+
+        function createMobileVoiceControlsUI(channelId) {
+            let panel = document.getElementById('mobile-voice-panel');
+            if (panel) {
+                panel.remove();
+            }
+
+            panel = document.createElement('div');
+            panel.id = 'mobile-voice-panel';
+            panel.className = 'fixed bottom-4 right-4 bg-gray-800 text-white rounded-lg shadow-lg p-2 flex items-center space-x-4 z-[101]';
+            
+            panel.innerHTML = `
+                <div id="mobile-voice-chat-participants-list" class="flex items-center space-x-1 overflow-hidden pr-2">
+                    <!-- Participants will be dynamically added here -->
+                </div>
+                <div class="flex items-center justify-around space-x-2">
+                     <button id="mobile-mute-btn" class="hover:bg-gray-700 p-2 rounded-full" title="Mute/Unmute">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <button id="mobile-deafen-btn" data-deafened="false" class="hover:bg-gray-700 p-2 rounded-full" title="Deafen/Undeafen">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                    <button onclick="leaveVoiceChannel()" class="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full" title="Disconnect">
+                        <i class="fas fa-phone-slash"></i>
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(panel);
+
+            const muteBtn = document.getElementById('mobile-mute-btn');
+            muteBtn.addEventListener('click', () => {
+                if (!localStream) return;
+                const enabled = localStream.getAudioTracks()[0].enabled;
+                localStream.getAudioTracks()[0].enabled = !enabled;
+                muteBtn.innerHTML = `<i class="fas ${!enabled ? 'fa-microphone' : 'fa-microphone-slash'}"></i>`;
+            });
+
+            const deafenBtn = document.getElementById('mobile-deafen-btn');
             deafenBtn.addEventListener('click', () => {
                 const audioElements = document.querySelectorAll('audio.remote-audio');
                 const isDeafened = deafenBtn.dataset.deafened === 'true';

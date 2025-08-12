@@ -1985,6 +1985,20 @@ io.on('connection', (socket) => {
 
   socket.on('join-channel', async ({ channelId, userId }) => {
     try {
+      const channel = await VoiceChannel.findById(channelId);
+      if (!channel) {
+        // Or emit an error event to the client
+        return console.error(`Attempted to join non-existent channel: ${channelId}`);
+      }
+      
+      // Check if the user is already in the participants list to allow re-joining
+      const isAlreadyParticipant = channel.participants.some(pId => pId.equals(userId));
+
+      if (channel.participants.length >= 10 && !isAlreadyParticipant) {
+        socket.emit('channel-full');
+        return;
+      }
+
       console.log(`User ${userId} (${socket.id}) joining channel ${channelId}`);
       socket.join(channelId);
       socket.userId = userId;
