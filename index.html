@@ -846,7 +846,11 @@
             }
 
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                const audioConstraints = { audio: true, video: false };
+                if (currentUser.audioSettings && currentUser.audioSettings.inputDevice) {
+                    audioConstraints.audio = { deviceId: { exact: currentUser.audioSettings.inputDevice } };
+                }
+                localStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
             } catch (error) {
                 console.error('Error accessing microphone:', error);
                 return showNotification('Could not access microphone. Please grant permission.', 'error');

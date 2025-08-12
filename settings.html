@@ -444,7 +444,7 @@
                     micMeter.classList.remove('hidden');
 
                     try {
-                        stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: inputDeviceSelect.value } });
+                        stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: inputDeviceSelect.value } } });
                         audioContext = new (window.AudioContext || window.webkitAudioContext)();
                         analyser = audioContext.createAnalyser();
                         const source = audioContext.createMediaStreamSource(stream);

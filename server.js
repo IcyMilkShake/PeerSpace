@@ -440,7 +440,7 @@ app.post('/auth/logout', (req, res) => {
 // Gets the data for the currently logged-in user.
 app.get('/api/user', (req, res) => {
   if (req.isAuthenticated() && req.user) {
-    const { _id, username, displayName, email, profilePicture, bannerPicture, description, createdAt, theme } = req.user;
+    const { _id, username, displayName, email, profilePicture, bannerPicture, description, createdAt, theme, audioSettings } = req.user;
     return res.json({
       id: _id,
       username,
@@ -450,7 +450,8 @@ app.get('/api/user', (req, res) => {
       banner: bannerPicture.path || '/default-banner.png',
       description: description || '',
       createdAt: createdAt,
-      theme: theme
+      theme: theme,
+      audioSettings: audioSettings
     });
   } else {
     return res.status(401).json({ error: 'Not authenticated' });
