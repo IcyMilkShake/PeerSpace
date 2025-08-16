@@ -3695,7 +3695,6 @@
         }
 
         function renderCommunitiesPage() {
-            showView('communities-container-main');
             const communitiesList = document.getElementById('communities-list');
             communitiesList.innerHTML = '<p>Loading communities...</p>';
 
@@ -3738,6 +3737,9 @@
                 .catch(error => {
                     console.error('Error fetching communities:', error);
                     communitiesList.innerHTML = '<p class="text-red-500">Could not load communities. Please try again later.</p>';
+                })
+                .finally(() => {
+                    showView('communities-container-main');
                 });
         }
 
@@ -4106,7 +4108,8 @@
             });
 
             document.getElementById('create-post-form').style.display = 'none';
-            document.getElementById('filter-bar').style.display = 'none';
+            const filterBar = document.getElementById('filter-bar');
+            if (filterBar) filterBar.style.display = 'none';
 
             const viewToShow = document.getElementById(viewId);
             if (viewToShow) {
@@ -4117,7 +4120,6 @@
                 if (currentUser) {
                     document.getElementById('create-post-form').style.display = 'block';
                 }
-                const filterBar = document.getElementById('filter-bar');
                 if(filterBar) filterBar.style.display = 'flex';
             }
         }
@@ -4558,45 +4560,6 @@
                 showMainFeed();
             }
         };
-
-        function showView(viewId) {
-            const allViews = [
-                'posts-container', 
-                'single-post-container', 
-                'inbox-container-main', 
-                'friends-container-main', 
-                'communities-container-main', 
-                'community-detail-container',
-                'create-community-container',
-                'empty-state'
-            ];
-
-            allViews.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.style.display = 'none';
-            });
-
-            document.getElementById('create-post-form').style.display = 'none';
-            const filterBar = document.getElementById('filter-bar');
-            if (filterBar) filterBar.style.display = 'none';
-
-            const viewToShow = document.getElementById(viewId);
-            if (viewToShow) {
-                viewToShow.style.display = 'block';
-            }
-
-            if (viewId === 'posts-container') {
-                if (currentUser) {
-                    document.getElementById('create-post-form').style.display = 'block';
-                }
-                if(filterBar) filterBar.style.display = 'flex';
-            }
-        }
-
-        // Shows the main feed of posts.
-        function showMainFeed() {
-            showView('posts-container');
-        }
 
         const urlParams = new URLSearchParams(window.location.search);
         const postId = urlParams.get('post');
