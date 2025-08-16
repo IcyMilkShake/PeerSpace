@@ -169,9 +169,9 @@
             <span class="nav-text">Friends</span>
             <span id="friends-notification-badge" class="notification-badge"></span>
         </button>
-        <a href="#" class="nav-item">
+        <a href="#" onclick="renderCommunitiesPage()" class="nav-item">
           <i class="fas fa-comments" style="color: var(--notification-info-bg);"></i>
-          <span class="nav-text">Communities (Aint Done)</span>
+          <span class="nav-text">Communities</span>
         </a>
         <button onclick="renderInbox()" class="nav-item">
             <i class="fas fa-inbox" style="color: var(--notification-info-bg);"></i>
@@ -398,6 +398,44 @@
         <div id="pending-content" class="hidden">
             <h2 class="text-2xl font-bold mb-4">Sent Requests</h2>
             <div id="pending-list" class="space-y-4"></div>
+        </div>
+    </div>
+    <div id="communities-container-main" class="hidden max-w-3xl mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold">Communities</h1>
+            <button id="create-community-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                Create Community
+            </button>
+        </div>
+        <div id="communities-list" class="space-y-4"></div>
+    </div>
+    <div id="community-detail-container" class="hidden max-w-4xl mx-auto px-4 py-8">
+    </div>
+    <div id="create-community-modal-overlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[90] p-4">
+        <div id="create-community-modal" class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+            <h3 class="text-lg font-semibold mb-4">Create a New Community</h3>
+            <form id="create-community-form-modal">
+                <div class="mb-4">
+                    <label for="community-name" class="block text-sm font-medium text-gray-700">Name</label>
+                    <input type="text" id="community-name" name="name" required minlength="3" maxlength="30" class="w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label for="community-description" class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea id="community-description" name="description" rows="3" maxlength="500" class="w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                <div class="mb-4">
+                    <label for="community-profile-picture" class="block text-sm font-medium text-gray-700">Profile Picture</label>
+                    <input type="file" id="community-profile-picture" name="profilePicture" accept="image/*" class="w-full">
+                </div>
+                <div class="mb-4">
+                    <label for="community-banner-picture" class="block text-sm font-medium text-gray-700">Banner Picture</label>
+                    <input type="file" id="community-banner-picture" name="bannerPicture" accept="image/*" class="w-full">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="create-community-modal-cancel-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors">Cancel</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">Create</button>
+                </div>
+            </form>
         </div>
     </div>
     <div id="user-profile" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-2 border z-50 w-60" style="border-color: var(--border-color);">
@@ -3276,6 +3314,54 @@
 
         // Initializes the page when the DOM is fully loaded.
         document.addEventListener('DOMContentLoaded', () => {
+            const createCommunityBtn = document.getElementById('create-community-btn');
+            const createCommunityModalOverlay = document.getElementById('create-community-modal-overlay');
+            const createCommunityModalCancelBtn = document.getElementById('create-community-modal-cancel-btn');
+            const createCommunityForm = document.getElementById('create-community-form-modal');
+
+            if(createCommunityBtn) {
+                createCommunityBtn.addEventListener('click', () => {
+                    if (currentUser) {
+                        createCommunityModalOverlay.classList.remove('hidden');
+                    } else {
+                        showNotification('You must be logged in to create a community.', 'warning');
+                    }
+                });
+            }
+
+            if(createCommunityModalCancelBtn) {
+                createCommunityModalCancelBtn.addEventListener('click', () => {
+                    createCommunityModalOverlay.classList.add('hidden');
+                });
+            }
+
+            if(createCommunityForm) {
+                createCommunityForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(createCommunityForm);
+                    
+                    try {
+                        const response = await fetch('/api/communities', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (response.ok) {
+                            const newCommunity = await response.json();
+                            showNotification('Community created successfully!', 'success');
+                            createCommunityModalOverlay.classList.add('hidden');
+                            renderCommunityPage(newCommunity._id);
+                        } else {
+                            const errorData = await response.json();
+                            showNotification(`Error: ${errorData.error}`, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error creating community:', error);
+                        showNotification('An unexpected error occurred.', 'error');
+                    }
+                });
+            }
+
             checkAuth();
             loadPosts();
 
@@ -3543,6 +3629,219 @@
             document.getElementById('friends-container-main').classList.remove('hidden');
             loadFriendRequests();
             loadFriendsList();
+        }
+
+        async function renderCommunitiesPage() {
+            document.getElementById('posts-container').classList.add('hidden');
+            document.getElementById('create-post-form').classList.add('hidden');
+            document.getElementById('filter-bar').classList.add('hidden');
+            document.getElementById('single-post-container').classList.add('hidden');
+            document.getElementById('inbox-container-main').classList.add('hidden');
+            document.getElementById('friends-container-main').classList.add('hidden');
+            document.getElementById('communities-container-main').classList.remove('hidden');
+
+            try {
+                const response = await fetch('/api/communities');
+                const communities = await response.json();
+                const communitiesList = document.getElementById('communities-list');
+                communitiesList.innerHTML = '';
+
+                if (communities.length === 0) {
+                    communitiesList.innerHTML = '<p>No communities found. Why not create one?</p>';
+                    return;
+                }
+
+                communities.forEach(community => {
+                    const communityElement = document.createElement('div');
+                    communityElement.className = 'flex items-center justify-between p-4 rounded-lg shadow-md cursor-pointer';
+                    communityElement.onclick = () => renderCommunityPage(community._id);
+                    
+                    const pfp = createProfileImage(community.profilePicture ? community.profilePicture.path : null, community.name, 'w-12 h-12', 'text-lg');
+
+                    communityElement.innerHTML = `
+                        <div class="flex items-center">
+                            <div class="mr-4">${pfp.outerHTML}</div>
+                            <div>
+                                <h3 class="text-lg font-bold">${escapeHtml(community.name)}</h3>
+                                <p class="text-sm text-gray-600">${escapeHtml(community.description)}</p>
+                                <p class="text-xs text-gray-500">${community.memberCount} members</p>
+                            </div>
+                        </div>
+                        <button class="view-community-btn bg-blue-500 text-white px-4 py-2 rounded-lg">View</button>
+                    `;
+                    communitiesList.appendChild(communityElement);
+                });
+            } catch (error) {
+                console.error('Error fetching communities:', error);
+                document.getElementById('communities-list').innerHTML = '<p>Could not load communities. Please try again later.</p>';
+            }
+        }
+
+        async function renderCommunityPage(communityId) {
+            document.getElementById('posts-container').classList.add('hidden');
+            document.getElementById('create-post-form').classList.add('hidden');
+            document.getElementById('filter-bar').classList.add('hidden');
+            document.getElementById('single-post-container').classList.add('hidden');
+            document.getElementById('inbox-container-main').classList.add('hidden');
+            document.getElementById('friends-container-main').classList.add('hidden');
+            document.getElementById('communities-container-main').classList.add('hidden');
+            const container = document.getElementById('community-detail-container');
+            container.classList.remove('hidden');
+            container.innerHTML = '<h2>Loading community...</h2>'; // Loading state
+
+            try {
+                const [communityRes, postsRes] = await Promise.all([
+                    fetch(`/api/communities/${communityId}`),
+                    fetch(`/api/posts?communityId=${communityId}`)
+                ]);
+
+                if (!communityRes.ok) {
+                    throw new Error('Failed to load community details.');
+                }
+                if (!postsRes.ok) {
+                    throw new Error('Failed to load community posts.');
+                }
+
+                const community = await communityRes.json();
+                const { posts: communityPosts, hasMore } = await postsRes.json();
+                
+                posts = communityPosts;
+                hasMorePosts = hasMore;
+                currentFilter = `community_${communityId}`;
+
+                const header = document.createElement('div');
+                header.className = 'community-header mb-8';
+                const bannerUrl = community.bannerPicture ? community.bannerPicture.path : '/default-banner.png';
+                const pfp = createProfileImage(community.profilePicture ? community.profilePicture.path : null, community.name, 'w-24 h-24 -mt-12 ml-6 border-4 border-white', 'text-4xl');
+                
+                const isMember = currentUser && community.members.some(member => member._id === currentUser.id);
+                const isOwner = currentUser && community.owner._id === currentUser.id;
+
+                let joinLeaveButton = '';
+                if (currentUser) {
+                    if (isOwner) {
+                        joinLeaveButton = `<button class="edit-community-btn bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium">Edit Community</button>`;
+                    } else if (isMember) {
+                        joinLeaveButton = `<button onclick="leaveCommunity('${communityId}')" class="leave-community-btn bg-red-500 text-white px-4 py-2 rounded-lg font-medium">Leave Community</button>`;
+                    } else {
+                        joinLeaveButton = `<button onclick="joinCommunity('${communityId}')" class="join-community-btn bg-blue-600 text-white px-4 py-2 rounded-lg font-medium">Join Community</button>`;
+                    }
+                }
+
+                header.innerHTML = `
+                    <div class="banner h-48 bg-cover bg-center rounded-t-lg" style="background-image: url('${bannerUrl}')"></div>
+                    <div class="flex justify-between items-end p-4 bg-white rounded-b-lg shadow-md">
+                        <div class="flex items-end">
+                            ${pfp.outerHTML}
+                            <div class="ml-4">
+                                <h1 class="text-3xl font-bold">${escapeHtml(community.name)}</h1>
+                                <p class="text-sm text-gray-600">${community.members.length} members</p>
+                            </div>
+                        </div>
+                        <div class="actions">
+                            ${joinLeaveButton}
+                        </div>
+                    </div>
+                    <p class="mt-4 text-gray-700">${escapeHtml(community.description)}</p>
+                `;
+                
+                const communityPostsContainer = document.createElement('div');
+                communityPostsContainer.id = 'community-posts-container';
+                communityPostsContainer.className = 'space-y-6';
+
+                container.innerHTML = '';
+                container.appendChild(header);
+
+                if (isMember) {
+                    const createPostContainer = document.getElementById('create-post-form').cloneNode(true);
+                    createPostContainer.id = 'community-create-post-form';
+                    createPostContainer.classList.remove('hidden');
+                    const form = createPostContainer.querySelector('form');
+                    form.onsubmit = (e) => {
+                        e.preventDefault();
+                        const title = form.querySelector('#post-title').value;
+                        const content = form.querySelector('#post-content').value;
+                        const postType = form.querySelector('#post-type').value;
+                        // Simplified - doesn't handle polls or attachments for now
+                        createPost(title, content, postType, [], [], communityId).then(success => {
+                            if(success) {
+                                renderCommunityPage(communityId); // re-render on success
+                            }
+                        });
+                    };
+                    container.appendChild(createPostContainer);
+                }
+
+                container.appendChild(communityPostsContainer);
+                
+                renderPostsIntoContainer(posts, communityPostsContainer);
+
+            } catch (error) {
+                console.error('Error rendering community page:', error);
+                container.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+            }
+        }
+
+        function renderPostsIntoContainer(postsToRender, container) {
+            container.innerHTML = '';
+            if (postsToRender.length === 0) {
+                container.innerHTML = '<p>No posts in this community yet. Be the first to post!</p>';
+                return;
+            }
+            // This is a simplified render function. For a full implementation,
+            // it would be better to refactor the main `renderPosts` function
+            // to accept a target container and a post list.
+            postsToRender.forEach(post => {
+                const article = document.createElement('article');
+                article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in cursor-pointer';
+                article.onclick = () => {
+                    history.pushState({ postId: post.id }, "", `?post=${post.id}`);
+                    renderSinglePost(post.id);
+                };
+                
+                const authorHtml = post.author ? `<div class="text-sm text-gray-500 mt-2">by ${escapeHtml(post.author.displayName)}</div>` : '';
+
+                article.innerHTML = `
+                    <h2 class="text-xl font-bold">${escapeHtml(post.title)}</h2>
+                    <p class="text-gray-700 mt-2 whitespace-pre-wrap">${escapeHtml(post.content)}</p>
+                    ${authorHtml}
+                `;
+                container.appendChild(article);
+            });
+        }
+
+        async function joinCommunity(communityId) {
+            if (!currentUser) return showNotification('You must be logged in to join.', 'warning');
+            try {
+                const response = await fetch(`/api/communities/${communityId}/join`, { method: 'POST' });
+                if (!response.ok) throw new Error('Failed to join');
+                showNotification('Successfully joined the community!', 'success');
+                renderCommunityPage(communityId);
+            } catch (error) {
+                showNotification('Error joining community.', 'error');
+            }
+        }
+
+        async function leaveCommunity(communityId) {
+            if (!currentUser) return;
+            showConfirmationDialog(
+                "Are you sure you want to leave this community?",
+                async () => {
+                    try {
+                        const response = await fetch(`/api/communities/${communityId}/leave`, { method: 'POST' });
+                        if (!response.ok) {
+                            const data = await response.json();
+                            throw new Error(data.error || 'Failed to leave');
+                        };
+                        showNotification('Successfully left the community.', 'info');
+                        renderCommunityPage(communityId);
+                    } catch (error) {
+                        showNotification(`Error leaving community: ${error.message}`, 'error');
+                    }
+                },
+                null,
+                "Leave Community"
+            );
         }
 
         // Checks for authentication when the window is focused.

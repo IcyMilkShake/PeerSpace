@@ -139,6 +139,11 @@ const postSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'VoiceChannel',
     default: null
+  },
+  community: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Community',
+    default: null
   }
 });
 
@@ -195,10 +200,60 @@ const commentSchema = new mongoose.Schema({
   }]
 });
 
+// Community Schema
+const communitySchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    minlength: 3,
+    maxlength: 30
+  },
+  description: {
+    type: String,
+    maxlength: 500
+  },
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  members: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  profilePicture: {
+    path: {
+      type: String,
+      default: null
+    },
+    contentType: {
+      type: String,
+      default: 'image/png'
+    }
+  },
+  bannerPicture: {
+    path: {
+      type: String,
+      default: null
+    },
+    contentType: {
+      type: String,
+      default: 'image/png'
+    }
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 // Create models
 const User = mongoose.model('User', userSchema);
 const Post = mongoose.model('Post', postSchema);
 const Comment = mongoose.model('Comment', commentSchema);
+const Community = mongoose.model('Community', communitySchema);
 
 // Notification Schema
 const notificationSchema = new mongoose.Schema({
@@ -303,5 +358,6 @@ module.exports = {
   Comment,
   Notification,
   FriendRequest,
-  VoiceChannel
+  VoiceChannel,
+  Community
 };

@@ -17,7 +17,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 require('dotenv').config();
 
-const { User, Post, Comment, Notification, FriendRequest, VoiceChannel } = require('./schema');
+const { User, Post, Comment, Notification, FriendRequest, VoiceChannel, Community } = require('./schema');
 
 const app = express();
 
@@ -1144,6 +1144,214 @@ app.get('/api/friend-status/:userId', isAuthenticated, async (req, res) => {
     }
 });
 
+// COMMUNITY ROUTES
+
+// Create a new community
+app.post('/api/communities', isAuthenticated, upload.fields([{ name: 'profilePicture', maxCount: 1 }, { name: 'bannerPicture', maxCount: 1 }]), async (req, res) => {
+    try {
+        const { name, description } = req.body;
+
+        if (!name || name.trim().length < 3) {
+            return res.status(400).json({ error: 'Community name must be at least 3 characters long.' });
+        }
+
+        const existingCommunity = await Community.findOne({ name: new RegExp(`^${name.trim()}$`, 'i') });
+        if (existingCommunity) {
+            return res.status(409).json({ error: 'A community with this name already exists.' });
+        }
+
+        const newCommunity = new Community({
+            name: name.trim(),
+            description: description || '',
+            owner: req.user._id,
+            members: [req.user._id]
+        });
+
+        if (req.files) {
+            const uploadToS3 = async (file, folder) => {
+                const key = `${folder}/${uuidv4()}-${file.originalname}`;
+                const params = {
+                    Bucket: BUCKET_NAME,
+                    Key: key,
+                    Body: file.buffer,
+                    ContentType: file.mimetype,
+                    ACL: 'public-read',
+                };
+                const result = await s3.upload(params).promise();
+                return { path: result.Location, contentType: file.mimetype };
+            };
+
+            if (req.files.profilePicture) {
+                newCommunity.profilePicture = await uploadToS3(req.files.profilePicture[0], 'community_profile_pics');
+            }
+            if (req.files.bannerPicture) {
+                newCommunity.bannerPicture = await uploadToS3(req.files.bannerPicture[0], 'community_banner_pics');
+            }
+        }
+
+        await newCommunity.save();
+        res.status(201).json(newCommunity);
+
+    } catch (error) {
+        console.error('Error creating community:', error);
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ error: error.message });
+        }
+        res.status(500).json({ error: 'Failed to create community.' });
+    }
+});
+
+// Get all communities
+app.get('/api/communities', async (req, res) => {
+    try {
+        const communities = await Community.find({})
+            .populate('owner', 'username displayName')
+            .select('name description profilePicture bannerPicture members owner createdAt')
+            .sort({ createdAt: -1 });
+            
+        const communitiesWithMemberCount = communities.map(c => ({
+            ...c.toObject(),
+            memberCount: c.members.length
+        }));
+
+        res.json(communitiesWithMemberCount);
+    } catch (error) {
+        console.error('Error fetching communities:', error);
+        res.status(500).json({ error: 'Failed to fetch communities.' });
+    }
+});
+
+// Get a specific community by ID
+app.get('/api/communities/:communityId', async (req, res) => {
+    try {
+        const { communityId } = req.params;
+        const community = await Community.findById(communityId)
+            .populate('owner', 'username displayName profilePicture')
+            .populate('members', 'username displayName profilePicture');
+
+        if (!community) {
+            return res.status(404).json({ error: 'Community not found.' });
+        }
+
+        res.json(community);
+    } catch (error) {
+        console.error('Error fetching community:', error);
+        if (error.kind === 'ObjectId') {
+            return res.status(400).json({ error: 'Invalid community ID format.' });
+        }
+        res.status(500).json({ error: 'Failed to fetch community.' });
+    }
+});
+
+// Update a community
+app.put('/api/communities/:communityId', isAuthenticated, upload.fields([{ name: 'profilePicture', maxCount: 1 }, { name: 'bannerPicture', maxCount: 1 }]), async (req, res) => {
+    try {
+        const { communityId } = req.params;
+        const { name, description } = req.body;
+
+        const community = await Community.findById(communityId);
+
+        if (!community) {
+            return res.status(404).json({ error: 'Community not found.' });
+        }
+
+        if (community.owner.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'You are not authorized to edit this community.' });
+        }
+
+        if (name && name.trim().length >= 3) {
+            const existingCommunity = await Community.findOne({ name: new RegExp(`^${name.trim()}$`, 'i'), _id: { $ne: communityId } });
+            if (existingCommunity) {
+                return res.status(409).json({ error: 'A community with this name already exists.' });
+            }
+            community.name = name.trim();
+        }
+
+        if (description) {
+            community.description = description;
+        }
+
+        if (req.files) {
+            const uploadToS3 = async (file, folder) => {
+                const key = `${folder}/${uuidv4()}-${file.originalname}`;
+                const params = {
+                    Bucket: BUCKET_NAME,
+                    Key: key,
+                    Body: file.buffer,
+                    ContentType: file.mimetype,
+                    ACL: 'public-read',
+                };
+                const result = await s3.upload(params).promise();
+                return { path: result.Location, contentType: file.mimetype };
+            };
+
+            if (req.files.profilePicture) {
+                community.profilePicture = await uploadToS3(req.files.profilePicture[0], 'community_profile_pics');
+            }
+            if (req.files.bannerPicture) {
+                community.bannerPicture = await uploadToS3(req.files.bannerPicture[0], 'community_banner_pics');
+            }
+        }
+
+        await community.save();
+        res.json(community);
+
+    } catch (error) {
+        console.error('Error updating community:', error);
+        res.status(500).json({ error: 'Failed to update community.' });
+    }
+});
+
+// Join a community
+app.post('/api/communities/:communityId/join', isAuthenticated, async (req, res) => {
+    try {
+        const { communityId } = req.params;
+        const userId = req.user._id;
+
+        const community = await Community.findByIdAndUpdate(
+            communityId,
+            { $addToSet: { members: userId } },
+            { new: true }
+        );
+
+        if (!community) {
+            return res.status(404).json({ error: 'Community not found.' });
+        }
+
+        res.json({ success: true, message: 'Successfully joined the community.' });
+    } catch (error) {
+        console.error('Error joining community:', error);
+        res.status(500).json({ error: 'Failed to join community.' });
+    }
+});
+
+// Leave a community
+app.post('/api/communities/:communityId/leave', isAuthenticated, async (req, res) => {
+    try {
+        const { communityId } = req.params;
+        const userId = req.user._id;
+
+        const community = await Community.findById(communityId);
+
+        if (!community) {
+            return res.status(404).json({ error: 'Community not found.' });
+        }
+
+        if (community.owner.equals(userId)) {
+            return res.status(400).json({ error: 'The owner cannot leave the community.' });
+        }
+
+        community.members.pull(userId);
+        await community.save();
+
+        res.json({ success: true, message: 'Successfully left the community.' });
+    } catch (error) {
+        console.error('Error leaving community:', error);
+        res.status(500).json({ error: 'Failed to leave community.' });
+    }
+});
+
+
 // Updates the audio settings for the logged-in user.
 app.put('/api/user/audio-settings', isAuthenticated, async (req, res) => {
   try {
@@ -1316,7 +1524,16 @@ app.get('/api/posts', async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter = req.query.filter || 'all';
+    const communityId = req.query.communityId;
+
     let query = {};
+
+    if (communityId) {
+        query.community = communityId;
+    } else {
+        query.community = null;
+    }
+
     if (filter !== 'all') {
       if (filter === 'normal') {
         query.$or = [{ postType: 'normal' }, { postType: { $exists: false } }];
@@ -1359,7 +1576,7 @@ app.get('/api/posts', async (req, res) => {
 // Creates a new post.
 app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments', 15), async (req, res) => {
   try {
-    const { title, content, postType } = req.body;
+    const { title, content, postType, communityId } = req.body;
     let { pollOptions } = req.body;
 
     if (pollOptions) {
@@ -1383,7 +1600,8 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       content,
       author: req.user._id,
       postType: postType || 'normal',
-      attachments: []
+      attachments: [],
+      community: communityId || null
     };
 
     const linkPreview = await generateLinkPreview(content);
