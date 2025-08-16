@@ -356,17 +356,17 @@
                 </form>
             </div>
         </div>
-        <div id="posts-container" class="space-y-6">
+        <div id="posts-container" class="main-view space-y-6">
         </div>
-        <div id="single-post-container" class="hidden space-y-6">
+        <div id="single-post-container" class="main-view hidden space-y-6">
         </div>
-        <div id="empty-state" class="text-center py-16">
+        <div id="empty-state" class="main-view text-center py-16" style="display: none;">
             <div class="text-gray-400 text-6xl mb-4">📝</div>
             <h3 class="text-xl font-semibold text-gray-600 mb-2">No posts yet</h3>
             <p class="text-gray-500">Be the first to start a discussion!</p>
         </div>
     </main>
-    <div id="inbox-container-main" class="hidden max-w-3xl mx-auto px-4 py-8">
+    <div id="inbox-container-main" class="main-view hidden max-w-3xl mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold mb-6">Inbox</h1>
         <div id="inbox-container" class="space-y-4">
         </div>
@@ -380,7 +380,7 @@
             <p>Could not load notifications. Please try again later.</p>
         </div>
     </div>
-    <div id="friends-container-main" class="hidden max-w-3xl mx-auto px-4 py-8">
+    <div id="friends-container-main" class="main-view hidden max-w-3xl mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold mb-6">Friends</h1>
         <div class="flex border-b mb-6">
                 <button id="requests-tab" class="py-2 px-4 font-semibold border-b-2 active-tab">Requests</button>
@@ -400,7 +400,7 @@
             <div id="pending-list" class="space-y-4"></div>
         </div>
     </div>
-    <div id="communities-container-main" class="hidden max-w-3xl mx-auto px-4 py-8">
+    <div id="communities-container-main" class="main-view hidden max-w-3xl mx-auto px-4 py-8">
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-3xl font-bold">Communities</h1>
             <button id="create-community-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
@@ -409,34 +409,60 @@
         </div>
         <div id="communities-list" class="space-y-4"></div>
     </div>
-    <div id="community-detail-container" class="hidden max-w-4xl mx-auto px-4 py-8">
+    <div id="community-detail-container" class="main-view hidden max-w-4xl mx-auto px-4 py-8">
     </div>
-    <div id="create-community-modal-overlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[90] p-4">
-        <div id="create-community-modal" class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
-            <h3 class="text-lg font-semibold mb-4">Create a New Community</h3>
-            <form id="create-community-form-modal">
-                <div class="mb-4">
-                    <label for="community-name" class="block text-sm font-medium text-gray-700">Name</label>
-                    <input type="text" id="community-name" name="name" required minlength="3" maxlength="30" class="w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500">
+    <div id="create-community-container" class="main-view hidden max-w-3xl mx-auto px-4 py-8">
+        <h1 id="community-form-title" class="text-3xl font-bold mb-6">Create a New Community</h1>
+        <form id="create-community-form">
+                <div class="form-card p-6">
+                <div class="relative">
+                    <!-- Banner -->
+                        <div class="h-48 rounded-lg flex items-center justify-center relative mb-4" style="background-color: var(--input-field-bg);">
+                        <img id="community-banner-preview" src="" class="hidden w-full h-full object-cover rounded-lg">
+                            <label for="community-banner-picture" id="community-banner-upload-label" class="cursor-pointer text-center" style="color: var(--text-secondary);">
+                            <i class="fas fa-camera fa-3x"></i>
+                            <p class="mt-2">Upload a banner image</p>
+                        </label>
+                        <label for="community-banner-picture" class="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded-full cursor-pointer hover:bg-opacity-75" title="Change banner">
+                            <i class="fas fa-edit"></i>
+                        </label>
+                    </div>
+                    <input type="file" id="community-banner-picture" name="bannerPicture" accept="image/*" class="hidden">
+
+                    <!-- Profile Picture -->
+                    <div class="absolute top-32 left-6">
+                            <div class="h-24 w-24 rounded-full border-4 flex items-center justify-center relative" style="background-color: var(--input-field-bg); border-color: var(--card-default-bg);">
+                            <img id="community-pfp-preview" src="" class="hidden w-full h-full object-cover rounded-full">
+                                <label for="community-profile-picture" id="community-pfp-upload-label" class="cursor-pointer text-center" style="color: var(--text-secondary);">
+                                <i class="fas fa-camera"></i>
+                                <p class="text-xs">Upload</p>
+                            </label>
+                            <label for="community-profile-picture" class="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white p-2 rounded-full cursor-pointer hover:bg-opacity-75" title="Change profile picture">
+                                <i class="fas fa-edit"></i>
+                            </label>
+                        </div>
+                        <input type="file" id="community-profile-picture" name="profilePicture" accept="image/*" class="hidden">
+                    </div>
                 </div>
-                <div class="mb-4">
-                    <label for="community-description" class="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea id="community-description" name="description" rows="3" maxlength="500" class="w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+
+                <!-- Content -->
+                <div class="pt-12">
+                    <div class="mb-4">
+                            <label for="community-name" class="block text-sm font-medium">Name</label>
+                            <input type="text" id="community-name" name="name" required minlength="3" maxlength="30" class="w-full px-4 py-2 rounded-lg mt-1" placeholder="My Awesome Community">
+                    </div>
+                    <div class="mb-4">
+                            <label for="community-description" class="block text-sm font-medium">Description</label>
+                            <textarea id="community-description" name="description" rows="3" maxlength="500" class="w-full px-4 py-2 rounded-lg mt-1" placeholder="A short description of what your community is about."></textarea>
+                    </div>
                 </div>
-                <div class="mb-4">
-                    <label for="community-profile-picture" class="block text-sm font-medium text-gray-700">Profile Picture</label>
-                    <input type="file" id="community-profile-picture" name="profilePicture" accept="image/*" class="w-full">
-                </div>
-                <div class="mb-4">
-                    <label for="community-banner-picture" class="block text-sm font-medium text-gray-700">Banner Picture</label>
-                    <input type="file" id="community-banner-picture" name="bannerPicture" accept="image/*" class="w-full">
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button type="button" id="create-community-modal-cancel-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors">Cancel</button>
-                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">Create</button>
-                </div>
-            </form>
-        </div>
+            </div>
+            <!-- Actions -->
+            <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" id="create-community-cancel-btn" class="button-secondary">Cancel</button>
+                    <button type="submit" id="create-community-submit-btn" class="button-primary">Ship It!</button>
+            </div>
+        </form>
     </div>
     <div id="user-profile" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-2 border z-50 w-60" style="border-color: var(--border-color);">
         <div class="flex items-center space-x-3 p-2 mb-2 border-b" style="border-bottom-color: var(--border-color);">
@@ -2150,7 +2176,7 @@
 
 
         // Creates a new post.
-        async function createPost(title, content, postType, pollOptions, files) {
+        async function createPost(title, content, postType, pollOptions, files, communityId = null) {
             try {
                 let processedContent = content;
                 const mentionedUsers = mentionsMap.get('post-content') || [];
@@ -2163,6 +2189,10 @@
                 formData.append('title', title);
                 formData.append('content', processedContent);
                 formData.append('postType', postType);
+
+                if (communityId) {
+                    formData.append('communityId', communityId);
+                }
 
                 if (postType === 'poll' && pollOptions.length > 0) {
                     formData.append('pollOptions', JSON.stringify(pollOptions));
@@ -3211,6 +3241,7 @@
                 const title = document.getElementById('post-title').value.trim();
                 const content = document.getElementById('post-content').value.trim();
                 const postType = postTypeSelect.value;
+                const communityId = postForm.dataset.communityId || null;
                 let pollOptions = [];
 
                 if (!title) {
@@ -3231,28 +3262,10 @@
                     }
                 }
 
-                const success = await createPost(title, content, postType, pollOptions, attachedFiles);
+                const success = await createPost(title, content, postType, pollOptions, attachedFiles, communityId);
                 if (success) {
-                    document.getElementById('post-title').value = '';
-                    document.getElementById('post-content').value = '';
-                    postTypeSelect.value = 'normal';
+                    postForm.reset();
                     pollOptionsContainer.classList.add('hidden');
-                    const initialPollOptions = `
-                        <div class="flex items-center mb-2">
-                            <input type="text" name="pollOption[]" placeholder="Option 1" maxlength="75" class="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <span class="text-sm text-gray-500 ml-2">0 / 75</span>
-                            <button type="button" class="ml-2 text-red-500 hover:text-red-700 hidden"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
-                        </div>
-                        <div class="flex items-center mb-2">
-                            <input type="text" name="pollOption[]" placeholder="Option 2" maxlength="75" class="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <span class="text-sm text-gray-500 ml-2">0 / 75</span>
-                            <button type="button" class="ml-2 text-red-500 hover:text-red-700 hidden"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
-                        </div>
-                    `;
-                    pollOptionsInputs.innerHTML = initialPollOptions;
-                    document.querySelectorAll('#poll-options-inputs .flex').forEach(addPollOptionEventListeners);
-                    updateDeleteButtons();
-
                     attachmentPreviews.innerHTML = '';
                     attachedFiles = [];
                     showNotification("Post created successfully!", "success");
@@ -3260,6 +3273,10 @@
                     contentCharCount.textContent = '0 / 2500';
                     titleCharCount.classList.remove('text-red-500');
                     contentCharCount.classList.remove('text-red-500');
+                    
+                    if(communityId) {
+                        renderCommunityPage(communityId);
+                    }
                 }
             } finally {
                 submitButton.disabled = false;
@@ -3312,52 +3329,103 @@
             }
         });
 
+        function renderCreateCommunityPage() {
+            showView('create-community-container');
+        }
+
         // Initializes the page when the DOM is fully loaded.
         document.addEventListener('DOMContentLoaded', () => {
             const createCommunityBtn = document.getElementById('create-community-btn');
-            const createCommunityModalOverlay = document.getElementById('create-community-modal-overlay');
-            const createCommunityModalCancelBtn = document.getElementById('create-community-modal-cancel-btn');
-            const createCommunityForm = document.getElementById('create-community-form-modal');
-
-            if(createCommunityBtn) {
+            if (createCommunityBtn) {
                 createCommunityBtn.addEventListener('click', () => {
                     if (currentUser) {
-                        createCommunityModalOverlay.classList.remove('hidden');
+                        renderCreateCommunityPage();
                     } else {
                         showNotification('You must be logged in to create a community.', 'warning');
                     }
                 });
             }
 
-            if(createCommunityModalCancelBtn) {
-                createCommunityModalCancelBtn.addEventListener('click', () => {
-                    createCommunityModalOverlay.classList.add('hidden');
-                });
-            }
-
-            if(createCommunityForm) {
+            const createCommunityForm = document.getElementById('create-community-form');
+            if (createCommunityForm) {
                 createCommunityForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     const formData = new FormData(createCommunityForm);
-                    
+                    const isEditMode = createCommunityForm.dataset.editMode === 'true';
+                    const communityId = createCommunityForm.dataset.communityId;
+
+                    const url = isEditMode ? `/api/communities/${communityId}` : '/api/communities';
+                    const method = isEditMode ? 'PUT' : 'POST';
+
                     try {
-                        const response = await fetch('/api/communities', {
-                            method: 'POST',
+                        const response = await fetch(url, {
+                            method: method,
                             body: formData
                         });
 
                         if (response.ok) {
-                            const newCommunity = await response.json();
-                            showNotification('Community created successfully!', 'success');
-                            createCommunityModalOverlay.classList.add('hidden');
-                            renderCommunityPage(newCommunity._id);
+                            const savedCommunity = await response.json();
+                            showNotification(`Community ${isEditMode ? 'updated' : 'created'} successfully!`, 'success');
+                            renderCommunityPage(savedCommunity._id);
                         } else {
                             const errorData = await response.json();
                             showNotification(`Error: ${errorData.error}`, 'error');
                         }
                     } catch (error) {
-                        console.error('Error creating community:', error);
+                        console.error(`Error ${isEditMode ? 'updating' : 'creating'} community:`, error);
                         showNotification('An unexpected error occurred.', 'error');
+                    } finally {
+                        // Reset form state after submission
+                        createCommunityForm.reset();
+                        delete createCommunityForm.dataset.editMode;
+                        delete createCommunityForm.dataset.communityId;
+                        document.getElementById('community-form-title').textContent = 'Create a New Community';
+                        document.getElementById('create-community-submit-btn').textContent = 'Ship It!';
+                    }
+                });
+            }
+
+            const createCommunityCancelBtn = document.getElementById('create-community-cancel-btn');
+            if(createCommunityCancelBtn) {
+                createCommunityCancelBtn.addEventListener('click', () => {
+                    renderCommunitiesPage(); // Go back to the communities list
+                });
+            }
+
+            const communityBannerInput = document.getElementById('community-banner-picture');
+            const communityBannerPreview = document.getElementById('community-banner-preview');
+            const communityBannerUploadLabel = document.getElementById('community-banner-upload-label');
+
+            if(communityBannerInput) {
+                communityBannerInput.addEventListener('change', function(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            communityBannerPreview.src = e.target.result;
+                            communityBannerPreview.classList.remove('hidden');
+                            communityBannerUploadLabel.classList.add('hidden'); 
+                        }
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+
+            const communityPfpInput = document.getElementById('community-profile-picture');
+            const communityPfpPreview = document.getElementById('community-pfp-preview');
+            const communityPfpUploadLabel = document.getElementById('community-pfp-upload-label');
+
+            if(communityPfpInput) {
+                communityPfpInput.addEventListener('change', function(event) {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            communityPfpPreview.src = e.target.result;
+                            communityPfpPreview.classList.remove('hidden');
+                            communityPfpUploadLabel.classList.add('hidden');
+                        }
+                        reader.readAsDataURL(file);
                     }
                 });
             }
@@ -3621,72 +3689,112 @@
         });
 
         function renderFriendsPage() {
-            document.getElementById('posts-container').classList.add('hidden');
-            document.getElementById('create-post-form').classList.add('hidden');
-            document.getElementById('filter-bar').classList.add('hidden');
-            document.getElementById('single-post-container').classList.add('hidden');
-            document.getElementById('inbox-container-main').classList.add('hidden');
-            document.getElementById('friends-container-main').classList.remove('hidden');
+            showView('friends-container-main');
             loadFriendRequests();
             loadFriendsList();
         }
 
-        async function renderCommunitiesPage() {
-            document.getElementById('posts-container').classList.add('hidden');
-            document.getElementById('create-post-form').classList.add('hidden');
-            document.getElementById('filter-bar').classList.add('hidden');
-            document.getElementById('single-post-container').classList.add('hidden');
-            document.getElementById('inbox-container-main').classList.add('hidden');
-            document.getElementById('friends-container-main').classList.add('hidden');
-            document.getElementById('communities-container-main').classList.remove('hidden');
+        function renderCommunitiesPage() {
+            showView('communities-container-main');
+            const communitiesList = document.getElementById('communities-list');
+            communitiesList.innerHTML = '<p>Loading communities...</p>';
+
+            fetch('/api/communities')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(communities => {
+                    if (!Array.isArray(communities)) {
+                        throw new Error("Invalid data format received from server.");
+                    }
+
+                    if (communities.length === 0) {
+                        communitiesList.innerHTML = '<p>No communities found. Why not create one?</p>';
+                        return;
+                    }
+
+                    let communitiesHtml = '';
+                    communities.forEach(community => {
+                        const pfp = createProfileImage(community.profilePicture ? community.profilePicture.path : null, community.name, 'w-12 h-12', 'text-lg');
+                        communitiesHtml += `
+                            <div class="flex items-center justify-between p-4 rounded-lg shadow-md cursor-pointer" onclick="renderCommunityPage('${community._id}')">
+                                <div class="flex items-center">
+                                    <div class="mr-4">${pfp.outerHTML}</div>
+                                    <div>
+                                        <h3 class="text-lg font-bold">${escapeHtml(community.name)}</h3>
+                                        <p class="text-sm text-gray-600">${escapeHtml(community.description || '')}</p>
+                                        <p class="text-xs text-gray-500">${community.memberCount || 0} members</p>
+                                    </div>
+                                </div>
+                                <button class="view-community-btn bg-blue-500 text-white px-4 py-2 rounded-lg">View</button>
+                            </div>
+                        `;
+                    });
+                    communitiesList.innerHTML = communitiesHtml;
+                })
+                .catch(error => {
+                    console.error('Error fetching communities:', error);
+                    communitiesList.innerHTML = '<p class="text-red-500">Could not load communities. Please try again later.</p>';
+                });
+        }
+
+        async function renderEditCommunityPage(communityId) {
+            showView('create-community-container');
+            
+            const form = document.getElementById('create-community-form');
+            const title = document.getElementById('community-form-title');
+            const submitBtn = document.getElementById('create-community-submit-btn');
+
+            // Reset form state
+            form.reset();
+            document.getElementById('community-banner-preview').classList.add('hidden');
+            document.getElementById('community-pfp-preview').classList.add('hidden');
+            document.getElementById('community-banner-upload-label').classList.remove('hidden');
+            document.getElementById('community-pfp-upload-label').classList.remove('hidden');
 
             try {
-                const response = await fetch('/api/communities');
-                const communities = await response.json();
-                const communitiesList = document.getElementById('communities-list');
-                communitiesList.innerHTML = '';
+                const response = await fetch(`/api/communities/${communityId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch community data for editing.');
+                }
+                const community = await response.json();
 
-                if (communities.length === 0) {
-                    communitiesList.innerHTML = '<p>No communities found. Why not create one?</p>';
-                    return;
+                title.textContent = `Editing ${community.name}`;
+                submitBtn.textContent = 'Save Changes';
+
+                form.dataset.editMode = 'true';
+                form.dataset.communityId = communityId;
+
+                document.getElementById('community-name').value = community.name;
+                document.getElementById('community-description').value = community.description || '';
+
+                if (community.bannerPicture && community.bannerPicture.path) {
+                    const bannerPreview = document.getElementById('community-banner-preview');
+                    bannerPreview.src = community.bannerPicture.path;
+                    bannerPreview.classList.remove('hidden');
+                    document.getElementById('community-banner-upload-label').classList.add('hidden');
                 }
 
-                communities.forEach(community => {
-                    const communityElement = document.createElement('div');
-                    communityElement.className = 'flex items-center justify-between p-4 rounded-lg shadow-md cursor-pointer';
-                    communityElement.onclick = () => renderCommunityPage(community._id);
-                    
-                    const pfp = createProfileImage(community.profilePicture ? community.profilePicture.path : null, community.name, 'w-12 h-12', 'text-lg');
+                if (community.profilePicture && community.profilePicture.path) {
+                    const pfpPreview = document.getElementById('community-pfp-preview');
+                    pfpPreview.src = community.profilePicture.path;
+                    pfpPreview.classList.remove('hidden');
+                    document.getElementById('community-pfp-upload-label').classList.add('hidden');
+                }
 
-                    communityElement.innerHTML = `
-                        <div class="flex items-center">
-                            <div class="mr-4">${pfp.outerHTML}</div>
-                            <div>
-                                <h3 class="text-lg font-bold">${escapeHtml(community.name)}</h3>
-                                <p class="text-sm text-gray-600">${escapeHtml(community.description)}</p>
-                                <p class="text-xs text-gray-500">${community.memberCount} members</p>
-                            </div>
-                        </div>
-                        <button class="view-community-btn bg-blue-500 text-white px-4 py-2 rounded-lg">View</button>
-                    `;
-                    communitiesList.appendChild(communityElement);
-                });
             } catch (error) {
-                console.error('Error fetching communities:', error);
-                document.getElementById('communities-list').innerHTML = '<p>Could not load communities. Please try again later.</p>';
+                console.error('Error preparing edit page:', error);
+                showNotification('Could not load community for editing.', 'error');
+                renderCommunitiesPage(); // Go back if there's an error
             }
         }
 
         async function renderCommunityPage(communityId) {
-            document.getElementById('posts-container').classList.add('hidden');
-            document.getElementById('create-post-form').classList.add('hidden');
-            document.getElementById('filter-bar').classList.add('hidden');
-            document.getElementById('single-post-container').classList.add('hidden');
-            document.getElementById('inbox-container-main').classList.add('hidden');
-            document.getElementById('friends-container-main').classList.add('hidden');
-            document.getElementById('communities-container-main').classList.add('hidden');
+            showView('community-detail-container');
             const container = document.getElementById('community-detail-container');
-            container.classList.remove('hidden');
             container.innerHTML = '<h2>Loading community...</h2>'; // Loading state
 
             try {
@@ -3720,7 +3828,7 @@
                 let joinLeaveButton = '';
                 if (currentUser) {
                     if (isOwner) {
-                        joinLeaveButton = `<button class="edit-community-btn bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium">Edit Community</button>`;
+                        joinLeaveButton = `<button onclick="renderEditCommunityPage('${communityId}')" class="edit-community-btn bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium">Edit Community</button>`;
                     } else if (isMember) {
                         joinLeaveButton = `<button onclick="leaveCommunity('${communityId}')" class="leave-community-btn bg-red-500 text-white px-4 py-2 rounded-lg font-medium">Leave Community</button>`;
                     } else {
@@ -3753,23 +3861,10 @@
                 container.appendChild(header);
 
                 if (isMember) {
-                    const createPostContainer = document.getElementById('create-post-form').cloneNode(true);
-                    createPostContainer.id = 'community-create-post-form';
-                    createPostContainer.classList.remove('hidden');
-                    const form = createPostContainer.querySelector('form');
-                    form.onsubmit = (e) => {
-                        e.preventDefault();
-                        const title = form.querySelector('#post-title').value;
-                        const content = form.querySelector('#post-content').value;
-                        const postType = form.querySelector('#post-type').value;
-                        // Simplified - doesn't handle polls or attachments for now
-                        createPost(title, content, postType, [], [], communityId).then(success => {
-                            if(success) {
-                                renderCommunityPage(communityId); // re-render on success
-                            }
-                        });
-                    };
-                    container.appendChild(createPostContainer);
+                    const createPostForm = document.getElementById('create-post-form');
+                    createPostForm.dataset.communityId = communityId; // Set community context
+                    container.appendChild(createPostForm);
+                    createPostForm.style.display = 'block';
                 }
 
                 container.appendChild(communityPostsContainer);
@@ -3956,15 +4051,43 @@
         });
 
 
+        function showView(viewId) {
+            const allViews = [
+                'posts-container', 
+                'single-post-container', 
+                'inbox-container-main', 
+                'friends-container-main', 
+                'communities-container-main', 
+                'community-detail-container',
+                'create-community-container',
+                'empty-state'
+            ];
+
+            allViews.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            document.getElementById('create-post-form').style.display = 'none';
+            document.getElementById('filter-bar').style.display = 'none';
+
+            const viewToShow = document.getElementById(viewId);
+            if (viewToShow) {
+                viewToShow.style.display = 'block';
+            }
+
+            if (viewId === 'posts-container') {
+                if (currentUser) {
+                    document.getElementById('create-post-form').style.display = 'block';
+                }
+                const filterBar = document.getElementById('filter-bar');
+                if(filterBar) filterBar.style.display = 'flex';
+            }
+        }
+
         // Shows the main feed of posts.
         function showMainFeed() {
-            document.getElementById('posts-container').classList.remove('hidden');
-            if (currentUser) {
-                document.getElementById('create-post-form').classList.remove('hidden');
-            }
-            document.getElementById('filter-bar').classList.remove('hidden');
-            document.getElementById('single-post-container').classList.add('hidden');
-            document.getElementById('inbox-container-main').classList.add('hidden');
+            showView('posts-container');
         }
 
         // Counts all comments and replies for a post.
@@ -3986,14 +4109,9 @@
                 return;
             }
 
-            document.getElementById('posts-container').classList.add('hidden');
-            document.getElementById('create-post-form').classList.add('hidden');
-            document.getElementById('filter-bar').classList.add('hidden');
-            document.getElementById('inbox-container-main').classList.add('hidden');
-            
+            showView('single-post-container');
             const container = document.getElementById('single-post-container');
             container.innerHTML = '';
-            container.classList.remove('hidden');
 
             const article = document.createElement('article');
             article.className = 'rounded-lg shadow-md p-6';
@@ -4404,15 +4522,47 @@
             }
         };
 
+        function showView(viewId) {
+            const allViews = [
+                'posts-container', 'single-post-container', 'inbox-container-main', 
+                'friends-container-main', 'communities-container-main', 
+                'community-detail-container', 'create-community-container', 'empty-state'
+            ];
+            
+            allViews.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            const createPostForm = document.getElementById('create-post-form');
+            const mainElement = document.querySelector('main');
+            const filterBar = document.getElementById('filter-bar');
+
+            // Reset create-post-form to its original position if it was moved
+            if (createPostForm.parentElement !== mainElement) {
+                mainElement.insertBefore(createPostForm, filterBar);
+                delete createPostForm.dataset.communityId;
+            }
+            
+            createPostForm.style.display = 'none';
+            filterBar.style.display = 'none';
+
+            const viewToShow = document.getElementById(viewId);
+            if (viewToShow) {
+                viewToShow.style.display = 'block';
+            }
+
+            if (viewId === 'posts-container') {
+                if (currentUser) {
+                    createPostForm.style.display = 'block';
+                }
+                if(filterBar) filterBar.style.display = 'flex';
+            }
+        }
+
         // Shows the main feed of posts.
         function showMainFeed() {
-            document.getElementById('posts-container').classList.remove('hidden');
-            if (currentUser) {
-                document.getElementById('create-post-form').classList.remove('hidden');
-            }
-            document.getElementById('filter-bar').classList.remove('hidden');
-            document.getElementById('single-post-container').classList.add('hidden');
-            document.getElementById('inbox-container-main').classList.add('hidden');
+            showView('posts-container');
         }
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -4428,13 +4578,8 @@
 
         // Renders the user's inbox.
         async function renderInbox() {
-            document.getElementById('posts-container').classList.add('hidden');
-            document.getElementById('create-post-form').classList.add('hidden');
-            document.getElementById('filter-bar').classList.add('hidden');
-            document.getElementById('single-post-container').classList.add('hidden');
-            document.getElementById('friends-container-main').classList.add('hidden');
+            showView('inbox-container-main');
             const inboxContainer = document.getElementById('inbox-container-main');
-            inboxContainer.classList.remove('hidden');
 
             if (!document.getElementById('inbox-back-button')) {
                 const backButton = document.createElement('button');
