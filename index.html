@@ -1387,12 +1387,20 @@
             if (endMessage) endMessage.remove();
 
             try {
-                const [friendPostsResponse, regularPostsResponse] = await Promise.all([
-                    fetch('/api/posts/friends-recent'),
-                    fetch(`/api/posts?page=1&limit=10&filter=${currentFilter}`)
-                ]);
+                const regularPostsPromise = fetch(`/api/posts?page=1&limit=10&filter=${currentFilter}`);
+                let friendPosts = [];
 
-                const friendPosts = await friendPostsResponse.json();
+                if (currentUser) {
+                    const friendPostsResponse = await fetch('/api/posts/friends-recent');
+                    if (friendPostsResponse.ok) {
+                        const data = await friendPostsResponse.json();
+                        if (Array.isArray(data)) {
+                            friendPosts = data;
+                        }
+                    }
+                }
+
+                const regularPostsResponse = await regularPostsPromise;
                 const regularPostsData = await regularPostsResponse.json();
 
                 if(friendPosts.length > 0) {
