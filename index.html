@@ -414,12 +414,12 @@
     <div id="create-community-container" class="main-view hidden max-w-3xl mx-auto px-4 py-8">
         <h1 id="community-form-title" class="text-3xl font-bold mb-6">Create a New Community</h1>
         <form id="create-community-form">
-                <div class="form-card p-6">
+            <div class="form-card p-6">
                 <div class="relative">
                     <!-- Banner -->
-                        <div class="h-48 rounded-lg flex items-center justify-center relative mb-4" style="background-color: var(--input-field-bg);">
+                    <div class="h-48 rounded-lg flex items-center justify-center relative mb-4" style="background-color: var(--input-field-bg);">
                         <img id="community-banner-preview" src="" class="hidden w-full h-full object-cover rounded-lg">
-                            <label for="community-banner-picture" id="community-banner-upload-label" class="cursor-pointer text-center" style="color: var(--text-secondary);">
+                        <label for="community-banner-picture" id="community-banner-upload-label" class="cursor-pointer text-center" style="color: var(--text-secondary);">
                             <i class="fas fa-camera fa-3x"></i>
                             <p class="mt-2">Upload a banner image</p>
                         </label>
@@ -431,9 +431,9 @@
 
                     <!-- Profile Picture -->
                     <div class="absolute top-32 left-6">
-                            <div class="h-24 w-24 rounded-full border-4 flex items-center justify-center relative" style="background-color: var(--input-field-bg); border-color: var(--card-default-bg);">
+                        <div class="h-24 w-24 rounded-full border-4 flex items-center justify-center relative" style="background-color: var(--input-field-bg); border-color: var(--card-default-bg);">
                             <img id="community-pfp-preview" src="" class="hidden w-full h-full object-cover rounded-full">
-                                <label for="community-profile-picture" id="community-pfp-upload-label" class="cursor-pointer text-center" style="color: var(--text-secondary);">
+                            <label for="community-profile-picture" id="community-pfp-upload-label" class="cursor-pointer text-center" style="color: var(--text-secondary);">
                                 <i class="fas fa-camera"></i>
                                 <p class="text-xs">Upload</p>
                             </label>
@@ -448,19 +448,19 @@
                 <!-- Content -->
                 <div class="pt-12">
                     <div class="mb-4">
-                            <label for="community-name" class="block text-sm font-medium">Name</label>
-                            <input type="text" id="community-name" name="name" required minlength="3" maxlength="30" class="w-full px-4 py-2 rounded-lg mt-1" placeholder="My Awesome Community">
+                        <label for="community-name" class="block text-sm font-medium">Name</label>
+                        <input type="text" id="community-name" name="name" required minlength="3" maxlength="30" class="w-full px-4 py-2 rounded-lg mt-1" placeholder="My Awesome Community">
                     </div>
                     <div class="mb-4">
-                            <label for="community-description" class="block text-sm font-medium">Description</label>
-                            <textarea id="community-description" name="description" rows="3" maxlength="500" class="w-full px-4 py-2 rounded-lg mt-1" placeholder="A short description of what your community is about."></textarea>
+                        <label for="community-description" class="block text-sm font-medium">Description</label>
+                        <textarea id="community-description" name="description" rows="3" maxlength="500" class="w-full px-4 py-2 rounded-lg mt-1" placeholder="A short description of what your community is about."></textarea>
                     </div>
                 </div>
             </div>
             <!-- Actions -->
             <div class="flex justify-end space-x-3 mt-6">
-                    <button type="button" id="create-community-cancel-btn" class="button-secondary">Cancel</button>
-                    <button type="submit" id="create-community-submit-btn" class="button-primary">Ship It!</button>
+                <button type="button" id="create-community-cancel-btn" class="button-secondary">Cancel</button>
+                <button type="submit" id="create-community-submit-btn" class="button-primary">Ship It!</button>
             </div>
         </form>
     </div>
@@ -1451,7 +1451,7 @@
             if (endMessage) endMessage.remove();
 
             try {
-                const regularPostsPromise = fetch(`/api/posts?page=1&limit=10&filter=${currentFilter}`);
+                const regularPostsPromise = fetch(`/api/posts?page=1&limit=10&filter=${currentFilter}&community=null`);
                 let friendPosts = [];
 
                 if (currentUser) {
@@ -1491,7 +1491,7 @@
 
             try {
                 const excludeIdsParam = prioritizedPostIds.length > 0 ? `&exclude_ids=${prioritizedPostIds.join(',')}` : '';
-                const response = await fetch(`/api/posts?page=${currentPage}&limit=10&filter=${currentFilter}${excludeIdsParam}`);
+                const response = await fetch(`/api/posts?page=${currentPage}&limit=10&filter=${currentFilter}${excludeIdsParam}&community=null`);
                 const data = await response.json();
                 
                 if (data.posts && data.posts.length > 0) {
@@ -3729,7 +3729,7 @@
                                         <p class="text-xs text-gray-500">${community.memberCount || 0} members</p>
                                     </div>
                                 </div>
-                                <button class="view-community-btn bg-blue-500 text-white px-4 py-2 rounded-lg">View</button>
+                                <button onclick="renderCommunityPage('${community._id}')" class="view-community-btn bg-blue-500 text-white px-4 py-2 rounded-lg">View</button>
                             </div>
                         `;
                     });
@@ -3820,7 +3820,8 @@
                 const header = document.createElement('div');
                 header.className = 'community-header mb-8';
                 const bannerUrl = community.bannerPicture ? community.bannerPicture.path : '/default-banner.png';
-                const pfp = createProfileImage(community.profilePicture ? community.profilePicture.path : null, community.name, 'w-24 h-24 -mt-12 ml-6 border-4 border-white', 'text-4xl');
+                const pfp = createProfileImage(community.profilePicture ? community.profilePicture.path : null, community.name, 'w-24 h-24 -mt-12 ml-6 border-4', 'text-4xl');
+                pfp.style.borderColor = 'var(--card-default-bg)';
                 
                 const isMember = currentUser && community.members.some(member => member._id === currentUser.id);
                 const isOwner = currentUser && community.owner._id === currentUser.id;
@@ -3828,29 +3829,29 @@
                 let joinLeaveButton = '';
                 if (currentUser) {
                     if (isOwner) {
-                        joinLeaveButton = `<button onclick="renderEditCommunityPage('${communityId}')" class="edit-community-btn bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium">Edit Community</button>`;
+                        joinLeaveButton = `<button onclick="renderEditCommunityPage('${communityId}')" class="button-secondary">Edit Community</button>`;
                     } else if (isMember) {
-                        joinLeaveButton = `<button onclick="leaveCommunity('${communityId}')" class="leave-community-btn bg-red-500 text-white px-4 py-2 rounded-lg font-medium">Leave Community</button>`;
+                        joinLeaveButton = `<button onclick="leaveCommunity('${communityId}')" class="button-danger">Leave Community</button>`;
                     } else {
-                        joinLeaveButton = `<button onclick="joinCommunity('${communityId}')" class="join-community-btn bg-blue-600 text-white px-4 py-2 rounded-lg font-medium">Join Community</button>`;
+                        joinLeaveButton = `<button onclick="joinCommunity('${communityId}')" class="button-primary">Join Community</button>`;
                     }
                 }
 
                 header.innerHTML = `
                     <div class="banner h-48 bg-cover bg-center rounded-t-lg" style="background-image: url('${bannerUrl}')"></div>
-                    <div class="flex justify-between items-end p-4 bg-white rounded-b-lg shadow-md">
+                    <div class="flex justify-between items-end p-4 rounded-b-lg shadow-md" style="background-color: var(--card-default-bg);">
                         <div class="flex items-end">
                             ${pfp.outerHTML}
                             <div class="ml-4">
                                 <h1 class="text-3xl font-bold">${escapeHtml(community.name)}</h1>
-                                <p class="text-sm text-gray-600">${community.members.length} members</p>
+                                <p class="text-sm" style="color: var(--text-secondary);">${community.members.length} members</p>
                             </div>
                         </div>
                         <div class="actions">
                             ${joinLeaveButton}
                         </div>
                     </div>
-                    <p class="mt-4 text-gray-700">${escapeHtml(community.description)}</p>
+                    <p class="mt-4" style="color: var(--text-primary);">${escapeHtml(community.description)}</p>
                 `;
                 
                 const communityPostsContainer = document.createElement('div');
@@ -3861,10 +3862,46 @@
                 container.appendChild(header);
 
                 if (isMember) {
-                    const createPostForm = document.getElementById('create-post-form');
-                    createPostForm.dataset.communityId = communityId; // Set community context
-                    container.appendChild(createPostForm);
-                    createPostForm.style.display = 'block';
+                    const communityPostForm = document.createElement('div');
+                    communityPostForm.innerHTML = `
+                        <div id="create-community-post-form" class="rounded-lg shadow-md p-6 mb-8 form-card">
+                            <h2 class="text-xl font-bold text-gray-800 mb-4">Create a New Post in ${escapeHtml(community.name)}</h2>
+                            <form id="post-form-community">
+                                <div class="mb-4">
+                                    <div class="flex justify-between items-center">
+                                        <label for="post-title-community" class="block text-sm font-medium">Title</label>
+                                        <span id="title-char-count-community" class="text-sm text-gray-500">0 / 75</span>
+                                    </div>
+                                    <input type="text" id="post-title-community" placeholder="Post title..." maxlength="75"
+                                           class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                                <div class="mb-4">
+                                    <div class="flex justify-between items-center">
+                                        <label for="post-content-community" class="block text-sm font-medium">Content</label>
+                                        <span id="content-char-count-community" class="text-sm text-gray-500">0 / 2500</span>
+                                    </div>
+                                    <textarea id="post-content-community" placeholder="What's on your mind?" rows="4" maxlength="2500"
+                                              class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" onkeyup="handleMention(this)"></textarea>
+                                </div>
+                                <button type="submit" class="button-primary">Create Post</button>
+                            </form>
+                        </div>
+                    `;
+                    container.appendChild(communityPostForm);
+                    const postFormCommunity = document.getElementById('post-form-community');
+                    postFormCommunity.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const title = document.getElementById('post-title-community').value.trim();
+                        const content = document.getElementById('post-content-community').value.trim();
+                        if (!title) {
+                            showNotification('Please fill in the title for the post.', 'warning');
+                            return;
+                        }
+                        const success = await createPost(title, content, 'normal', [], [], communityId);
+                        if (success) {
+                            renderCommunityPage(communityId);
+                        }
+                    });
                 }
 
                 container.appendChild(communityPostsContainer);
@@ -4524,28 +4561,24 @@
 
         function showView(viewId) {
             const allViews = [
-                'posts-container', 'single-post-container', 'inbox-container-main', 
-                'friends-container-main', 'communities-container-main', 
-                'community-detail-container', 'create-community-container', 'empty-state'
+                'posts-container', 
+                'single-post-container', 
+                'inbox-container-main', 
+                'friends-container-main', 
+                'communities-container-main', 
+                'community-detail-container',
+                'create-community-container',
+                'empty-state'
             ];
-            
+
             allViews.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
 
-            const createPostForm = document.getElementById('create-post-form');
-            const mainElement = document.querySelector('main');
+            document.getElementById('create-post-form').style.display = 'none';
             const filterBar = document.getElementById('filter-bar');
-
-            // Reset create-post-form to its original position if it was moved
-            if (createPostForm.parentElement !== mainElement) {
-                mainElement.insertBefore(createPostForm, filterBar);
-                delete createPostForm.dataset.communityId;
-            }
-            
-            createPostForm.style.display = 'none';
-            filterBar.style.display = 'none';
+            if (filterBar) filterBar.style.display = 'none';
 
             const viewToShow = document.getElementById(viewId);
             if (viewToShow) {
@@ -4554,7 +4587,7 @@
 
             if (viewId === 'posts-container') {
                 if (currentUser) {
-                    createPostForm.style.display = 'block';
+                    document.getElementById('create-post-form').style.display = 'block';
                 }
                 if(filterBar) filterBar.style.display = 'flex';
             }
