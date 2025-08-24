@@ -575,7 +575,10 @@
         });
 
         socket.on('post:new', (newPost) => {
-            posts.unshift(newPost);
+            const postExists = posts.some(p => p.id === newPost.id);
+            if (!postExists) {
+                posts.unshift(newPost);
+            }
             renderPosts();
         });
 
@@ -2431,18 +2434,8 @@
 
                 if (response.ok) {
                     mentionsMap.delete('post-content');
-                    const newPost = await response.json();
-                    const defaultPostFields = {
-                        likes: 0,
-                        isLiked: false,
-                        comments: [],
-                        pollOptions: (newPost.postType === 'poll' && newPost.pollOptions) ? newPost.pollOptions : [],
-                        postType: newPost.postType || 'normal',
-                        attachments: newPost.attachments || []
-                    };
-                    posts.unshift({ ...defaultPostFields, ...newPost });
-                    renderPosts();
-                    return true; 
+                    // The post will be added via the 'post:new' socket event.
+                    return true;
                 } else {
                     const errorData = await response.json().catch(() => ({error: "Server error"}));
                     showNotification(`Failed to create post: ${errorData.error}`, 'error');
