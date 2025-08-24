@@ -553,7 +553,7 @@ app.get('/api/users/:userId/content', async (req, res) => {
                     { $project: { _id: 1 } }
                 ]);
                 const ids = postIds.map(p => p._id);
-                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture').populate('voiceChannel');
+                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture').populate('community', 'name').populate('voiceChannel');
                 sortedPosts = ids.map(id => unsortedPosts.find(p => p._id.equals(id)));
             } else if (sortBy === 'comments') {
                 const postIds = await Post.aggregate([
@@ -564,12 +564,13 @@ app.get('/api/users/:userId/content', async (req, res) => {
                     { $project: { _id: 1 } }
                 ]);
                 const ids = postIds.map(p => p._id);
-                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture').populate('voiceChannel');
+                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture').populate('community', 'name').populate('voiceChannel');
                 sortedPosts = ids.map(id => unsortedPosts.find(p => p._id.equals(id)));
             } else {
                 const sortOption = (sortBy === 'oldest') ? { createdAt: 1 } : { createdAt: -1 };
                 sortedPosts = await Post.find({ author: authorId })
                     .populate('author', 'username displayName profilePicture')
+                    .populate('community', 'name')
                     .populate('voiceChannel')
                     .sort(sortOption);
             }
@@ -767,6 +768,7 @@ app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
       await Comment.findByIdAndDelete(commentId);
     }
 
+    const io = req.app.get('socketio');
     io.emit('comment:delete', { commentId, postId, parentCommentId });
 
     res.json({ success: true, message: 'Comment deleted successfully.' });
@@ -1432,6 +1434,7 @@ app.post('/api/user/banner-picture', isAuthenticated, upload.single('bannerPictu
 async function populatePostDetails(post, currentUserId) {
     const allCommentsRaw = await Comment.find({ post: post._id })
         .populate('author', '_id username displayName profilePicture')
+        .populate('voiceChannel')
         .sort({ createdAt: 1 });
 
     const buildCommentTree = (parentId) => {
@@ -1477,6 +1480,7 @@ async function populatePostDetails(post, currentUserId) {
         attachments: post.attachments,
         pollOptions: post.pollOptions ? post.pollOptions.map(opt => ({ option: opt.option, votes: opt.votes })) : [],
         voiceChannel: post.voiceChannel,
+        community: post.community,
         author: { id: post.author._id, username: post.author.username, displayName: post.author.displayName, photo: post.author.profilePicture.path || '/default-profile.png' },
         likes: post.likes.length, isLiked: currentUserId ? post.likes.includes(currentUserId) : false,
         createdAt: post.createdAt.toISOString(),
@@ -1500,7 +1504,7 @@ app.get('/api/posts/friends-recent', isAuthenticated, async (req, res) => {
         const recentFriendPosts = await Post.find({
             author: { $in: friends },
             createdAt: { $gte: threeDaysAgo }
-        }).populate('author', 'username displayName profilePicture');
+        }).populate('author', 'username displayName profilePicture').populate('community', 'name').populate('voiceChannel');
 
         for (let i = recentFriendPosts.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -1559,6 +1563,8 @@ app.get('/api/posts', async (req, res) => {
     
     const posts = await Post.find(query)
       .populate('author', 'username displayName profilePicture')
+      .populate('community', 'name')
+      .populate('voiceChannel')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -1729,6 +1735,7 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       comments: []
     };
 
+    const io = req.app.get('socketio');
     io.emit('post:new', responsePost);
     res.status(201).json(responsePost);
   } catch (error) {
@@ -1799,7 +1806,8 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
       post: postId
     };
 
-    io.emit('comment:new', responseComment);
+    const io = req.app.get('socketio');
+    io.to(`post-${postId}`).emit('comment:new', responseComment);
 
     res.json(responseComment);
   } catch (error) {
@@ -1871,7 +1879,8 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
       post: parentComment.post
     };
 
-    io.emit('reply:new', responseReply);
+    const io = req.app.get('socketio');
+    io.to(`post-${parentComment.post}`).emit('reply:new', responseReply);
 
     res.status(201).json(responseReply);
   } catch (error) {
@@ -1975,6 +1984,7 @@ app.post('/api/posts/:postId/like', isAuthenticated, async (req, res) => {
 
     await post.save();
     
+    const io = req.app.get('socketio');
     io.emit('post:like', { postId: post._id, likesCount: post.likes.length });
 
     res.json({ 
@@ -2028,6 +2038,7 @@ app.post('/api/posts/:postId/voice-channel', isAuthenticated, async (req, res) =
     post.voiceChannel = voiceChannel._id;
     await post.save();
 
+    const io = req.app.get('socketio');
     io.emit('voice-channel-created', {
         itemType: 'post',
         itemId: postId,
@@ -2062,6 +2073,7 @@ app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
 
     await comment.save();
 
+    const io = req.app.get('socketio');
     io.emit('comment:like', { commentId: comment._id, postId: comment.post, likesCount: comment.likes.length });
     
     res.json({
@@ -2116,6 +2128,7 @@ app.post('/api/comments/:commentId/voice-channel', isAuthenticated, async (req, 
         comment.voiceChannel = voiceChannel._id;
         await comment.save();
 
+    const io = req.app.get('socketio');
         io.emit('voice-channel-created', {
             itemType: 'comment',
             itemId: commentId,
@@ -2167,7 +2180,9 @@ app.get('/api/posts/search', async (req, res) => {
 app.get('/api/posts/:postId', async (req, res) => {
     try {
         const post = await Post.findById(req.params.postId)
-            .populate('author', 'username displayName profilePicture');
+            .populate('author', 'username displayName profilePicture')
+            .populate('community', 'name')
+            .populate('voiceChannel');
 
         if (!post) {
             return res.status(404).json({ error: 'Post not found' });
@@ -2205,6 +2220,7 @@ app.delete('/api/voice-channel/:channelId', isAuthenticated, async (req, res) =>
 
     await VoiceChannel.findByIdAndDelete(channelId);
 
+    const io = req.app.get('socketio');
     if (voiceChannel.post) {
         await Post.findByIdAndUpdate(voiceChannel.post, { $unset: { voiceChannel: "" } });
         io.emit('voice-channel-deleted', { channelId: channelId, postId: voiceChannel.post });
@@ -2275,6 +2291,7 @@ app.delete('/api/posts/:postId', isAuthenticated, async (req, res) => {
 
     await Post.findByIdAndDelete(postId);
 
+    const io = req.app.get('socketio');
     io.emit('post:delete', { postId });
 
     res.json({ success: true, message: 'Post and associated comments deleted successfully.' });
@@ -2317,8 +2334,29 @@ const io = new Server(server, {
   }
 });
 
+app.set('socketio', io);
+
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
+
+  socket.on('join-post-room', (postId) => {
+    if (socket.currentPostRoom) {
+        socket.leave(socket.currentPostRoom);
+        console.log(`Socket ${socket.id} left room ${socket.currentPostRoom}`);
+    }
+    const roomName = `post-${postId}`;
+    socket.join(roomName);
+    socket.currentPostRoom = roomName;
+    console.log(`Socket ${socket.id} joined room ${roomName}`);
+  });
+
+  socket.on('leave-post-room', () => {
+    if (socket.currentPostRoom) {
+        socket.leave(socket.currentPostRoom);
+        console.log(`Socket ${socket.id} left room ${socket.currentPostRoom}`);
+        socket.currentPostRoom = null;
+    }
+  });
 
   const leaveChannel = async (channelId, userId) => {
     try {

@@ -513,6 +513,7 @@
         let isLoadingPosts = false;
         let prioritizedPostIds = [];
         let createPostFormParent = null;
+        let currentPostRoom = null;
 
         // --- WebRTC & Socket.IO Globals ---
         const socketOptions = { autoConnect: false };
@@ -581,7 +582,12 @@
         socket.on('comment:new', (newComment) => {
             const postIndex = posts.findIndex(p => p.id === newComment.post);
             if (postIndex !== -1) {
-                posts[postIndex].comments.push(newComment);
+                const post = posts[postIndex];
+                const commentExists = post.comments.some(c => c.id === newComment.id);
+                if (!commentExists) {
+                    post.comments.push(newComment);
+                }
+                
                 if (!document.getElementById('single-post-container').classList.contains('hidden')) {
                     renderSinglePost(newComment.post);
                 }
@@ -597,7 +603,10 @@
                             if (!comment.replies) {
                                 comment.replies = [];
                             }
-                            comment.replies.push(newReply);
+                            const replyExists = comment.replies.some(r => r.id === newReply.id);
+                            if (!replyExists) {
+                                comment.replies.push(newReply);
+                            }
                             return true;
                         }
                         if (comment.replies && findAndAddReply(comment.replies)) {
@@ -888,9 +897,14 @@
             }
 
             if (postToUpdate) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const communityId = urlParams.get('community');
                 const singlePostContainer = document.getElementById('single-post-container');
+
                 if (!singlePostContainer.classList.contains('hidden') && singlePostContainer.querySelector(`article`)) {
                      renderSinglePost(postToUpdate.id);
+                } else if (communityId) {
+                    renderCommunityPage(communityId);
                 } else {
                     renderPosts();
                 }
@@ -2398,47 +2412,30 @@
 
                 if (response.ok) {
                     mentionsMap.delete(textareaId);
-                    const newComment = await response.json();
-                    const postIndex = posts.findIndex(p => p.id === postId);
-                    if (postIndex !== -1) {
-                        if (parentCommentId) {
-                            const findAndAddReply = (comments) => {
-                                for (const comment of comments) {
-                                    if (comment.id === parentCommentId) {
-                                        if (!comment.replies) {
-                                            comment.replies = [];
-                                        }
-                                        newComment.replyingTo = {
-                                            id: comment.author.id,
-                                            username: comment.author.username
-                                        };
-                                        comment.replies.push(newComment);
-                                        return true;
-                                    }
-                                    if (comment.replies && findAndAddReply(comment.replies)) {
-                                        return true;
-                                    }
-                                }
-                                return false;
-                            };
-                            findAndAddReply(posts[postIndex].comments);
-                        } else {
-                            posts[postIndex].comments.push(newComment);
-                        }
-                    }
-
-                    renderSinglePost(postId);
                     textarea.value = '';
-                    showNotification("Comment added successfully.", "success");
 
-                    const post = posts.find(p => p.id === postId);
-                    if (post) {
-                        const commentCountSpan = document.querySelector(`#post-${postId} .comment-count`);
-                        if (commentCountSpan) {
-                            const totalComments = countAllComments(post.comments);
-                            commentCountSpan.textContent = `${totalComments} Comments`;
+                    // Reset character count and hide reply form if applicable
+                    if (parentCommentId) {
+                        const replyFormContainer = document.getElementById(`reply-form-container-${parentCommentId}`);
+                        if (replyFormContainer) {
+                            const charCount = replyFormContainer.querySelector('span');
+                            if (charCount) {
+                                charCount.textContent = '0 / 1000';
+                                charCount.classList.remove('text-red-500');
+                            }
+                            replyFormContainer.classList.add('hidden');
                         }
+                    } else {
+                        // Reset char count for main comment form
+                         const charCountSpan = textarea.nextElementSibling.querySelector('span');
+                         if(charCountSpan) {
+                            charCountSpan.textContent = '0 / 1000';
+                            charCountSpan.classList.remove('text-red-500');
+                         }
                     }
+
+                    showNotification("Comment added successfully.", "success");
+                    // The UI update will now be handled by the socket.io event listener to prevent race conditions.
                 } else {
                     const errorData = await response.json();
                     showNotification(`Failed to add ${parentCommentId ? 'reply' : 'comment'}: ${errorData.error || 'Server error'}`, 'error');
@@ -2839,8 +2836,8 @@
             if (!currentUser) return;
 
             const postToDelete = posts.find(p => p.id === postId);
-            if (!postToDelete || postToDelete.author.id !== currentUser.id) {
-                showNotification("You are not authorized to delete this post or the post was not found.", "error");
+            if (!postToDelete) {
+                showNotification("Post not found.", "error");
                 return;
             }
 
@@ -2853,7 +2850,14 @@
                         });
 
                         if (response.ok) {
-                            await loadPosts();
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const communityId = urlParams.get('community');
+                            if (communityId) {
+                                renderCommunityPage(communityId);
+                            } else {
+                                showMainFeed();
+                                loadPosts();
+                            }
                             showNotification("Post deleted successfully.", "success");
                         } else {
                             const errorData = await response.json().catch(() => ({error: "Server error"}));
@@ -3547,7 +3551,6 @@
             createPostFormParent = document.getElementById('create-post-form').parentElement;
 
             checkAuth();
-            loadPosts();
 
             if (sessionStorage.getItem('voiceChannelRefresh') === 'true') {
                 showNotification(`You were disconnected from the voice channel due to a page refresh.`, 'warning', 5000);
@@ -3835,8 +3838,8 @@
                     communities.forEach(community => {
                         const pfp = createProfileImage(community.profilePicture ? community.profilePicture.path : null, community.name, 'w-12 h-12', 'text-lg');
                         communitiesHtml += `
-                            <div class="flex items-center justify-between p-4 rounded-lg shadow-md cursor-pointer" onclick="renderCommunityPage('${community._id}')">
-                                <div class="flex items-center">
+                            <a href="/?community=${community._id}" class="community-link flex items-center justify-between p-4 rounded-lg shadow-md cursor-pointer" data-community-id="${community._id}">
+                                <div class="flex items-center" style="pointer-events: none;">
                                     <div class="mr-4">${pfp.outerHTML}</div>
                                     <div>
                                         <h3 class="text-lg font-bold">${escapeHtml(community.name)}</h3>
@@ -3844,8 +3847,8 @@
                                         <p class="text-xs text-gray-500">${community.memberCount || 0} members</p>
                                     </div>
                                 </div>
-                                <button onclick="renderCommunityPage('${community._id}')" class="view-community-btn bg-blue-500 text-white px-4 py-2 rounded-lg">View</button>
-                            </div>
+                                <span class="view-community-btn bg-blue-500 text-white px-4 py-2 rounded-lg" style="pointer-events: none;">View</span>
+                            </a>
                         `;
                     });
                     communitiesList.innerHTML = communitiesHtml;
@@ -3856,6 +3859,14 @@
                 })
                 .finally(() => {
                     showView('communities-container-main');
+                    document.querySelectorAll('.community-link').forEach(link => {
+                        link.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const communityId = link.dataset.communityId;
+                            history.pushState({ communityId: communityId }, "", `/?community=${communityId}`);
+                            renderCommunityPage(communityId);
+                        });
+                    });
                 });
         }
 
@@ -4229,6 +4240,10 @@
 
         // Shows the main feed of posts.
         function showMainFeed() {
+            if (currentPostRoom) {
+                socket.emit('leave-post-room');
+                currentPostRoom = null;
+            }
             showView('posts-container');
         }
 
@@ -4245,6 +4260,12 @@
 
         // Renders a single post view.
         async function renderSinglePost(postId) {
+            if (currentPostRoom) {
+                socket.emit('leave-post-room');
+            }
+            socket.emit('join-post-room', postId);
+            currentPostRoom = `post-${postId}`;
+
             const post = posts.find(p => p.id === postId);
             if (!post) {
                 showMainFeed();
@@ -4270,12 +4291,19 @@
                 backButton.onclick = () => {
                     window.location.href = `/profile.html?id=${refId}`;
                 };
+            } else if (post.community && post.community._id) {
+                backButton.innerHTML = '&larr; Back to community';
+                backButton.onclick = () => {
+                    const communityId = post.community._id;
+                    history.pushState({ communityId: communityId }, "", `/?community=${communityId}`);
+                    renderCommunityPage(communityId);
+                };
             } else {
                 backButton.innerHTML = '&larr; Back to all posts';
                 backButton.onclick = () => {
                     history.pushState({ postId: null }, "", "/");
                     showMainFeed();
-                    renderPosts();
+                    loadPosts();
                 };
             }
             container.appendChild(backButton);
@@ -4657,22 +4685,34 @@
 
         // Handles the browser's back and forward buttons.
         window.onpopstate = function(event) {
-            if (event.state && event.state.postId) {
-                renderSinglePost(event.state.postId);
+            const state = event.state || {};
+            if (state.postId) {
+                renderSinglePost(state.postId);
+            } else if (state.communityId) {
+                renderCommunityPage(state.communityId);
             } else {
+                history.replaceState({}, "", "/");
                 showMainFeed();
+                loadPosts();
             }
         };
 
         const urlParams = new URLSearchParams(window.location.search);
         const postId = urlParams.get('post');
+        const communityId = urlParams.get('community');
+
         if (postId) {
+            // Wait for initial auth/post load before trying to render a single post
             const interval = setInterval(() => {
-                if (posts.length > 0) {
+                if (posts.length > 0 || !isLoadingPosts) {
                     clearInterval(interval);
                     renderSinglePost(postId);
                 }
             }, 100);
+        } else if (communityId) {
+            renderCommunityPage(communityId);
+        } else {
+            loadPosts();
         }
 
         // Renders the user's inbox.
