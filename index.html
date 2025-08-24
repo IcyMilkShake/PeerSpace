@@ -537,6 +537,115 @@
             console.log('Connected to socket.io server with ID:', socket.id);
         });
 
+        socket.on('post:like', (data) => {
+            const { postId, likesCount } = data;
+            const postIndex = posts.findIndex(p => p.id === postId);
+            if (postIndex !== -1) {
+                posts[postIndex].likes = likesCount;
+            }
+            const likeCountSpan = document.getElementById(`post-like-count-${postId}`);
+            if (likeCountSpan) {
+                likeCountSpan.textContent = `${likesCount} Likes`;
+            }
+        });
+
+        socket.on('comment:like', (data) => {
+            const { commentId, postId, likesCount } = data;
+            const postIndex = posts.findIndex(p => p.id === postId);
+            if (postIndex !== -1) {
+                const findAndUpdateComment = (comments) => {
+                    for (let comment of comments) {
+                        if (comment.id === commentId) {
+                            comment.likes = likesCount;
+                            return true;
+                        }
+                        if (comment.replies && findAndUpdateComment(comment.replies)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                findAndUpdateComment(posts[postIndex].comments);
+            }
+            const likeCountSpan = document.getElementById(`comment-like-count-${commentId}`);
+            if (likeCountSpan) {
+                likeCountSpan.textContent = `${likesCount}`;
+            }
+        });
+
+        socket.on('post:new', (newPost) => {
+            posts.unshift(newPost);
+            renderPosts();
+        });
+
+        socket.on('comment:new', (newComment) => {
+            const postIndex = posts.findIndex(p => p.id === newComment.post);
+            if (postIndex !== -1) {
+                posts[postIndex].comments.push(newComment);
+                if (!document.getElementById('single-post-container').classList.contains('hidden')) {
+                    renderSinglePost(newComment.post);
+                }
+            }
+        });
+
+        socket.on('reply:new', (newReply) => {
+            const postIndex = posts.findIndex(p => p.id === newReply.post);
+            if (postIndex !== -1) {
+                const findAndAddReply = (comments) => {
+                    for (const comment of comments) {
+                        if (comment.id === newReply.parentComment) {
+                            if (!comment.replies) {
+                                comment.replies = [];
+                            }
+                            comment.replies.push(newReply);
+                            return true;
+                        }
+                        if (comment.replies && findAndAddReply(comment.replies)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                findAndAddReply(posts[postIndex].comments);
+                if (!document.getElementById('single-post-container').classList.contains('hidden')) {
+                    renderSinglePost(newReply.post);
+                }
+            }
+        });
+
+        socket.on('post:delete', (data) => {
+            const { postId } = data;
+            posts = posts.filter(p => p.id !== postId);
+            const singlePostContainer = document.getElementById('single-post-container');
+            if (!singlePostContainer.classList.contains('hidden') && singlePostContainer.querySelector(`article`)) {
+                showMainFeed();
+            }
+            renderPosts();
+        });
+
+        socket.on('comment:delete', (data) => {
+            const { commentId, postId, parentCommentId } = data;
+            const postIndex = posts.findIndex(p => p.id === postId);
+            if (postIndex !== -1) {
+                const removeComment = (comments) => {
+                    for (let i = 0; i < comments.length; i++) {
+                        if (comments[i].id === commentId) {
+                            comments.splice(i, 1);
+                            return true;
+                        }
+                        if (comments[i].replies && removeComment(comments[i].replies)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                removeComment(posts[postIndex].comments);
+                if (!document.getElementById('single-post-container').classList.contains('hidden')) {
+                    renderSinglePost(postId);
+                }
+            }
+        });
+
         socket.on('update-participants', (participants) => {
             if (!currentVoiceChannel) return;
             currentVoiceChannel.participants = participants;
@@ -1544,7 +1653,7 @@
             postActions.className = 'ml-auto relative';
 
             const menuButton = document.createElement('button');
-            menuButton.className = 'text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
+            menuButton.className = 'post-menu-button text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
             menuButton.innerHTML = `<svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
             menuButton.onclick = (e) => {
                 e.stopPropagation();
@@ -2027,7 +2136,7 @@
                 commentBody.appendChild(commentActionsDiv);
 
                 const commentMenuButton = document.createElement('button');
-                commentMenuButton.className = 'text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
+                commentMenuButton.className = 'comment-menu-button text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
                 commentMenuButton.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
                 commentMenuButton.onclick = (e) => {
                     e.stopPropagation();
@@ -2456,11 +2565,10 @@
 
         // Closes post action menus when clicking outside of them.
         document.addEventListener('click', (event) => {
-            const isActionsButton = event.target.closest('button') && event.target.closest('button').innerHTML.includes('M10 6a2');
-            if (!isActionsButton && !event.target.closest('[id^="post-action-menu-"]')) {
+            if (!event.target.closest('.post-menu-button') && !event.target.closest('.post-action-menu')) {
                 closeAllPostActionMenus();
             }
-            if (!isActionsButton && !event.target.closest('[id^="comment-action-menu-"]')) {
+            if (!event.target.closest('.comment-menu-button') && !event.target.closest('.comment-action-menu')) {
                 closeAllCommentActionMenus();
             }
         });
@@ -4194,7 +4302,7 @@
             postActionsMenu.className = 'ml-auto relative';
 
             const menuButton = document.createElement('button');
-            menuButton.className = 'text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
+            menuButton.className = 'post-menu-button text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
             menuButton.innerHTML = `<svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
             menuButton.onclick = (e) => {
                 e.stopPropagation();

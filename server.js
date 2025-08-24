@@ -758,11 +758,16 @@ app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
       return res.status(403).json({ error: 'User not authorized to delete this comment.' });
     }
 
+    const postId = comment.post;
+    const parentCommentId = comment.parentComment;
+
     if (comment.parentComment === null) {
       await deleteCommentAndChildren(commentId);
     } else {
       await Comment.findByIdAndDelete(commentId);
     }
+
+    io.emit('comment:delete', { commentId, postId, parentCommentId });
 
     res.json({ success: true, message: 'Comment deleted successfully.' });
 
@@ -1724,6 +1729,7 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       comments: []
     };
 
+    io.emit('post:new', responsePost);
     res.status(201).json(responsePost);
   } catch (error) {
     console.error('Error creating post:', error);
@@ -1789,8 +1795,11 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
       replyingTo: null,
       linkPreview: comment.linkPreview,
       voiceChannel: comment.voiceChannel,
-      replies: []
+      replies: [],
+      post: postId
     };
+
+    io.emit('comment:new', responseComment);
 
     res.json(responseComment);
   } catch (error) {
@@ -1858,8 +1867,11 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
       },
       linkPreview: reply.linkPreview,
       voiceChannel: reply.voiceChannel,
-      replies: []
+      replies: [],
+      post: parentComment.post
     };
+
+    io.emit('reply:new', responseReply);
 
     res.status(201).json(responseReply);
   } catch (error) {
@@ -1963,6 +1975,8 @@ app.post('/api/posts/:postId/like', isAuthenticated, async (req, res) => {
 
     await post.save();
     
+    io.emit('post:like', { postId: post._id, likesCount: post.likes.length });
+
     res.json({ 
       likesCount: post.likes.length,
       isLiked: post.likes.includes(userId) 
@@ -2047,6 +2061,8 @@ app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
     }
 
     await comment.save();
+
+    io.emit('comment:like', { commentId: comment._id, postId: comment.post, likesCount: comment.likes.length });
     
     res.json({
       likesCount: comment.likes.length,
@@ -2258,6 +2274,8 @@ app.delete('/api/posts/:postId', isAuthenticated, async (req, res) => {
     }
 
     await Post.findByIdAndDelete(postId);
+
+    io.emit('post:delete', { postId });
 
     res.json({ success: true, message: 'Post and associated comments deleted successfully.' });
 
