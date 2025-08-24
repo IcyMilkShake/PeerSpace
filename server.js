@@ -1528,10 +1528,10 @@ app.get('/api/posts', async (req, res) => {
 
     let query = {};
 
-    if (communityId) {
+    if (communityId && communityId !== 'null') {
         query.community = communityId;
     } else {
-        query.community = null;
+        query.community = { $eq: null };
     }
 
     if (filter !== 'all') {
