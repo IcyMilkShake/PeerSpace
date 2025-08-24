@@ -3435,6 +3435,8 @@
                     }
                 });
             }
+            
+            createPostFormParent = document.getElementById('create-post-form').parentElement;
 
             checkAuth();
             loadPosts();
@@ -3803,6 +3805,12 @@
         async function renderCommunityPage(communityId) {
             showView('community-detail-container');
             const container = document.getElementById('community-detail-container');
+            
+            const createPostForm = document.getElementById('create-post-form');
+            if (createPostForm && createPostForm.parentElement === container) {
+                createPostForm.remove();
+            }
+
             container.innerHTML = '<h2>Loading community...</h2>'; // Loading state
 
             try {
@@ -3870,11 +3878,14 @@
                 container.appendChild(header);
 
                 if (isMember) {
-                    const createPostForm = document.getElementById('create-post-form');
-                    createPostForm.querySelector('h2').textContent = `Create a New Post in ${escapeHtml(community.name)}`;
-                    createPostForm.querySelector('form').dataset.communityId = communityId;
-                    container.appendChild(createPostForm);
-                    createPostForm.classList.remove('hidden');
+                    const form = createPostForm || document.getElementById('create-post-form');
+                    form.querySelector('h2').textContent = `Create a New Post in ${escapeHtml(community.name)}`;
+                    form.querySelector('form').dataset.communityId = communityId;
+                    container.appendChild(form);
+                    form.classList.remove('hidden');
+                    form.style.display = 'block';
+                } else if (createPostForm && createPostForm.parentElement === null) {
+                    createPostFormParent.appendChild(createPostForm);
                 }
 
                 container.appendChild(communityPostsContainer);
@@ -3883,6 +3894,10 @@
 
             } catch (error) {
                 console.error('Error rendering community page:', error);
+                const form = document.getElementById('create-post-form');
+                if(form && form.parentElement === container) {
+                    form.remove();
+                }
                 container.innerHTML = `<p class="text-red-500">${error.message}</p>`;
             }
         }
