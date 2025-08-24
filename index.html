@@ -879,11 +879,14 @@
 
         socket.on('voice-channel-created', ({ itemType, itemId, voiceChannel }) => {
             let postToUpdate;
+            let itemToUpdate;
+
             if (itemType === 'post') {
                 const postIndex = posts.findIndex(p => p.id === itemId);
                 if (postIndex !== -1) {
                     posts[postIndex].voiceChannel = voiceChannel;
                     postToUpdate = posts[postIndex];
+                    itemToUpdate = postToUpdate;
                 }
             } else if (itemType === 'comment') {
                 for (const p of posts) {
@@ -891,22 +894,54 @@
                     if (found) {
                         found.voiceChannel = voiceChannel;
                         postToUpdate = p;
+                        itemToUpdate = found;
                         break;
                     }
                 }
             }
 
             if (postToUpdate) {
-                const urlParams = new URLSearchParams(window.location.search);
-                const communityId = urlParams.get('community');
-                const singlePostContainer = document.getElementById('single-post-container');
+                // Targeted DOM update instead of full re-render
+                const containerId = itemType === 'post' ? `post-card-${itemId}` : `comment-wrapper-${itemId}`;
+                const containerElement = document.getElementById(containerId);
 
-                if (!singlePostContainer.classList.contains('hidden') && singlePostContainer.querySelector(`article`)) {
-                     renderSinglePost(postToUpdate.id);
-                } else if (communityId) {
-                    renderCommunityPage(communityId);
+                if (containerElement) {
+                    const voiceChannelElement = createVoiceChannelElement(itemToUpdate);
+                    if (voiceChannelElement) {
+                        // Check if a VC element already exists and replace it, otherwise append
+                        const existingVcElement = containerElement.querySelector('.voice-channel-container');
+                        if(existingVcElement) {
+                            existingVcElement.replaceWith(voiceChannelElement);
+                        } else {
+                            // In single post view, it should be appended to the article content
+                            const contentArea = containerElement.querySelector('.post-actions') || containerElement.querySelector('.comment-actions');
+                            if (contentArea) {
+                                // Insert the VC element before the actions div
+                                contentArea.insertAdjacentElement('beforebegin', voiceChannelElement);
+                            } else {
+                                // Fallback for safety, though should not be reached with the class name fixes
+                                containerElement.appendChild(voiceChannelElement);
+                            }
+                        }
+                    }
+                    // Also, hide the 'Create Voice Channel' button from the dropdown
+                    const createVcButton = containerElement.querySelector('.create-vc-button');
+                    if (createVcButton) {
+                        createVcButton.style.display = 'none';
+                    }
                 } else {
-                    renderPosts();
+                    // Fallback to re-rendering if the element isn't found in the DOM for some reason
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const communityId = urlParams.get('community');
+                    const singlePostContainer = document.getElementById('single-post-container');
+
+                    if (!singlePostContainer.classList.contains('hidden') && singlePostContainer.querySelector(`article`)) {
+                         renderSinglePost(postToUpdate.id);
+                    } else if (communityId) {
+                        renderCommunityPage(communityId);
+                    } else {
+                        renderPosts();
+                    }
                 }
             }
         });
@@ -946,6 +981,33 @@
                 }
             }
             return null;
+        }
+
+        function userHasActiveChannel() {
+            if (!currentUser) return false;
+
+            const checkComments = (comments) => {
+                for (const comment of comments) {
+                    if (comment.voiceChannel && comment.voiceChannel.creator && comment.voiceChannel.creator.toString() === currentUser.id) {
+                        return true;
+                    }
+                    if (comment.replies && checkComments(comment.replies)) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            for (const post of posts) {
+                if (post.voiceChannel && post.voiceChannel.creator && post.voiceChannel.creator.toString() === currentUser.id) {
+                    return true;
+                }
+                if (post.comments && checkComments(post.comments)) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         async function createAudioMeter(stream, onVolumeChange) {
@@ -1149,7 +1211,8 @@
                 const deleteButton = document.createElement('button');
                 deleteButton.onclick = (e) => {
                     e.stopPropagation();
-                    deleteVoiceChannel(channelId);
+                    const itemType = item.title ? 'post' : 'comment'; // Heuristic to determine item type
+                    deleteVoiceChannel(channelId, itemType, item.id);
                 };
                 deleteButton.className = 'bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors';
                 deleteButton.innerHTML = `<i class="fas fa-trash-alt"></i>`;
@@ -1308,7 +1371,7 @@
             sessionStorage.removeItem('voiceChannelRefresh');
         }
 
-        async function deleteVoiceChannel(channelId) {
+        async function deleteVoiceChannel(channelId, itemType, itemId) {
             if (!currentUser) return;
 
             showConfirmationDialog(
@@ -1318,11 +1381,33 @@
                         const response = await fetch(`/api/voice-channel/${channelId}`, {
                             method: 'DELETE',
                         });
-                        if (!response.ok) {
+                        if (response.ok) {
+                            // Optimistic update
+                            const voiceChannelElement = document.querySelector(`.voice-channel-container #voice-participants-${channelId}`);
+                            if (voiceChannelElement) {
+                                voiceChannelElement.closest('.voice-channel-container').remove();
+                            }
+
+                            // Update local data
+                            if (itemType === 'post') {
+                                const postIndex = posts.findIndex(p => p.id === itemId);
+                                if (postIndex !== -1) {
+                                    posts[postIndex].voiceChannel = null;
+                                }
+                            } else if (itemType === 'comment') {
+                                for (const p of posts) {
+                                    const found = findComment(p.comments, itemId);
+                                    if (found) {
+                                        found.voiceChannel = null;
+                                        break;
+                                    }
+                                }
+                            }
+                            showNotification('Voice channel deleted.', 'success');
+                        } else {
                             const errorData = await response.json().catch(() => ({ error: "Server error" }));
                             showNotification(`Failed to delete voice channel: ${errorData.error}`, 'error');
                         }
-                        // The UI will be updated by the voice-channel-deleted socket event
                     } catch (error) {
                         console.error('Error deleting voice channel:', error);
                         showNotification('An error occurred while deleting the voice channel.', 'error');
@@ -1634,6 +1719,7 @@
 
         function createPostElement(post) {
             const article = document.createElement('article');
+            article.id = `post-card-${post.id}`;
             article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in';
             article.classList.add("cursor-pointer");
             article.onclick = () => {
@@ -1708,9 +1794,9 @@
                 dropdownMenu.appendChild(reportButton);
             }
             
-            if (currentUser && currentUser.id === post.author.id && !post.voiceChannel) {
+            if (currentUser && currentUser.id === post.author.id && !post.voiceChannel && !userHasActiveChannel()) {
                 const createVoiceChannelButton = document.createElement('button');
-                createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
+                createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 create-vc-button';
                 createVoiceChannelButton.innerHTML = `
                     <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 14.5a3.5 3.5 0 10-7 0v-1.586a1 1 0 01.293-.707l4.414-4.414a1 1 0 01.707-.293H15.5V14.5zM12 18a4 4 0 100-8 4 4 0 000 8z"></path></svg>
                     Create Voice Channel
@@ -1944,7 +2030,7 @@
             }
 
             const postActionsDiv = document.createElement('div');
-            postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
+            postActionsDiv.className = 'post-actions flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
             
             const likeButtonPost = document.createElement('button');
             likeButtonPost.className = `like-button flex items-center space-x-1 ${post.isLiked ? 'like-button-active' : ''}`;
@@ -2018,6 +2104,7 @@
         function renderCommentTree(comments, parentElement, postId, depth) {
             comments.forEach(comment => {
                 const commentWrapper = document.createElement('div');
+                commentWrapper.id = `comment-wrapper-${comment.id}`;
                 commentWrapper.className = `comment-wrapper mt-3 pl-${depth * 2}`; 
 
                 const commentDiv = document.createElement('div');
@@ -2175,7 +2262,7 @@
                     `;
                     deleteButton.onclick = (e) => {
                         e.stopPropagation();
-                        confirmDeleteComment(comment.id, !comment.parentComment);
+                        confirmDeleteComment(comment.id, postId, !comment.parentComment);
                         closeAllCommentActionMenus();
                     };
                     dropdownMenu.appendChild(deleteButton);
@@ -2196,9 +2283,9 @@
                     dropdownMenu.appendChild(reportButton);
                 }
                 
-                if (currentUser && currentUser.id === comment.author.id && !comment.voiceChannel) {
+                if (currentUser && currentUser.id === comment.author.id && !comment.voiceChannel && !userHasActiveChannel()) {
                     const createVoiceChannelButton = document.createElement('button');
-                    createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
+                    createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 create-vc-button';
                     createVoiceChannelButton.innerHTML = `
                         <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 14.5a3.5 3.5 0 10-7 0v-1.586a1 1 0 01.293-.707l4.414-4.414a1 1 0 01.707-.293H15.5V14.5zM12 18a4 4 0 100-8 4 4 0 000 8z"></path></svg>
                         Create Voice Channel
@@ -2411,6 +2498,7 @@
                 });
 
                 if (response.ok) {
+                    const newCommentOrReply = await response.json();
                     mentionsMap.delete(textareaId);
                     textarea.value = '';
 
@@ -2434,8 +2522,40 @@
                          }
                     }
 
+                    // Immediately update the UI for the user who commented.
+                    const postIndex = posts.findIndex(p => p.id === postId);
+                    if (postIndex !== -1) {
+                        const post = posts[postIndex];
+                        if (parentCommentId) {
+                            // This is a reply, find the parent comment and add it.
+                            const findAndAddReply = (comments) => {
+                                for (const comment of comments) {
+                                    if (comment.id === parentCommentId) {
+                                        if (!comment.replies) {
+                                            comment.replies = [];
+                                        }
+                                        if (!comment.replies.some(r => r.id === newCommentOrReply.id)) {
+                                            comment.replies.push(newCommentOrReply);
+                                        }
+                                        return true;
+                                    }
+                                    if (comment.replies && findAndAddReply(comment.replies)) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            };
+                            findAndAddReply(post.comments);
+                        } else {
+                            // This is a new top-level comment.
+                             if (!post.comments.some(c => c.id === newCommentOrReply.id)) {
+                                post.comments.push(newCommentOrReply);
+                            }
+                        }
+                        renderSinglePost(postId);
+                    }
+
                     showNotification("Comment added successfully.", "success");
-                    // The UI update will now be handled by the socket.io event listener to prevent race conditions.
                 } else {
                     const errorData = await response.json();
                     showNotification(`Failed to add ${parentCommentId ? 'reply' : 'comment'}: ${errorData.error || 'Server error'}`, 'error');
@@ -2878,7 +2998,7 @@
         }
 
         // Asks the user to confirm before deleting a comment.
-        async function confirmDeleteComment(commentId, isTopLevelComment) {
+        async function confirmDeleteComment(commentId, postId, isTopLevelComment) {
             if (!currentUser) return;
 
             let message = "Are you sure you want to delete this reply? This action cannot be undone.";
@@ -2895,10 +3015,8 @@
                         });
 
                         if (response.ok) {
-                            const post = posts.find(p => p.comments.some(c => c.id === commentId) || 
-                                                     p.comments.some(c => c.replies && c.replies.some(r => r.id === commentId)));
-
-                            if (post) {
+                            const postIndex = posts.findIndex(p => p.id === postId);
+                            if (postIndex !== -1) {
                                 const removeComment = (comments) => {
                                     for (let i = 0; i < comments.length; i++) {
                                         if (comments[i].id === commentId) {
@@ -2911,13 +3029,8 @@
                                     }
                                     return false;
                                 };
-                                removeComment(post.comments);
-                                renderSinglePost(post.id);
-                                const commentCountSpan = document.querySelector(`#post-${post.id} .comment-count`);
-                                if (commentCountSpan) {
-                                    const totalComments = countAllComments(post.comments);
-                                    commentCountSpan.textContent = `${totalComments} Comments`;
-                                }
+                                removeComment(posts[postIndex].comments);
+                                renderSinglePost(postId);
                             }
                             showNotification("Comment/reply deleted successfully.", "success");
                         } else {
@@ -4277,6 +4390,7 @@
             container.innerHTML = '';
 
             const article = document.createElement('article');
+            article.id = `post-card-${post.id}`;
             article.className = 'rounded-lg shadow-md p-6';
 
             const backButton = document.createElement('button');
@@ -4370,7 +4484,7 @@
                 dropdownMenu.appendChild(reportButton);
             }
             
-            if (currentUser && currentUser.id === post.author.id && !post.voiceChannel) {
+            if (currentUser && currentUser.id === post.author.id && !post.voiceChannel && !userHasActiveChannel()) {
                 const createVoiceChannelButton = document.createElement('button');
                 createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
                 createVoiceChannelButton.innerHTML = `
@@ -4658,7 +4772,7 @@
             }
 
             const postActionsDiv = document.createElement('div');
-            postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
+            postActionsDiv.className = 'post-actions flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
             
             const likeButtonPost = document.createElement('button');
             likeButtonPost.className = `like-button flex items-center space-x-1 ${post.isLiked ? 'like-button-active' : ''}`;
