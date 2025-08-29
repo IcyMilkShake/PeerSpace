@@ -331,18 +331,40 @@ app.get('/api/notifications', isAuthenticated, async (req, res) => {
   try {
     const notifications = await Notification.find({ user: req.user._id })
       .populate('sender', 'displayName')
-      .populate('post')
+      .populate('post', 'title')
       .sort({ createdAt: -1 });
 
     const responseNotifications = notifications
       .filter(n => n.post)
-      .map(n => ({
-        _id: n._id,
-        message: `<strong>${n.sender.displayName}</strong> mentioned you in <strong>${n.post.title}</strong>.`,
-        link: `/#/post/${n.post._id}#comment-${n.comment}`,
-        read: n.read,
-        createdAt: n.createdAt
-    }));
+      .map(n => {
+        let message = '';
+        let link = `/#/post/${n.post._id}`;
+
+        switch (n.type) {
+          case 'mention':
+            if (n.sender) {
+              message = `<strong>${n.sender.displayName}</strong> mentioned you in <strong>${n.post.title}</strong>.`;
+            }
+            if (n.comment) {
+              link += `#comment-${n.comment}`;
+            }
+            break;
+          case 'voice_channel_deleted':
+            message = `Your voice channel in <strong>${n.post.title}</strong> was removed after being left unattended.`;
+            break;
+          default:
+            return null;
+        }
+
+        return {
+          _id: n._id,
+          message: message,
+          link: link,
+          read: n.read,
+          createdAt: n.createdAt
+        };
+      }).filter(Boolean);
+
     res.json(responseNotifications);
   } catch (error) {
     console.error('Error fetching notifications:', error);
@@ -381,8 +403,10 @@ app.get('/api/notifications/unread-count', isAuthenticated, async (req, res) => 
 app.post('/api/notifications/:notificationId/read', isAuthenticated, async (req, res) => {
     try {
         const { notificationId } = req.params;
+        const userId = req.user._id;
+
         const notification = await Notification.findOneAndUpdate(
-            { _id: notificationId, user: req.user._id },
+            { _id: notificationId, user: userId },
             { read: true },
             { new: true }
         );
@@ -391,7 +415,14 @@ app.post('/api/notifications/:notificationId/read', isAuthenticated, async (req,
             return res.status(404).json({ error: 'Notification not found' });
         }
 
-        res.json({ success: true });
+        const unreadNotifications = await Notification.countDocuments({ user: userId, read: false });
+        const pendingFriendRequests = await FriendRequest.countDocuments({ recipient: userId, status: 'pending' });
+
+        res.json({
+            success: true,
+            unreadNotifications,
+            pendingFriendRequests
+        });
     } catch (error) {
         console.error('Error marking notification as read:', error);
         res.status(500).json({ error: 'Failed to mark notification as read' });
@@ -1715,7 +1746,8 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
         { path: 'author', select: 'username displayName profilePicture' },
         { path: 'community', select: 'name _id' }
     ]);
-    await createNotificationsForMentions(content, post._id, null, req.user._id);
+    const io = req.app.get('socketio');
+    await createNotificationsForMentions(content, post._id, null, req.user._id, io);
 
     const responsePost = {
       id: post._id,
@@ -1739,7 +1771,6 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       comments: []
     };
 
-    const io = req.app.get('socketio');
     io.emit('post:new', responsePost);
     res.status(201).json(responsePost);
   } catch (error) {
@@ -1788,7 +1819,8 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
     }
 
     await comment.populate('author', 'username displayName profilePicture');
-    await createNotificationsForMentions(content, postId, comment._id, req.user._id);
+    const io = req.app.get('socketio');
+    await createNotificationsForMentions(content, postId, comment._id, req.user._id, io);
 
     const responseComment = {
       id: comment._id,
@@ -1810,7 +1842,6 @@ app.post('/api/posts/:postId/comments', isAuthenticated, async (req, res) => {
       post: postId
     };
 
-    const io = req.app.get('socketio');
     io.to(`post-${postId}`).emit('comment:new', responseComment);
 
     res.json(responseComment);
@@ -1858,7 +1889,8 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
     }
 
     await reply.populate('author', 'username displayName profilePicture');
-    await createNotificationsForMentions(content, parentComment.post, reply._id, req.user._id);
+    const io = req.app.get('socketio');
+    await createNotificationsForMentions(content, parentComment.post, reply._id, req.user._id, io);
 
     const responseReply = {
       id: reply._id,
@@ -1883,7 +1915,6 @@ app.post('/api/comments/:commentId/replies', isAuthenticated, async (req, res) =
       post: parentComment.post
     };
 
-    const io = req.app.get('socketio');
     io.to(`post-${parentComment.post}`).emit('reply:new', responseReply);
 
     res.status(201).json(responseReply);
@@ -1945,7 +1976,7 @@ async function generateLinkPreview(content) {
 }
 
 // Creates notifications for any users mentioned in a post or comment.
-async function createNotificationsForMentions(text, postId, commentId, senderId) {
+async function createNotificationsForMentions(text, postId, commentId, senderId, io) {
     const mentionRegex = /@(\w+)/g;
     const mentions = text.match(mentionRegex);
 
@@ -1963,6 +1994,7 @@ async function createNotificationsForMentions(text, postId, commentId, senderId)
                     comment: commentId,
                 });
                 await notification.save();
+                await emitNotificationCountUpdate(user._id, io);
             }
         }
     }
@@ -2043,6 +2075,8 @@ app.post('/api/posts/:postId/voice-channel', isAuthenticated, async (req, res) =
     await post.save();
 
     const io = req.app.get('socketio');
+    scheduleVoiceChannelDeletion(voiceChannel._id, io);
+
     io.emit('voice-channel-created', {
         itemType: 'post',
         itemId: postId,
@@ -2133,6 +2167,8 @@ app.post('/api/comments/:commentId/voice-channel', isAuthenticated, async (req, 
         await comment.save();
 
     const io = req.app.get('socketio');
+        scheduleVoiceChannelDeletion(voiceChannel._id, io);
+
         io.emit('voice-channel-created', {
             itemType: 'comment',
             itemId: commentId,
@@ -2328,6 +2364,81 @@ app.use((error, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// A helper function to emit notification count updates to a user
+async function emitNotificationCountUpdate(userId, io) {
+    try {
+        if (!userId || !io) return;
+
+        const unreadNotifications = await Notification.countDocuments({ user: userId, read: false });
+        const pendingFriendRequests = await FriendRequest.countDocuments({ recipient: userId, status: 'pending' });
+        
+        const sockets = await io.fetchSockets();
+        for (const socket of sockets) {
+            if (socket.userId && socket.userId.toString() === userId.toString()) {
+                socket.emit('notification_count_update', {
+                    unreadNotifications,
+                    pendingFriendRequests
+                });
+            }
+        }
+    } catch (error) {
+        console.error(`Error emitting notification count update for user ${userId}:`, error);
+    }
+}
+
+// Schedules a voice channel for deletion if it remains empty.
+function scheduleVoiceChannelDeletion(channelId, io) {
+  if (channelTimeouts[channelId.toString()]) {
+    console.log(`Deletion timer for channel ${channelId} already exists. Skipping.`);
+    return;
+  }
+
+  console.log(`Channel ${channelId} is empty. Starting 3-minute deletion timer.`);
+  const timeoutId = setTimeout(async () => {
+    try {
+      const finalCheckChannel = await VoiceChannel.findById(channelId);
+      if (finalCheckChannel && finalCheckChannel.participants.length === 0) {
+        console.log(`Timer expired for ${channelId}. Deleting channel.`);
+        
+        const creatorId = finalCheckChannel.creator;
+        const postId = finalCheckChannel.post;
+        const commentId = finalCheckChannel.comment;
+
+        await VoiceChannel.findByIdAndDelete(channelId);
+
+        // Create a notification for the creator
+        const newNotification = new Notification({
+            user: creatorId,
+            type: 'voice_channel_deleted',
+            post: postId,
+            comment: commentId,
+        });
+        await newNotification.save();
+        
+        // Emit a notification count update to the creator
+        await emitNotificationCountUpdate(creatorId, io);
+
+        if (postId) {
+          await Post.findByIdAndUpdate(postId, { $unset: { voiceChannel: "" } });
+          io.emit('voice-channel-deleted', { channelId: channelId, postId: postId });
+        } else if (commentId) {
+          await Comment.findByIdAndUpdate(commentId, { $unset: { voiceChannel: "" } });
+          io.emit('voice-channel-deleted', { channelId: channelId, commentId: commentId });
+        }
+        console.log(`Deleted empty voice channel ${channelId}`);
+      } else {
+        console.log(`Timer expired for ${channelId}, but it is no longer empty. Deletion cancelled.`);
+      }
+    } catch (error)      {
+      console.error(`Error during voice channel auto-deletion for ${channelId}:`, error);
+    } finally {
+      delete channelTimeouts[channelId.toString()];
+    }
+  }, 180000); // 3 minutes
+
+  channelTimeouts[channelId.toString()] = timeoutId;
+}
+
 
 // Starts the server.
 const server = http.createServer(app);
@@ -2375,33 +2486,7 @@ io.on('connection', (socket) => {
       );
 
       if (updatedChannel && updatedChannel.participants.length === 0) {
-        console.log(`Channel ${channelId} is now empty. Starting deletion timer.`);
-        const timeoutId = setTimeout(async () => {
-          try {
-            const finalCheckChannel = await VoiceChannel.findById(channelId);
-            if (finalCheckChannel && finalCheckChannel.participants.length === 0) {
-                console.log(`Timer expired for ${channelId}. Deleting channel.`);
-                await VoiceChannel.findByIdAndDelete(channelId);
-                
-                if (finalCheckChannel.post) {
-                    await Post.findByIdAndUpdate(finalCheckChannel.post, { $unset: { voiceChannel: "" } });
-                    io.emit('voice-channel-deleted', { channelId: channelId, postId: finalCheckChannel.post });
-                } else if (finalCheckChannel.comment) {
-                    await Comment.findByIdAndUpdate(finalCheckChannel.comment, { $unset: { voiceChannel: "" } });
-                    io.emit('voice-channel-deleted', { channelId: channelId, commentId: finalCheckChannel.comment });
-                }
-                console.log(`Deleted empty voice channel ${channelId}`);
-            } else {
-                console.log(`Timer expired for ${channelId}, but it is no longer empty. Deletion cancelled.`);
-            }
-          } catch (error) {
-            console.error(`Error during voice channel auto-deletion for ${channelId}:`, error);
-          } finally {
-            delete channelTimeouts[channelId.toString()];
-          }
-        }, 60000);
-
-        channelTimeouts[channelId.toString()] = timeoutId;
+        scheduleVoiceChannelDeletion(channelId, io);
       } else if (updatedChannel) {
         console.log(`User left channel ${channelId}. ${updatedChannel.participants.length} participants remaining.`);
       }

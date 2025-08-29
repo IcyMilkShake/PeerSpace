@@ -264,13 +264,12 @@ const notificationSchema = new mongoose.Schema({
   },
   sender: { // The user who triggered the notification
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: 'User'
   },
   type: { // e.g., 'mention', 'like', 'comment'
     type: String,
     required: true,
-    enum: ['mention']
+    enum: ['mention', 'voice_channel_deleted']
   },
   post: { // The post where the event happened
     type: mongoose.Schema.Types.ObjectId,

@@ -4877,7 +4877,7 @@
         }
 
         // Renders the user's inbox.
-        async function renderInbox() {
+async function renderInbox() {
             showView('inbox-container-main');
             const inboxContainer = document.getElementById('inbox-container-main');
 
@@ -4934,10 +4934,13 @@
                     `;
                     notificationEl.addEventListener('click', async () => {
                         if (!notification.read) {
-                            await fetch('/api/notifications/' + notification._id + '/read', { method: 'POST' });
-                            notificationEl.classList.remove('font-bold');
-                            notification.read = true;
-                            fetchUnreadNotificationCount();
+                            const readResponse = await fetch('/api/notifications/' + notification._id + '/read', { method: 'POST' });
+                            if (readResponse.ok) {
+                                const data = await readResponse.json();
+                                updateNotificationBadges(data.unreadNotifications, data.pendingFriendRequests);
+                                notificationEl.classList.remove('font-bold');
+                                notification.read = true;
+                            }
                         }
                         
                         if (notification.link) {
