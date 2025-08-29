@@ -1711,7 +1711,10 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       await VoiceChannel.findByIdAndUpdate(post.voiceChannel, { post: post._id });
     }
 
-    await post.populate('author', 'username displayName profilePicture');
+    await post.populate([
+        { path: 'author', select: 'username displayName profilePicture' },
+        { path: 'community', select: 'name _id' }
+    ]);
     await createNotificationsForMentions(content, post._id, null, req.user._id);
 
     const responsePost = {
@@ -1723,6 +1726,7 @@ app.post('/api/posts', isAuthenticated, postAttachmentUpload.array('attachments'
       pollOptions: post.pollOptions,
       linkPreview: post.linkPreview,
       voiceChannel: post.voiceChannel,
+      community: post.community,
       author: {
         id: post.author._id,
         username: post.author.username,
