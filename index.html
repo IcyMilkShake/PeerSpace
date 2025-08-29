@@ -128,7 +128,7 @@
             position: relative;
         }
         #posts-container > article, #community-posts-container > article {
-            transition: opacity 0.5s ease-out, transform 0.5s ease-out, max-height 0.5s ease-in-out, padding 0.5s ease-in-out, margin 0.5s ease-in-out;
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out, max-height 0.5s ease-in-out, padding 0.5s ease-in-out, margin 0.5s ease-in-out;
             max-height: 1000px; 
             overflow: hidden;
         }
@@ -149,20 +149,6 @@
         .muted-pfp {
             opacity: 0.5;
             cursor: pointer;
-        }
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-15px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .post-fade-in {
-            animation: fadeInDown 0.5s ease-out forwards;
         }
         #desktop-voice-panel {
             display: flex;
@@ -641,7 +627,6 @@
             // If a visible container was identified, create and prepend the new post element.
             if (targetContainer) {
                 const newPostElement = createPostElement(newPost);
-                newPostElement.classList.add('post-fade-in');
                 targetContainer.prepend(newPostElement);
                 
                 // If the "No posts yet" message is visible, hide it.
@@ -1801,12 +1786,12 @@
         function createPostElement(post) {
             const article = document.createElement('article');
             article.id = `post-card-${post.id}`;
-            article.className = 'rounded-lg shadow-md p-6 hover-lift';
+            article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in';
             article.classList.add("cursor-pointer");
-            article.addEventListener('click', () => {
+            article.onclick = () => {
                 history.pushState({ postId: post.id }, "", `?post=${post.id}`);
                 renderSinglePost(post.id);
-            });
+            };
             
             const postHeader = document.createElement('div');
             postHeader.className = 'flex items-center justify-between mb-4';
@@ -1836,10 +1821,10 @@
             const menuButton = document.createElement('button');
             menuButton.className = 'post-menu-button text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
             menuButton.innerHTML = `<svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
-            menuButton.addEventListener('click', (e) => {
+            menuButton.onclick = (e) => {
                 e.stopPropagation();
                 togglePostActionMenu(post.id);
-            });
+            };
             postActions.appendChild(menuButton);
 
             const dropdownMenu = document.createElement('div');
@@ -1853,11 +1838,11 @@
                     <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     Delete Post
                 `;
-                deleteButton.addEventListener('click', (e) => {
+                deleteButton.onclick = (e) => {
                     e.stopPropagation();
                     confirmDeletePost(post.id);
                     closeAllPostActionMenus();
-                });
+                };
                 dropdownMenu.appendChild(deleteButton);
             }
             if (currentUser && currentUser.id !== post.author.id) {
@@ -1867,11 +1852,11 @@
                     <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4.25L16.25 3.5a2.121 2.121 0 013 3L6.25 19H3zm9-13l3 3"></path></svg>
                     Report Post
                 `;
-                reportButton.addEventListener('click', (e) => {
+                reportButton.onclick = (e) => {
                     e.stopPropagation();
                     openReportModal(post.id);
                     closeAllPostActionMenus();
-                });
+                };
                 dropdownMenu.appendChild(reportButton);
             }
             
@@ -1882,11 +1867,11 @@
                     <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 14.5a3.5 3.5 0 10-7 0v-1.586a1 1 0 01.293-.707l4.414-4.414a1 1 0 01.707-.293H15.5V14.5zM12 18a4 4 0 100-8 4 4 0 000 8z"></path></svg>
                     Create Voice Channel
                 `;
-                createVoiceChannelButton.addEventListener('click', (e) => {
+                createVoiceChannelButton.onclick = (e) => {
                     e.stopPropagation();
                     createVoiceChannel('post', post.id);
                     closeAllPostActionMenus();
-                });
+                };
                 dropdownMenu.appendChild(createVoiceChannelButton);
             }
 
@@ -1931,7 +1916,7 @@
                 const seeMoreBtn = document.createElement('button');
                 seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
                 seeMoreBtn.textContent = 'See More';
-                seeMoreBtn.addEventListener('click', (e) => {
+                seeMoreBtn.onclick = (e) => {
                     e.stopPropagation();
                     if (seeMoreContainer.classList.contains('expanded')) {
                         seeMoreContainer.classList.remove('expanded');
@@ -1940,7 +1925,7 @@
                         seeMoreContainer.classList.add('expanded');
                         seeMoreBtn.textContent = 'See Less';
                     }
-                });
+                };
                 postContentElement.appendChild(seeMoreContainer);
                 postContentElement.appendChild(seeMoreBtn);
             } else {
@@ -1970,11 +1955,11 @@
                             const img = document.createElement('img');
                             img.src = attachment.url;
                             img.className = 'w-full h-full object-cover rounded cursor-pointer';
-                            img.addEventListener('click', (e) => {
+                            img.onclick = (e) => {
                                 e.stopPropagation();
                                 const imageUrls = imageAttachments.map(a => a.url);
                                 openLightbox(imageUrls, index);
-                            });
+                            };
                             attachmentWrapper.appendChild(img);
                             imageSlideshowContainer.appendChild(attachmentWrapper);
                         });
@@ -1995,7 +1980,7 @@
                             const videoWrapper = document.createElement('div');
                             videoWrapper.style.width = '100%';
                             videoWrapper.style.overflow = 'hidden';
-                            videoWrapper.addEventListener('click', (e) => e.stopPropagation());
+                            videoWrapper.onclick = (e) => e.stopPropagation();
                             const video = document.createElement('video');
                             video.className = 'w-full h-auto object-cover rounded post-video';
                             video.controls = true;
@@ -2030,7 +2015,7 @@
                 const pollContainer = document.createElement('div');
                 pollContainer.className = 'mb-4 p-4 border rounded-lg';
                 pollContainer.id = `poll-${post.id}`;
-                pollContainer.addEventListener('click', (e) => e.stopPropagation());
+                pollContainer.onclick = (e) => e.stopPropagation();
 
                 const currentUserVote = post.usersWhoVoted && currentUser ? post.usersWhoVoted.find(vote => vote.userId === currentUser.id) : null;
                 
@@ -2054,28 +2039,21 @@
                          buttonClass += ' themed-hover-bg';
                     }
 
-                    const optionButton = document.createElement('button');
-                    optionButton.className = buttonClass;
-                    optionButton.dataset.optionIndex = index;
-                    optionButton.disabled = isDisabled;
-                    optionButton.title = !currentUser ? 'Sign in to vote' : 'Click to vote or change your vote';
 
-                    optionButton.innerHTML = `
-                        <span>${escapeHtml(option.option)} ${votedIndicator}</span>
-                        <span class="text-xs text-gray-500 vote-count">${option.votes || 0} votes (${percentage}%)</span>
+                    optionDiv.innerHTML = `
+                        <button 
+                            onclick="event.stopPropagation(); voteInPoll('${post.id}', ${index})" 
+                            class="${buttonClass}"
+                            data-option-index="${index}"
+                            ${isDisabled ? 'disabled' : ''} 
+                            ${!currentUser ? 'title="Sign in to vote"' : 'title="Click to vote or change your vote"'} >
+                            <span>${escapeHtml(option.option)} ${votedIndicator}</span>
+                            <span class="text-xs text-gray-500 vote-count">${option.votes || 0} votes (${percentage}%)</span>
+                        </button>
+                        <div class="h-2 rounded-full mt-1 overflow-hidden poll-progress-track">
+                            <div class="h-full transition-all duration-300 poll-progress-fill" style="width: ${percentage}%;"></div>
+                        </div>
                     `;
-
-                    optionButton.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        voteInPoll(post.id, index);
-                    });
-
-                    const progressBar = document.createElement('div');
-                    progressBar.className = 'h-2 rounded-full mt-1 overflow-hidden poll-progress-track';
-                    progressBar.innerHTML = `<div class="h-full transition-all duration-300 poll-progress-fill" style="width: ${percentage}%;"></div>`;
-                    
-                    optionDiv.appendChild(optionButton);
-                    optionDiv.appendChild(progressBar);
                     pollContainer.appendChild(optionDiv);
                 });
                 postContentElement.appendChild(pollContainer);
@@ -2095,7 +2073,7 @@
                 previewContainer.rel = 'noopener noreferrer';
                 previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-4 text-sm';
                 previewContainer.style.textDecoration = 'none';
-                previewContainer.addEventListener('click', (e) => e.stopPropagation());
+                previewContainer.onclick = (e) => e.stopPropagation();
 
                 let imageHtml = '';
                 if (preview.image) {
@@ -2128,10 +2106,10 @@
                 </svg>
             <span id="post-like-count-${post.id}">${post.likes || 0} Likes</span>
             `;
-            likeButtonPost.addEventListener('click', (e) => {
+            likeButtonPost.onclick = (e) => {
                 e.stopPropagation();
                 toggleLike('post', post.id);
-            });
+            };
             postActionsDiv.appendChild(likeButtonPost);
 
             const commentCountSpan = document.createElement('span');
