@@ -188,7 +188,7 @@
           <i class="fas fa-comments" style="color: var(--notification-info-bg);"></i>
           <span class="nav-text">Communities</span>
         </a>
-        <button onclick="renderInbox()" class="nav-item">
+        <button onclick="history.pushState({ view: 'inbox' }, '', '/?view=inbox'); renderInbox();" class="nav-item">
             <i class="fas fa-inbox" style="color: var(--notification-info-bg);"></i>
             <span class="nav-text">Inbox</span>
             <span id="inbox-notification-badge" class="notification-badge"></span>
@@ -2735,8 +2735,9 @@
         
         function togglePostActionMenu(postId) {
             const singlePostContainer = document.getElementById('single-post-container');
+            console.log(singlePostContainer)
             let menu;
-            if (!singlePostContainer.classList.contains('hidden')) {
+            if (singlePostContainer.style.display === "block") {
                 menu = document.getElementById(`post-action-menu-single-${postId}`);
             } else {
                 menu = document.getElementById(`post-action-menu-${postId}`);
@@ -4462,7 +4463,13 @@
                 backButton.onclick = () => {
                     window.location.href = `/profile.html?id=${refId}`;
                 };
-            } else if (post.community && post.community._id) {
+            } else if (ref === 'inbox') {
+                backButton.innerHTML = '&larr; Back to inbox';
+                backButton.onclick = () => {
+                    history.back();
+                };
+            }
+            else if (post.community && post.community._id) {
                 backButton.innerHTML = '&larr; Back to community';
                 backButton.onclick = () => {
                     const communityId = post.community._id;
@@ -4861,7 +4868,10 @@
                 renderSinglePost(state.postId);
             } else if (state.communityId) {
                 renderCommunityPage(state.communityId);
-            } else {
+            } else if (state.view === 'inbox') {
+                renderInbox();
+            }
+            else {
                 history.replaceState({}, "", "/");
                 showMainFeed();
                 loadPosts();
@@ -4871,6 +4881,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const postId = urlParams.get('post');
         const communityId = urlParams.get('community');
+        const view = urlParams.get('view');
 
         if (postId) {
             // Wait for initial auth/post load before trying to render a single post
@@ -4882,7 +4893,10 @@
             }, 100);
         } else if (communityId) {
             renderCommunityPage(communityId);
-        } else {
+        } else if (view === 'inbox') {
+            renderInbox();
+        }
+        else {
             loadPosts();
         }
 
@@ -4957,7 +4971,7 @@ async function renderInbox() {
                             const postIdMatch = notification.link.match(/\/post\/(\w+)/) || notification.link.match(/post=(\w+)/);
                             if (postIdMatch) {
                                 const postId = postIdMatch[1];
-                                history.pushState({ postId: postId }, "", `?post=${postId}`);
+                                history.pushState({ postId: postId }, "", `?post=${postId}&ref=inbox`);
                                 renderSinglePost(postId);
                             } else {
                                 window.open(notification.link, '_blank');
