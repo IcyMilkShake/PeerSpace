@@ -1020,6 +1020,59 @@
             }
         });
 
+        socket.on('voice-channel-deleted', ({ channelId, postId, commentId }) => {
+            // 1. Remove the voice channel element from the DOM
+            const vcElement = document.querySelector(`.voice-channel-container #voice-participants-${channelId}`);
+            if (vcElement) {
+                const container = vcElement.closest('.voice-channel-container');
+                if (container) {
+                    container.style.transition = 'opacity 0.5s, max-height 0.5s, padding 0.5s, margin 0.5s';
+                    container.style.opacity = '0';
+                    container.style.maxHeight = '0';
+                    container.style.padding = '0';
+                    container.style.margin = '0';
+                    setTimeout(() => container.remove(), 500);
+                }
+            }
+
+            // 2. If the user was in the deleted channel, handle it
+            if (currentVoiceChannel && currentVoiceChannel.id === channelId) {
+                leaveVoiceChannel();
+                showNotification('The voice channel you were in has been remotely deleted.', 'info');
+            }
+            
+            let itemElement = null;
+            if (postId) {
+                // Check both main feed and single post view
+                itemElement = document.getElementById(`post-card-${postId}`) || document.getElementById(`post-card-${postId}`);
+            } else if (commentId) {
+                itemElement = document.getElementById(`comment-wrapper-${commentId}`);
+            }
+
+            if (itemElement) {
+                const createVcButton = itemElement.querySelector('.create-vc-button');
+                if (createVcButton) {
+                    createVcButton.style.display = 'block';
+                }
+            }
+
+            // 3. Update the local data store
+            if (postId) {
+                const postIndex = posts.findIndex(p => p.id === postId);
+                if (postIndex > -1) {
+                    posts[postIndex].voiceChannel = null;
+                }
+            } else if (commentId) {
+                for (const post of posts) {
+                    const comment = findComment(post.comments, commentId);
+                    if (comment) {
+                        comment.voiceChannel = null;
+                        break; 
+                    }
+                }
+            }
+        });
+
         function findComment(comments, commentId) {
             for (const c of comments) {
                 if (c.id === commentId) {
