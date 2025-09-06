@@ -559,10 +559,13 @@
             if (postIndex !== -1) {
                 posts[postIndex].likes = likesCount;
             }
-            const likeCountSpan = document.getElementById(`post-like-count-${postId}`);
-            if (likeCountSpan) {
-                likeCountSpan.textContent = `${likesCount} Likes`;
-            }
+            
+            // This is a broadcast event, so we don't know the `isLiked` status for the current user.
+            // We only update the count. The user who initiated the like handles their own `isLiked` state.
+            const likeCountSpans = document.querySelectorAll(`#post-like-count-${postId}`);
+            likeCountSpans.forEach(span => {
+                span.textContent = `${likesCount} Likes`;
+            });
         });
 
         socket.on('comment:like', (data) => {
@@ -1010,27 +1013,10 @@
                     }
                 }
             }
-        });
 
-        socket.on('voice-channel-deleted', ({ channelId, postId, commentId }) => {
-            const voiceChannelElement = document.querySelector(`.voice-channel-container #voice-participants-${channelId}`);
-            if (voiceChannelElement) {
-                voiceChannelElement.closest('.voice-channel-container').remove();
-            }
-
-            if (postId) {
-                const postIndex = posts.findIndex(p => p.id === postId);
-                if (postIndex !== -1) {
-                    posts[postIndex].voiceChannel = null;
-                }
-            } else if (commentId) {
-                for (const p of posts) {
-                    const found = findComment(p.comments, commentId);
-                    if (found) {
-                        found.voiceChannel = null;
-                        break;
-                    }
-                }
+            if (currentVoiceChannel && currentVoiceChannel.id === channelId) {
+                leaveVoiceChannel();
+                showNotification('The voice channel you were in has been deleted.', 'info');
             }
         });
 
@@ -1449,11 +1435,12 @@
                         });
                         if (response.ok) {
                             // Optimistic update
+
                             const voiceChannelElement = document.querySelector(`.voice-channel-container #voice-participants-${channelId}`);
                             if (voiceChannelElement) {
                                 voiceChannelElement.closest('.voice-channel-container').remove();
                             }
-
+                            leaveVoiceChannel()
                             // Update local data
                             if (itemType === 'post') {
                                 const postIndex = posts.findIndex(p => p.id === itemId);
@@ -2920,91 +2907,61 @@
                 return;
             }
 
-            let url;
-            if (type === 'post') {
-                url = `/api/posts/${id}/like`;
-            } else if (type === 'comment') {
-                url = `/api/comments/${id}/like`;
-            } else {
-                return;
-            }
+            const url = type === 'post' ? `/api/posts/${id}/like` : `/api/comments/${id}/like`;
 
             try {
                 const response = await fetch(url, { method: 'POST' });
-                if (response.ok) {
-                    const result = await response.json();
-
-                    if (type === 'post') {
-                        const postIndex = posts.findIndex(p => p.id === id);
-                        if (postIndex !== -1) {
-                            posts[postIndex].likes = result.likesCount;
-                            posts[postIndex].isLiked = result.isLiked;
-                        }
-                    } else if (type === 'comment') {
-                        function findAndUpdateComment(commentsArray, commentId, newLikesCount, newIsLiked) {
-                            for (let i = 0; i < commentsArray.length; i++) {
-                                let currentComment = commentsArray[i];
-                                if (currentComment.id === commentId) {
-                                    currentComment.likes = newLikesCount;
-                                    currentComment.isLiked = newIsLiked;
-                                    return true;
-                                }
-                                if (currentComment.replies && currentComment.replies.length > 0) {
-                                    if (findAndUpdateComment(currentComment.replies, commentId, newLikesCount, newIsLiked)) {
-                                        return true;
-                                    }
-                                }
-                            }
-                            return false;
-                        }
-                        for (let i = 0; i < posts.length; i++) {
-                            if (posts[i].comments && findAndUpdateComment(posts[i].comments, id, result.likesCount, result.isLiked)) {
-                                break; 
-                            }
-                        }
-                    }
-
-                    const likeCountSpan = document.getElementById(`${type}-like-count-${id}`);
-                    const likeButton = likeCountSpan ? likeCountSpan.parentElement : null;
-
-                    if (likeCountSpan) {
-                        likeCountSpan.textContent = type === 'post' ? `${result.likesCount} Likes` : `${result.likesCount}`;
-                    }
-
-                    if (likeButton) {
-                        if (result.isLiked) {
-                            likeButton.classList.add('like-button-active');
-                        } else {
-                            likeButton.classList.remove('like-button-active');
-                        }
-                    }
-                    
-                    const singlePostContainer = document.getElementById('single-post-container');
-                    if (!singlePostContainer.classList.contains('hidden')) {
-                        const post = posts.find(p => p.id === id);
-                        const likeCountSpan = document.querySelector(`#single-post-container #post-like-count-${id}`);
-                        const likeButton = likeCountSpan ? likeCountSpan.parentElement : null;
-
-                        if (likeCountSpan) {
-                            likeCountSpan.textContent = `${post.likes} Likes`;
-                        }
-
-                        if (likeButton) {
-                            if (post.isLiked) {
-                                likeButton.classList.add('like-button-active');
-                            } else {
-                                likeButton.classList.remove('like-button-active');
-                            }
-                        }
-                    }
-
-                } else {
+                if (!response.ok) {
                     const errorData = await response.json().catch(() => ({error: "Unknown error"}));
-                    showNotification(`Failed to update like for ${type}: ${errorData.error}`, 'error');
+                    throw new Error(errorData.error);
                 }
+
+                const result = await response.json();
+
+                // Update local data store
+                if (type === 'post') {
+                    const postIndex = posts.findIndex(p => p.id === id);
+                    if (postIndex !== -1) {
+                        posts[postIndex].likes = result.likesCount;
+                        posts[postIndex].isLiked = result.isLiked;
+                    }
+                } else { // comment
+                    const findAndUpdateComment = (comments) => {
+                        for (let comment of comments) {
+                            if (comment.id === id) {
+                                comment.likes = result.likesCount;
+                                comment.isLiked = result.isLiked;
+                                return true;
+                            }
+                            if (comment.replies && findAndUpdateComment(comment.replies)) return true;
+                        }
+                        return false;
+                    };
+                    posts.some(p => p.comments && findAndUpdateComment(p.comments));
+                }
+
+                // Update all relevant UI elements in the DOM
+                const likeCountSpans = document.querySelectorAll(`#${type}-like-count-${id}`);
+                likeCountSpans.forEach(span => {
+                    span.textContent = type === 'post' ? `${result.likesCount} Likes` : `${result.likesCount}`;
+                });
+
+                const likeButtons = document.querySelectorAll(`[id^="post-card-${id}"] .like-button, [id^="comment-wrapper-${id}"] .like-button`);
+                 likeButtons.forEach(button => {
+                    const buttonSpan = button.querySelector(`span[id="${type}-like-count-${id}"]`);
+                    if (buttonSpan) { // Ensure we are targeting the correct button
+                        if (result.isLiked) {
+                            button.classList.add('like-button-active');
+                        } else {
+                            button.classList.remove('like-button-active');
+                        }
+                    }
+                });
+
+
             } catch (error) {
                 console.error(`Error toggling like for ${type} ${id}:`, error);
-                showNotification(`Error updating like for ${type}. Please try again.`, 'error');
+                showNotification(`Failed to update like: ${error.message}`, 'error');
             }
         }
 
