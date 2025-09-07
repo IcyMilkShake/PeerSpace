@@ -524,6 +524,7 @@
         <button id="lightbox-next" class="absolute right-4 text-white text-3xl">&#10095;</button>
     </div>
     <script>
+        history.scrollRestoration = 'manual';
         let currentUser = null;
         let posts = [];
         let currentFilter = 'all';
@@ -2209,22 +2210,6 @@
             }
 
             setupVideoObserver();
-
-            const savedPosition = sessionStorage.getItem('scrollPosition');
-            const postsContainer = document.getElementById('posts-container');
-            if (savedPosition && postsContainer.style.display !== 'none') {
-                requestAnimationFrame(() => {
-                    window.scrollTo(0, parseInt(savedPosition, 10));
-                    sessionStorage.removeItem('scrollPosition');
-                    
-                    const loadingOverlay = document.getElementById('loading-overlay');
-                    loadingOverlay.classList.remove('loading-overlay-visible');
-                    setTimeout(() => {
-                        loadingOverlay.classList.add('hidden');
-                        loadingOverlay.style.display = 'none';
-                    }, 300);
-                });
-            }
         }
 
         // Renders a tree of comments and their replies.
@@ -4500,16 +4485,7 @@
             } else {
                 backButton.innerHTML = '&larr; Back to all posts';
                 backButton.onclick = () => {
-                    const loadingOverlay = document.getElementById('loading-overlay');
-                    loadingOverlay.classList.remove('hidden');
-                    loadingOverlay.style.display = 'flex';
-                    loadingOverlay.classList.add('loading-overlay-visible');
-
-                    setTimeout(() => {
-                        history.pushState({ postId: null }, "", "/");
-                        showMainFeed();
-                        loadPosts();
-                    }, 300);
+                    history.back();
                 };
             }
             container.appendChild(backButton);
@@ -4902,7 +4878,20 @@
             else {
                 history.replaceState({}, "", "/");
                 showMainFeed();
-                loadPosts();
+                if (posts.length > 0) {
+                    const savedPosition = sessionStorage.getItem('scrollPosition');
+                    if (savedPosition) {
+                        requestAnimationFrame(() => {
+                            window.scrollTo({
+                                top: parseInt(savedPosition, 10),
+                                behavior: 'smooth'
+                            });
+                            sessionStorage.removeItem('scrollPosition');
+                        });
+                    }
+                } else {
+                    loadPosts(); 
+                }
             }
         };
 
