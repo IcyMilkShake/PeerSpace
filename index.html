@@ -1829,6 +1829,7 @@
             article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in';
             article.classList.add("cursor-pointer");
             article.onclick = () => {
+                sessionStorage.setItem('scrollPosition', window.scrollY);
                 history.pushState({ postId: post.id }, "", `?post=${post.id}`);
                 renderSinglePost(post.id);
             };
@@ -2204,6 +2205,15 @@
             }
 
             setupVideoObserver();
+
+            const savedPosition = sessionStorage.getItem('scrollPosition');
+            const postsContainer = document.getElementById('posts-container');
+            if (savedPosition && postsContainer.style.display !== 'none') {
+                requestAnimationFrame(() => {
+                    window.scrollTo(0, parseInt(savedPosition, 10));
+                    sessionStorage.removeItem('scrollPosition');
+                });
+            }
         }
 
         // Renders a tree of comments and their replies.
