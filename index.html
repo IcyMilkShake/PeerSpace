@@ -169,6 +169,10 @@
     </style>
 </head>
 <body class="min-h-screen">
+    <div id="loading-overlay" class="hidden fixed inset-0 modal-overlay items-center justify-center z-[1000]" style="flex-direction: column; --tw-bg-opacity: 0.7;">
+        <div class="loader ease-linear rounded-full border-8 border-t-8 h-24 w-24"></div>
+        <p class="mt-4 text-xl font-semibold">Loading posts...</p>
+    </div>
     <nav class="navigation-bar">
       <div class="nav-container">
         <a href="/" class="nav-item">
@@ -2212,6 +2216,13 @@
                 requestAnimationFrame(() => {
                     window.scrollTo(0, parseInt(savedPosition, 10));
                     sessionStorage.removeItem('scrollPosition');
+                    
+                    const loadingOverlay = document.getElementById('loading-overlay');
+                    loadingOverlay.classList.remove('loading-overlay-visible');
+                    setTimeout(() => {
+                        loadingOverlay.classList.add('hidden');
+                        loadingOverlay.style.display = 'none';
+                    }, 300);
                 });
             }
         }
@@ -4489,9 +4500,16 @@
             } else {
                 backButton.innerHTML = '&larr; Back to all posts';
                 backButton.onclick = () => {
-                    history.pushState({ postId: null }, "", "/");
-                    showMainFeed();
-                    loadPosts();
+                    const loadingOverlay = document.getElementById('loading-overlay');
+                    loadingOverlay.classList.remove('hidden');
+                    loadingOverlay.style.display = 'flex';
+                    loadingOverlay.classList.add('loading-overlay-visible');
+
+                    setTimeout(() => {
+                        history.pushState({ postId: null }, "", "/");
+                        showMainFeed();
+                        loadPosts();
+                    }, 300);
                 };
             }
             container.appendChild(backButton);
