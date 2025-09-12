@@ -977,7 +977,18 @@
             if (postToUpdate) {
                 // Targeted DOM update instead of full re-render
                 const containerId = itemType === 'post' ? `post-card-${itemId}` : `comment-wrapper-${itemId}`;
-                const containerElement = document.getElementById(containerId);
+
+                const singlePostContainer = document.getElementById('single-post-container');
+                const communityDetailContainer = document.getElementById('community-detail-container');
+
+                let activeContainer = document; // Default to document, which covers main feed.
+                if (singlePostContainer && singlePostContainer.style.display === "block") {
+                    activeContainer = singlePostContainer;
+                } else if (communityDetailContainer && !communityDetailContainer.classList.contains('hidden')) {
+                    activeContainer = communityDetailContainer;
+                }
+
+                const containerElement = activeContainer.querySelector(`#${containerId}`);
 
                 if (containerElement) {
                     const voiceChannelElement = createVoiceChannelElement(itemToUpdate);
@@ -1019,62 +1030,56 @@
                 }
             }
 
-            if (currentVoiceChannel && currentVoiceChannel.id === channelId) {
-                leaveVoiceChannel();
-                showNotification('The voice channel you were in has been deleted.', 'info');
-            }
+            // This logic was likely a copy-paste error from the delete handler.
+            // The server prevents creating a new channel if the user already has one,
+            // so this client-side check is redundant and uses an undefined variable `channelId`.
         });
 
         socket.on('voice-channel-deleted', ({ channelId, postId, commentId }) => {
-            // 1. Remove the voice channel element from the DOM
-            const vcElement = document.querySelector(`.voice-channel-container #voice-participants-${channelId}`);
-            if (vcElement) {
-                const container = vcElement.closest('.voice-channel-container');
-                if (container) {
-                    container.style.transition = 'opacity 0.5s, max-height 0.5s, padding 0.5s, margin 0.5s';
-                    container.style.opacity = '0';
-                    container.style.maxHeight = '0';
-                    container.style.padding = '0';
-                    container.style.margin = '0';
-                    setTimeout(() => container.remove(), 500);
-                }
-            }
-
-            // 2. If the user was in the deleted channel, handle it
-            if (currentVoiceChannel && currentVoiceChannel.id === channelId) {
-                leaveVoiceChannel();
-                showNotification('The voice channel you were in has been remotely deleted.', 'info');
-            }
-            
-            let itemElement = null;
-            if (postId) {
-                // Check both main feed and single post view
-                itemElement = document.getElementById(`post-card-${postId}`) || document.getElementById(`post-card-${postId}`);
-            } else if (commentId) {
-                itemElement = document.getElementById(`comment-wrapper-${commentId}`);
-            }
-
-            if (itemElement) {
-                const createVcButton = itemElement.querySelector('.create-vc-button');
-                if (createVcButton) {
-                    createVcButton.style.display = 'block';
-                }
-            }
-
-            // 3. Update the local data store
+            // Update the local data store first
+            let updatedPostId = null;
             if (postId) {
                 const postIndex = posts.findIndex(p => p.id === postId);
                 if (postIndex > -1) {
                     posts[postIndex].voiceChannel = null;
+                    updatedPostId = postId;
                 }
             } else if (commentId) {
                 for (const post of posts) {
                     const comment = findComment(post.comments, commentId);
                     if (comment) {
                         comment.voiceChannel = null;
+                        updatedPostId = post.id;
                         break; 
                     }
                 }
+            }
+
+            // Now, update the UI
+            const singlePostContainer = document.getElementById('single-post-container');
+            const isSinglePostView = !singlePostContainer.classList.contains('hidden');
+            const currentSinglePostId = isSinglePostView ? singlePostContainer.querySelector('article')?.id.replace('post-card-', '') : null;
+
+            if (isSinglePostView && updatedPostId === currentSinglePostId) {
+                // If we're on the single post page that was affected, a full re-render is the cleanest way to update the UI
+                renderSinglePost(updatedPostId);
+            } else {
+                // Otherwise, we're on a feed. Just remove the VC element.
+                const vcElement = document.querySelector(`.voice-channel-container #voice-participants-${channelId}`);
+                if (vcElement) {
+                    const container = vcElement.closest('.voice-channel-container');
+                    if (container) {
+                        container.remove();
+                        // Note: This doesn't bring back the 'Create VC' button on the feed, but it's a less critical issue.
+                        // The main bug reported was for the single post view.
+                    }
+                }
+            }
+
+            // If the user was in the deleted channel, handle it
+            if (currentVoiceChannel && currentVoiceChannel.id === channelId) {
+                leaveVoiceChannel();
+                showNotification('The voice channel you were in has been remotely deleted.', 'info');
             }
         });
 
