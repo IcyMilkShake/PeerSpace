@@ -188,10 +188,10 @@
             <span class="nav-text">Friends</span>
             <span id="friends-notification-badge" class="notification-badge"></span>
         </button>
-        <a href="#" onclick="renderCommunitiesPage()" class="nav-item">
+        <button onclick="history.pushState({ view: 'communities' }, '', '/?view=communities'); renderCommunitiesPage();" class="nav-item">
           <i class="fas fa-comments" style="color: var(--notification-info-bg);"></i>
           <span class="nav-text">Communities</span>
-        </a>
+        </button>
         <button onclick="history.pushState({ view: 'inbox' }, '', '/?view=inbox'); renderInbox();" class="nav-item">
             <i class="fas fa-inbox" style="color: var(--notification-info-bg);"></i>
             <span class="nav-text">Inbox</span>
@@ -1093,31 +1093,33 @@
             return null;
         }
 
-        function userHasActiveChannel() {
-            if (!currentUser) return false;
+        function getActiveVoiceChannelInfo() {
+            if (!currentUser) return null;
 
-            const checkComments = (comments) => {
+            const findChannelInComments = (comments, postId) => {
                 for (const comment of comments) {
                     if (comment.voiceChannel && comment.voiceChannel.creator && comment.voiceChannel.creator.toString() === currentUser.id) {
-                        return true;
+                        return { postId: postId, channelId: comment.voiceChannel._id };
                     }
-                    if (comment.replies && checkComments(comment.replies)) {
-                        return true;
+                    if (comment.replies) {
+                        const found = findChannelInComments(comment.replies, postId);
+                        if (found) return found;
                     }
                 }
-                return false;
+                return null;
             };
 
             for (const post of posts) {
                 if (post.voiceChannel && post.voiceChannel.creator && post.voiceChannel.creator.toString() === currentUser.id) {
-                    return true;
+                    return { postId: post.id, channelId: post.voiceChannel._id };
                 }
-                if (post.comments && checkComments(post.comments)) {
-                    return true;
+                if (post.comments) {
+                    const foundInComment = findChannelInComments(post.comments, post.id);
+                    if (foundInComment) return foundInComment;
                 }
             }
 
-            return false;
+            return null;
         }
 
         async function createAudioMeter(stream, onVolumeChange) {
@@ -1906,7 +1908,7 @@
                 dropdownMenu.appendChild(reportButton);
             }
             
-            if (currentUser && currentUser.id === post.author.id && !post.voiceChannel && !userHasActiveChannel()) {
+            if (currentUser && currentUser.id === post.author.id && !post.voiceChannel && !getActiveVoiceChannelInfo()) {
                 const createVoiceChannelButton = document.createElement('button');
                 createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 create-vc-button';
                 createVoiceChannelButton.innerHTML = `
@@ -2404,7 +2406,7 @@
                     dropdownMenu.appendChild(reportButton);
                 }
                 
-                if (currentUser && currentUser.id === comment.author.id && !comment.voiceChannel && !userHasActiveChannel()) {
+                if (currentUser && currentUser.id === comment.author.id && !comment.voiceChannel && !getActiveVoiceChannelInfo()) {
                     const createVoiceChannelButton = document.createElement('button');
                     createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 create-vc-button';
                     createVoiceChannelButton.innerHTML = `
@@ -2685,6 +2687,21 @@
                 return;
             }
 
+            const activeChannelInfo = getActiveVoiceChannelInfo();
+            if (activeChannelInfo) {
+                const postId = activeChannelInfo.postId;
+                showNotification(
+                    'You already have a voice channel open. Click here to go to it.',
+                    'warning',
+                    5000,
+                    () => {
+                        history.pushState({ postId: postId }, "", `?post=${postId}`);
+                        renderSinglePost(postId);
+                    }
+                );
+                return;
+            }
+
             const nameVcModalOverlay = document.getElementById('name-vc-modal-overlay');
             const nameVcModalCancelBtn = document.getElementById('name-vc-modal-cancel-btn');
             const nameVcModalConfirmBtn = document.getElementById('name-vc-modal-confirm-btn');
@@ -2714,15 +2731,29 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ name })
                     });
-                    const data = await response.json();
-
                     if (response.ok) {
+                        const data = await response.json();
                         showNotification("Voice channel created successfully!", "success");
                     } else {
                         if (response.status === 409) {
-                            showNotification('You already have a voice channel open.', 'error');
+                            const errorData = await response.json();
+                            const postId = errorData.postId;
+                            if (postId) {
+                                showNotification(
+                                    'You already have a voice channel open. Click here to go to it.',
+                                    'warning',
+                                    5000,
+                                    () => {
+                                        history.pushState({ postId: postId }, "", `?post=${postId}`);
+                                        renderSinglePost(postId);
+                                    }
+                                );
+                            } else {
+                                showNotification(errorData.error || 'You already have a voice channel open.', 'error');
+                            }
                         } else {
-                            showNotification(`Error: ${data.error || 'Failed to create voice channel.'}`, 'error');
+                            const errorData = await response.json();
+                            showNotification(`Error: ${errorData.error || 'Failed to create voice channel.'}`, 'error');
                         }
                     }
                 } catch (error) {
@@ -4263,7 +4294,7 @@
         const notificationContainer = document.getElementById('notification-container');
 
         // Shows a notification message to the user.
-        function showNotification(message, type = 'info', duration = 3000) {
+        function showNotification(message, type = 'info', duration = 3000, onClick = null) {
             if (!notificationContainer) return;
 
             const notificationId = `notif-${Date.now()}`;
@@ -4283,6 +4314,17 @@
                 setTimeout(() => notification.remove(), 300);
             };
             notification.appendChild(closeButton);
+            
+            if (onClick) {
+                notification.classList.add('cursor-pointer');
+                notification.addEventListener('click', (e) => {
+                    if (e.target !== closeButton) {
+                        onClick();
+                        notification.classList.remove('notification-visible');
+                        setTimeout(() => notification.remove(), 300);
+                    }
+                });
+            }
 
             notificationContainer.appendChild(notification);
 
@@ -4561,7 +4603,7 @@
                 dropdownMenu.appendChild(reportButton);
             }
             
-            if (currentUser && currentUser.id === post.author.id && !post.voiceChannel && !userHasActiveChannel()) {
+            if (currentUser && currentUser.id === post.author.id && !post.voiceChannel && !getActiveVoiceChannelInfo()) {
                 const createVoiceChannelButton = document.createElement('button');
                 createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
                 createVoiceChannelButton.innerHTML = `
@@ -4883,6 +4925,8 @@
                 renderCommunityPage(state.communityId);
             } else if (state.view === 'inbox') {
                 renderInbox();
+            } else if (state.view === 'communities') {
+                renderCommunitiesPage();
             }
             else {
                 history.replaceState({}, "", "/");
@@ -4921,6 +4965,8 @@
             renderCommunityPage(communityId);
         } else if (view === 'inbox') {
             renderInbox();
+        } else if (view === 'communities') {
+            renderCommunitiesPage();
         }
         else {
             loadPosts();
