@@ -2204,7 +2204,16 @@
                     endMessage = document.createElement('div');
                     endMessage.id = 'end-of-feed';
                     endMessage.className = 'text-center py-8 text-gray-500 opacity-75';
-                    endMessage.innerHTML = "You've reached the end 🙂";
+                    const endMessages = [
+                        "The scroll gods have spoken: 'Go outside' ☀️",
+                        "End of the line, chief. How about touching some grass? 🌱", 
+                        "Wow, you really have nothing better to do, huh? 😏",
+                        "Professional time-waster detected! 🔍"
+                    ];
+
+                    // Generate random index and set the message
+                    const randomIndex = Math.floor(Math.random() * endMessages.length);
+                    endMessage.innerHTML = endMessages[randomIndex];
                     container.appendChild(endMessage);
                 }
             }
