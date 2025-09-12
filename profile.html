@@ -1383,8 +1383,12 @@
                 article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in';
                 article.classList.add("cursor-pointer");
                 article.onclick = () => {
+                    let url = `/?post=${post.id}`;
+                    if (post.community && post.community._id) {
+                        url += `&community=${post.community._id}`;
+                    }
                     const referrer = `&ref=profile&refId=${profileUserId}`;
-                    window.location.href = `/?post=${post.id}${referrer}`;
+                    window.location.href = url + referrer;
                 };
                 
                 const postHeader = document.createElement('div');

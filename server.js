@@ -584,7 +584,7 @@ app.get('/api/users/:userId/content', async (req, res) => {
                     { $project: { _id: 1 } }
                 ]);
                 const ids = postIds.map(p => p._id);
-                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture').populate('community', 'name').populate('voiceChannel');
+                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture').populate('community', 'name _id').populate('voiceChannel');
                 sortedPosts = ids.map(id => unsortedPosts.find(p => p._id.equals(id)));
             } else if (sortBy === 'comments') {
                 const postIds = await Post.aggregate([
@@ -595,13 +595,13 @@ app.get('/api/users/:userId/content', async (req, res) => {
                     { $project: { _id: 1 } }
                 ]);
                 const ids = postIds.map(p => p._id);
-                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture').populate('community', 'name').populate('voiceChannel');
+                const unsortedPosts = await Post.find({ _id: { $in: ids } }).populate('author', 'username displayName profilePicture').populate('community', 'name _id').populate('voiceChannel');
                 sortedPosts = ids.map(id => unsortedPosts.find(p => p._id.equals(id)));
             } else {
                 const sortOption = (sortBy === 'oldest') ? { createdAt: 1 } : { createdAt: -1 };
                 sortedPosts = await Post.find({ author: authorId })
                     .populate('author', 'username displayName profilePicture')
-                    .populate('community', 'name')
+                    .populate('community', 'name _id')
                     .populate('voiceChannel')
                     .sort(sortOption);
             }
@@ -1535,7 +1535,7 @@ app.get('/api/posts/friends-recent', isAuthenticated, async (req, res) => {
         const recentFriendPosts = await Post.find({
             author: { $in: friends },
             createdAt: { $gte: threeDaysAgo }
-        }).populate('author', 'username displayName profilePicture').populate('community', 'name').populate('voiceChannel');
+        }).populate('author', 'username displayName profilePicture').populate('community', 'name _id').populate('voiceChannel');
 
         for (let i = recentFriendPosts.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -1594,7 +1594,7 @@ app.get('/api/posts', async (req, res) => {
     
     const posts = await Post.find(query)
       .populate('author', 'username displayName profilePicture')
-      .populate('community', 'name')
+      .populate('community', 'name _id')
       .populate('voiceChannel')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -2221,7 +2221,7 @@ app.get('/api/posts/:postId', async (req, res) => {
     try {
         const post = await Post.findById(req.params.postId)
             .populate('author', 'username displayName profilePicture')
-            .populate('community', 'name')
+            .populate('community', 'name _id')
             .populate('voiceChannel');
 
         if (!post) {
