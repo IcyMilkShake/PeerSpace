@@ -6,6 +6,7 @@
     <title>User Profile - Forum</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="theme-loader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
     <link rel="stylesheet" href="themes.css">
@@ -359,7 +360,9 @@
         let currentUser = null;
         let posts = [];
         let currentFilter = 'all';
+        let socket;
         let profileUserId = null;
+        let currentSinglePostId = null;
         let cropper = null;
         let bannerCropper = null;
         let avatarContainer;
@@ -681,6 +684,28 @@
             } catch (error) {
                 console.error('Logout failed:', error);
                 showNotification('Logout failed. Please try again.', 'error');
+            }
+        }
+
+        async function createVoiceChannel(itemType, itemId) {
+            if (!currentUser) {
+                showNotification('You must be logged in to create a voice channel.', 'warning');
+                return;
+            }
+            try {
+                const response = await fetch('/api/voice-channel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ itemType, itemId })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to create voice channel');
+                }
+                // The socket event will handle the UI update
+            } catch (error) {
+                console.error('Error creating voice channel:', error);
+                showNotification(error.message, 'error');
             }
         }
         
@@ -2478,9 +2503,10 @@
                 showMainFeed();
                 return;
             }
+            currentSinglePostId = postId;
 
             document.getElementById('posts-container').classList.add('hidden');
-            document.getElementById('filter-bar').classList.add('hidden');
+            document.getElementById('profile-controls').classList.add('hidden');
             document.getElementById('profile-content').classList.add('hidden');
             
             const container = document.getElementById('single-post-container');
@@ -2694,7 +2720,7 @@
             }
 
             const postActionsDiv = document.createElement('div');
-            postActionsDiv.className = 'flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
+            postActionsDiv.className = 'flex items-center flex-wrap gap-x-4 gap-y-2 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
             
             const likeButtonPost = document.createElement('button');
             likeButtonPost.className = `like-button flex items-center space-x-1 ${post.isLiked ? 'like-button-active' : ''}`;
@@ -2706,6 +2732,40 @@
             `;
             likeButtonPost.onclick = () => toggleLike('post', post.id);
             postActionsDiv.appendChild(likeButtonPost);
+
+            if (post.voiceChannel) {
+                const vcContainer = document.createElement('div');
+                vcContainer.className = 'mt-2 p-2 rounded-lg flex items-center justify-between';
+                vcContainer.style.backgroundColor = 'var(--voice-channel-bg)';
+
+                vcContainer.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-5 h-5" style="color: var(--voice-channel-icon-color);" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path><path fill-rule="evenodd" d="M.458 10C3.732 5.943 7.523 4 10 4c2.477 0 6.268 1.943 9.542 6-.273.333-.553.658-.838.979l-.28.322a14.98 14.98 0 01-1.37 1.328C15.093 19.34 11.857 20 10 20c-1.857 0-5.093-.66-7.054-2.371A14.98 14.98 0 011.278 11.3L1.001 11a.45.45 0 01-.543-1zM10 16a6 6 0 100-12 6 6 0 000 12z" clip-rule="evenodd"></path></svg>
+                        <span class="font-medium text-sm">Voice Channel Active</span>
+                    </div>
+                `;
+                const joinButton = document.createElement('button');
+                joinButton.className = 'button-primary text-xs px-3 py-1';
+                joinButton.textContent = 'Join';
+                joinButton.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    window.open(`/voice-channel.html?id=${post.voiceChannel._id}`, '_blank');
+                };
+                vcContainer.appendChild(joinButton);
+                postActionsDiv.appendChild(vcContainer);
+            } else if (currentUser) {
+                const createVcButton = document.createElement('button');
+                createVcButton.className = 'flex items-center space-x-1 hover:text-blue-600';
+                createVcButton.innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    <span>Create VC</span>
+                `;
+                createVcButton.onclick = (e) => {
+                    e.stopPropagation();
+                    createVoiceChannel('post', post.id);
+                };
+                postActionsDiv.appendChild(createVcButton);
+            }
             
             article.appendChild(postActionsDiv);
             article.appendChild(commentsSection);
@@ -2722,6 +2782,13 @@
                 showMainFeed();
             }
         };
+
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                console.log('Page restored from bfcache. Reloading content.');
+                loadProfileContent();
+            }
+        });
 
         const lightboxModal = document.getElementById('lightbox-modal');
         const lightboxImage = document.getElementById('lightbox-image');
@@ -2904,7 +2971,36 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             avatarContainer = document.getElementById('profile-avatar-container');
-            await checkAuthStatusForProfilePage(); 
+            await checkAuthStatusForProfilePage();
+
+            socket = io({ autoConnect: false });
+            if (currentUser) {
+                socket.connect();
+                socket.on('voice-channel-created', ({ itemType, itemId, voiceChannel }) => {
+                    if (itemType === 'post') {
+                        const postIndex = posts.findIndex(p => p.id === itemId);
+                        if (postIndex !== -1) {
+                            posts[postIndex].voiceChannel = voiceChannel;
+                            if (itemId === currentSinglePostId) {
+                                renderSinglePost(itemId);
+                            }
+                        }
+                    }
+                });
+
+                socket.on('voice-channel-deleted', ({ channelId, postId, commentId }) => {
+                    if (postId) {
+                        const postIndex = posts.findIndex(p => p.id === postId);
+                        if (postIndex !== -1) {
+                            posts[postIndex].voiceChannel = null;
+                            if (postId === currentSinglePostId) {
+                                renderSinglePost(postId);
+                            }
+                        }
+                    }
+                });
+            }
+
             await loadProfileData();
             loadProfileContent();
 

@@ -429,6 +429,29 @@ app.post('/api/notifications/:notificationId/read', isAuthenticated, async (req,
     }
 });
 
+// Deletes a notification
+app.delete('/api/notifications/:notificationId', isAuthenticated, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const userId = req.user._id;
+
+    const result = await Notification.deleteOne({ _id: notificationId, user: userId });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Notification not found or you do not have permission to delete it.' });
+    }
+
+    res.json({ success: true, message: 'Notification deleted successfully.' });
+
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    if (error.kind === 'ObjectId') {
+        return res.status(400).json({ error: 'Invalid Notification ID format.' });
+    }
+    res.status(500).json({ error: 'Failed to delete notification.' });
+  }
+});
+
 // Starts the Google authentication process.
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'], prompt: 'select_account' })
@@ -1332,6 +1355,34 @@ app.post('/api/communities/:communityId/leave', isAuthenticated, async (req, res
     } catch (error) {
         console.error('Error leaving community:', error);
         res.status(500).json({ error: 'Failed to leave community.' });
+    }
+});
+
+// Delete a community
+app.delete('/api/communities/:communityId', isAuthenticated, async (req, res) => {
+    try {
+        const { communityId } = req.params;
+        const userId = req.user._id;
+
+        const community = await Community.findById(communityId);
+
+        if (!community) {
+            return res.status(404).json({ error: 'Community not found.' });
+        }
+
+        if (community.owner.toString() !== userId.toString()) {
+            return res.status(403).json({ error: 'You are not authorized to delete this community.' });
+        }
+
+        // Delete all posts within the community
+        await Post.deleteMany({ community: communityId });
+
+        await Community.findByIdAndDelete(communityId);
+
+        res.json({ success: true, message: 'Community deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting community:', error);
+        res.status(500).json({ error: 'Failed to delete community.' });
     }
 });
 
