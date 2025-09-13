@@ -2174,6 +2174,7 @@ app.get('/api/posts/search', async (req, res) => {
 // Gets a single post by its ID.
 app.get('/api/posts/:postId', async (req, res) => {
     try {
+        const currentUserId = req.user ? req.user._id : null;
         const post = await Post.findById(req.params.postId)
             .populate('author', 'username displayName profilePicture')
             .populate('community', 'name _id')
@@ -2183,14 +2184,9 @@ app.get('/api/posts/:postId', async (req, res) => {
             return res.status(404).json({ error: 'Post not found' });
         }
         
-        const comments = await Comment.find({ post: req.params.postId })
-            .populate('author', 'username displayName profilePicture')
-            .sort({ createdAt: 'asc' });
+        const postWithDetails = await populatePostDetails(post, currentUserId);
 
-        const postWithComments = post.toObject({ virtuals: true });
-        postWithComments.comments = comments.map(c => c.toObject({ virtuals: true }));
-
-        res.json(postWithComments);
+        res.json(postWithDetails);
     } catch (error) {
         console.error('Error fetching post:', error);
         res.status(500).json({ error: 'Failed to fetch post' });
