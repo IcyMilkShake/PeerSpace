@@ -693,16 +693,42 @@
                 return;
             }
             try {
-                const response = await fetch('/api/voice-channel', {
+                let url;
+                if (itemType === 'post') {
+                    url = `/api/posts/${itemId}/voice-channel`;
+                } else if (itemType === 'comment') {
+                    url = `/api/comments/${itemId}/voice-channel`;
+                } else {
+                    showNotification('Invalid item type for voice channel creation.', 'error');
+                    return;
+                }
+
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ itemType, itemId })
+                    body: JSON.stringify({})
                 });
+
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.error || 'Failed to create voice channel');
                 }
-                // The socket event will handle the UI update
+                
+                const { voiceChannelId } = await response.json();
+                
+                // This logic ensures the UI updates immediately for the current user.
+                // The existing socket event will handle updates for other users.
+                if (itemType === 'post') {
+                    const postIndex = posts.findIndex(p => p.id === itemId);
+                    if (postIndex !== -1) {
+                        posts[postIndex].voiceChannel = { _id: voiceChannelId }; // Add a placeholder with the ID
+                        if (itemId === currentSinglePostId) {
+                            renderSinglePost(itemId); // Re-render the single post view
+                        }
+                    }
+                }
+                // Note: A similar block for 'comment' would be needed if comments could create VCs here.
+
             } catch (error) {
                 console.error('Error creating voice channel:', error);
                 showNotification(error.message, 'error');
