@@ -1835,13 +1835,13 @@
             }
         }
 
-        function createPostElement(post) {
+        function createPostElement(post, scrollPositionKey = 'scrollPosition') {
             const article = document.createElement('article');
             article.id = `post-card-${post.id}`;
             article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in';
             article.classList.add("cursor-pointer");
             article.onclick = () => {
-                sessionStorage.setItem('scrollPosition', window.scrollY);
+                sessionStorage.setItem(scrollPositionKey, window.scrollY);
                 let url = `/?post=${post.id}`;
                 if (post.community && post.community._id) {
                     url += `&community=${post.community._id}`;
@@ -2205,7 +2205,7 @@
             emptyState.classList.add('hidden');
             
             posts.forEach(post => {
-                const article = createPostElement(post);
+                const article = createPostElement(post, 'scrollPosition');
                 container.appendChild(article);
             });
 
@@ -4258,7 +4258,18 @@
 
                 container.appendChild(communityPostsContainer);
                 
-                renderPostsIntoContainer(posts, communityPostsContainer);
+                renderPostsIntoContainer(posts, communityPostsContainer, communityId);
+
+                const savedPosition = sessionStorage.getItem(`scrollPosition-community-${communityId}`);
+                if (savedPosition) {
+                    requestAnimationFrame(() => {
+                        window.scrollTo({
+                            top: parseInt(savedPosition, 10),
+                            behavior: 'auto'
+                        });
+                        sessionStorage.removeItem(`scrollPosition-community-${communityId}`);
+                    });
+                }
 
             } catch (error) {
                 console.error('Error rendering community page:', error);
@@ -4270,14 +4281,14 @@
             }
         }
 
-        function renderPostsIntoContainer(postsToRender, container) {
+        function renderPostsIntoContainer(postsToRender, container, communityId) {
             container.innerHTML = '';
             if (postsToRender.length === 0) {
                 container.innerHTML = '<p>No posts in this community yet. Be the first to post!</p>';
                 return;
             }
             postsToRender.forEach(post => {
-                const article = createPostElement(post);
+                const article = createPostElement(post, `scrollPosition-community-${communityId}`);
                 container.appendChild(article);
             });
         }
@@ -4990,7 +5001,7 @@
                         requestAnimationFrame(() => {
                             window.scrollTo({
                                 top: parseInt(savedPosition, 10),
-                                behavior: 'smooth'
+                            behavior: 'auto'
                             });
                             sessionStorage.removeItem('scrollPosition');
                         });
