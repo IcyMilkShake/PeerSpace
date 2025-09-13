@@ -3678,8 +3678,11 @@
         }
 
         // Initializes the page when the DOM is fully loaded.
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             console.log("DOM fully loaded. Current URL:", window.location.href);
+
+            await checkAuth();
+
             const urlParams = new URLSearchParams(window.location.search);
             const postId = urlParams.get('post');
             const communityId = urlParams.get('community');
@@ -3687,8 +3690,8 @@
             console.log("Parsed URL params:", { postId, communityId, view });
 
             if (postId) {
-                console.log("Routing decision: postId found, calling loadAndRenderSinglePost.");
-                loadAndRenderSinglePost(postId);
+                console.log("Routing decision: postId found, calling renderSinglePost.");
+                renderSinglePost(postId);
             } else if (communityId) {
                 console.log("Routing decision: communityId found, calling renderCommunityPage.");
                 renderCommunityPage(communityId);
@@ -3796,8 +3799,6 @@
             }
             
             createPostFormParent = document.getElementById('create-post-form').parentElement;
-
-            checkAuth();
 
             if (sessionStorage.getItem('voiceChannelRefresh') === 'true') {
                 showNotification(`You were disconnected from the voice channel due to a page refresh.`, 'warning', 5000);
@@ -4517,33 +4518,6 @@
             return count;
         }
 
-        // Renders a single post view.
-        async function loadAndRenderSinglePost(postId) {
-            console.log(`Executing loadAndRenderSinglePost for postId: ${postId}`);
-            try {
-                const response = await fetch(`/api/posts/${postId}`);
-                console.log(`API response status for /api/posts/${postId}: ${response.status}`);
-                if (!response.ok) {
-                    throw new Error('Post not found');
-                }
-                const post = await response.json();
-                
-                const postIndex = posts.findIndex(p => p.id === postId);
-                if (postIndex !== -1) {
-                    posts[postIndex] = post;
-                } else {
-                    posts.unshift(post);
-                }
-                
-                renderSinglePost(postId);
-            } catch (error) {
-                console.error('Failed to load single post:', error);
-                showMainFeed();
-                showNotification('Could not load the requested post. It may have been deleted.', 'error');
-            }
-        }
-
-
         async function renderSinglePost(postId) {
             console.log(`Executing renderSinglePost for postId: ${postId}`);
             if (currentPostRoom) {
@@ -4552,8 +4526,29 @@
             socket.emit('join-post-room', postId);
             currentPostRoom = `post-${postId}`;
 
-            const post = posts.find(p => p.id === postId);
+            let post = posts.find(p => p.id === postId);
+
             if (!post) {
+                try {
+                    console.log(`Post ${postId} not found locally. Fetching from API.`);
+                    const response = await fetch(`/api/posts/${postId}`);
+                    if (!response.ok) {
+                        throw new Error('Post not found on server');
+                    }
+                    post = await response.json();
+                    const postIndex = posts.findIndex(p => p.id === postId);
+                    if (postIndex === -1) {
+                        posts.unshift(post);
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch single post:', error);
+                    showMainFeed();
+                    showNotification('Could not load the requested post. It may have been deleted.', 'error');
+                    return;
+                }
+            }
+
+            if (!post) { // Final safety check
                 showMainFeed();
                 return;
             }
@@ -5014,8 +5009,8 @@
         console.log("Parsed URL params:", { postId, communityId, view });
 
         if (postId) {
-            console.log("Routing decision: postId found, calling loadAndRenderSinglePost.");
-            loadAndRenderSinglePost(postId);
+            console.log("Routing decision: postId found, calling renderSinglePost.");
+            renderSinglePost(postId);
         } else if (communityId) {
             console.log("Routing decision: communityId found, calling renderCommunityPage.");
             renderCommunityPage(communityId);

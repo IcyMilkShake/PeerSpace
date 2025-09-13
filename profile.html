@@ -1384,8 +1384,11 @@
                 article.classList.add("cursor-pointer");
                 article.onclick = () => {
                     let url = `/?post=${post.id}`;
-                    if (post.community && post.community._id) {
-                        url += `&community=${post.community._id}`;
+                    if (post.community) {
+                        const communityId = typeof post.community === 'object' ? post.community._id : post.community;
+                        if (communityId) {
+                            url += `&community=${communityId}`;
+                        }
                     }
                     const referrer = `&ref=profile&refId=${profileUserId}`;
                     window.location.href = url + referrer;
