@@ -406,14 +406,6 @@
                 <i class="fas fa-trash-alt"></i>
             </div>
         </div>
-        <button id="view-bin-btn" class="ml-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors hidden">View Bin</button>
-    </div>
-    <div id="notification-bin-view" class="main-view hidden max-w-3xl mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold mb-6">Deleted Notifications</h1>
-        <div id="deleted-notifications-container" class="space-y-4"></div>
-        <div id="bin-empty" class="hidden text-center py-12">
-            <p>The bin is empty.</p>
-        </div>
     </div>
     <div id="friends-container-main" class="main-view hidden max-w-3xl mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold mb-6">Friends</h1>
@@ -550,7 +542,6 @@
         let prioritizedPostIds = [];
         let createPostFormParent = null;
         let currentPostRoom = null;
-        let deletedNotifications = [];
 
         // --- WebRTC & Socket.IO Globals ---
         const socketOptions = { autoConnect: false };
@@ -4372,55 +4363,6 @@
             );
         }
 
-        function renderBinView() {
-            history.pushState({ view: 'bin' }, '', '/?view=bin');
-            showView('notification-bin-view');
-            const binViewContainer = document.getElementById('notification-bin-view');
-
-            if (!document.getElementById('bin-back-button')) {
-                const backButton = document.createElement('button');
-                backButton.id = 'bin-back-button';
-                backButton.className = 'text-blue-600 hover:underline mb-4';
-                backButton.innerHTML = '&larr; Back to Inbox';
-                backButton.onclick = () => {
-                    history.back();
-                };
-                binViewContainer.insertBefore(backButton, binViewContainer.firstChild.nextSibling);
-            }
-
-            const container = document.getElementById('deleted-notifications-container');
-            container.innerHTML = '';
-
-            if (deletedNotifications.length === 0) {
-                document.getElementById('bin-empty').classList.remove('hidden');
-            } else {
-                document.getElementById('bin-empty').classList.add('hidden');
-                deletedNotifications.forEach(notification => {
-                    const binItem = document.createElement('div');
-                    binItem.id = `bin-item-${notification.id}`;
-                    binItem.className = 'flex items-center justify-between p-4 border rounded-lg';
-                    binItem.innerHTML = `
-                        <p>${notification.message}</p>
-                        <div>
-                            <button class="text-red-500 hover:text-red-700" onclick="manualDeleteNotification('${notification.id}')">Delete Now</button>
-                        </div>
-                    `;
-                    container.appendChild(binItem);
-                });
-            }
-        }
-
-        function manualDeleteNotification(notificationId) {
-            const index = deletedNotifications.findIndex(n => n.id === notificationId);
-            if (index > -1) {
-                deletedNotifications.splice(index, 1);
-                const binItem = document.getElementById(`bin-item-${notificationId}`);
-                if (binItem) {
-                    binItem.remove();
-                }
-                fetch(`/api/notifications/${notificationId}`, { method: 'DELETE' });
-            }
-        }
 
         // Checks for authentication when the window is focused.
         window.addEventListener('focus', () => {
@@ -5153,9 +5095,6 @@ async function renderInbox() {
                 };
                 navContainer.appendChild(backButton);
                 
-                const viewBinBtn = document.getElementById('view-bin-btn');
-                navContainer.appendChild(viewBinBtn);
-
                 inboxContainer.insertBefore(navContainer, inboxContainer.firstChild.nextSibling);
             }
 
@@ -5164,15 +5103,12 @@ async function renderInbox() {
             const errorEl = document.getElementById('inbox-error');
             const containerEl = document.getElementById('inbox-container');
             const notificationBin = document.getElementById('notification-bin');
-            const viewBinBtn = document.getElementById('view-bin-btn');
 
             loadingEl.classList.remove('hidden');
             emptyEl.classList.add('hidden');
             errorEl.classList.add('hidden');
             containerEl.innerHTML = '';
             notificationBin.classList.remove('hidden');
-            viewBinBtn.classList.remove('hidden');
-            viewBinBtn.onclick = renderBinView;
 
             try {
                 const response = await fetch('/api/notifications');
@@ -5241,23 +5177,13 @@ async function renderInbox() {
                                     ease: "power1.in",
                                     onComplete: () => {
                                         notificationEl.remove();
-                                        const notificationData = {
-                                            id: notification._id,
-                                            message: notification.message,
-                                            element: notificationEl
-                                        };
-                                        deletedNotifications.push(notificationData);
-                                        setTimeout(() => {
-                                            const index = deletedNotifications.findIndex(n => n.id === notificationData.id);
-                                            if (index > -1) {
-                                                deletedNotifications.splice(index, 1);
-                                                const binItem = document.getElementById(`bin-item-${notificationData.id}`);
-                                                if (binItem) {
-                                                    binItem.remove();
+                                        fetch(`/api/notifications/${notification._id}`, { method: 'DELETE' })
+                                            .then(response => {
+                                                if (!response.ok) {
+                                                    console.error('Failed to delete notification');
+                                                    // Optional: Re-add the element or show an error
                                                 }
-                                                fetch(`/api/notifications/${notificationData.id}`, { method: 'DELETE' });
-                                            }
-                                        }, 60000);
+                                            });
                                     }
                                 });
                             } else {

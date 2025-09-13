@@ -3009,6 +3009,8 @@
                             posts[postIndex].voiceChannel = voiceChannel;
                             if (itemId === currentSinglePostId) {
                                 renderSinglePost(itemId);
+                            } else {
+                                renderPosts();
                             }
                         }
                     }
