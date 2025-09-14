@@ -12,6 +12,28 @@
     <link rel="stylesheet" href="themes.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
+        .speaking {
+            border: 2px solid #4ade80; /* A nice green color */
+            box-shadow: 0 0 8px #4ade80;
+        }
+        .muted-pfp {
+            opacity: 0.5;
+            cursor: pointer;
+        }
+        #desktop-voice-panel {
+            display: flex;
+        }
+        #mobile-voice-panel {
+            display: none;
+        }
+        @media (max-width: 1000px) {
+            #desktop-voice-panel {
+                display: none;
+            }
+            #mobile-voice-panel {
+                display: flex;
+            }
+        }
         nav .text-gray-800 {
             color: var(--text-primary);
         }
@@ -389,8 +411,7 @@
         let currentUser = null;
         let posts = [];
         let currentFilter = 'all';
-        let socket;
-        socket = io({ autoConnect: false });
+        let socket = io();
         let profileUserId = null;
         let currentSinglePostId = null;
         let cropper = null;
@@ -861,13 +882,13 @@
         });
 
         socket.on('speaking', ({ socketId }) => {
-            document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socketId}"], #mobile-voice-panel [data-socket-id="${socketId}"]`).forEach(el => {
+            document.querySelectorAll(`[data-socket-id="${socketId}"]`).forEach(el => {
                 el.classList.add('speaking');
             });
         });
 
         socket.on('stopped-speaking', ({ socketId }) => {
-            document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socketId}"], #mobile-voice-panel [data-socket-id="${socketId}"]`).forEach(el => {
+            document.querySelectorAll(`[data-socket-id="${socketId}"]`).forEach(el => {
                 el.classList.remove('speaking');
             });
         });
@@ -923,7 +944,7 @@
                     if (!isSpeaking) {
                         isSpeaking = true;
                         socket.emit('speaking');
-                        document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socket.id}"], #mobile-voice-panel [data-socket-id="${socket.id}"]`).forEach(el => {
+                        document.querySelectorAll(`[data-socket-id="${socket.id}"]`).forEach(el => {
                             el.classList.add('speaking');
                         });
                     }
@@ -932,7 +953,7 @@
                         speakingTimer = setTimeout(() => {
                             isSpeaking = false;
                             socket.emit('stopped-speaking');
-                            document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socket.id}"], #mobile-voice-panel [data-socket-id="${socket.id}"]`).forEach(el => {
+                            document.querySelectorAll(`[data-socket-id="${socket.id}"]`).forEach(el => {
                                 el.classList.remove('speaking');
                             });
                             speakingTimer = null;
@@ -941,23 +962,13 @@
                 }
             });
 
-            if (!socket.connected) {
-                socket.connect();
-            }
-
             currentVoiceChannel = { id: channelId, participants: [] };
             sessionStorage.setItem('inVoiceChannel', channelId);
             createDesktopVoiceControlsUI(channelId);
             createMobileVoiceControlsUI(channelId);
             
             // We need to wait for the socket to be connected before emitting
-            if (socket.connected) {
-                socket.emit('join-channel', { channelId, userId: currentUser.id });
-            } else {
-                socket.once('connect', () => {
-                    socket.emit('join-channel', { channelId, userId: currentUser.id });
-                });
-            }
+            socket.emit('join-channel', { channelId, userId: currentUser.id });
         }
 
         function leaveVoiceChannel() {
@@ -1257,6 +1268,35 @@
             }
         }
 
+        function getActiveVoiceChannelInfo() {
+            if (!currentUser) return null;
+
+            const findChannelInComments = (comments, postId) => {
+                for (const comment of comments) {
+                    if (comment.voiceChannel && comment.voiceChannel.creator && comment.voiceChannel.creator.toString() === currentUser.id) {
+                        return { postId: postId, channelId: comment.voiceChannel._id };
+                    }
+                    if (comment.replies) {
+                        const found = findChannelInComments(comment.replies, postId);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
+
+            for (const post of posts) {
+                if (post.voiceChannel && post.voiceChannel.creator && post.voiceChannel.creator.toString() === currentUser.id) {
+                    return { postId: post.id, channelId: post.voiceChannel._id };
+                }
+                if (post.comments) {
+                    const foundInComment = findChannelInComments(post.comments, post.id);
+                    if (foundInComment) return foundInComment;
+                }
+            }
+
+            return null;
+        }
+
         function createVoiceChannelElement(item) {
             const voiceChannel = item.voiceChannel;
             if (!voiceChannel) return null;
@@ -1320,35 +1360,6 @@
                 });
 
             return container;
-        }
-
-        function getActiveVoiceChannelInfo() {
-            if (!currentUser) return null;
-
-            const findChannelInComments = (comments, postId) => {
-                for (const comment of comments) {
-                    if (comment.voiceChannel && comment.voiceChannel.creator && comment.voiceChannel.creator.toString() === currentUser.id) {
-                        return { postId: postId, channelId: comment.voiceChannel._id };
-                    }
-                    if (comment.replies) {
-                        const found = findChannelInComments(comment.replies, postId);
-                        if (found) return found;
-                    }
-                }
-                return null;
-            };
-
-            for (const post of posts) {
-                if (post.voiceChannel && post.voiceChannel.creator && post.voiceChannel.creator.toString() === currentUser.id) {
-                    return { postId: post.id, channelId: post.voiceChannel._id };
-                }
-                if (post.comments) {
-                    const foundInComment = findChannelInComments(post.comments, post.id);
-                    if (foundInComment) return foundInComment;
-                }
-            }
-
-            return null;
         }
 
         async function createVoiceChannel(type, id) {
@@ -2230,7 +2241,7 @@
                     dropdownMenu.appendChild(reportButton);
                 }
                 
-                if (currentUser && currentUser.id === post.author.id && !post.voiceChannel && !getActiveVoiceChannelInfo()) {
+                if (currentUser && currentUser.id === post.author.id && !post.voiceChannel) {
                     const createVoiceChannelButton = document.createElement('button');
                     createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 create-vc-button';
                     createVoiceChannelButton.innerHTML = `
@@ -3738,7 +3749,6 @@
             await checkAuthStatusForProfilePage();
 
             if (currentUser) {
-                socket.connect();
                 socket.on('voice-channel-created', ({ itemType, itemId, voiceChannel }) => {
                     if (itemType === 'post') {
                         const postIndex = posts.findIndex(p => p.id === itemId);
