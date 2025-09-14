@@ -1919,7 +1919,7 @@
                 dropdownMenu.appendChild(reportButton);
             }
             
-            if (currentUser && currentUser.id === post.author.id && !post.voiceChannel && !getActiveVoiceChannelInfo()) {
+            if (currentUser && currentUser.id === post.author.id) {
                 const createVoiceChannelButton = document.createElement('button');
                 createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 create-vc-button';
                 createVoiceChannelButton.innerHTML = `
@@ -2417,7 +2417,7 @@
                     dropdownMenu.appendChild(reportButton);
                 }
                 
-                if (currentUser && currentUser.id === comment.author.id && !comment.voiceChannel && !getActiveVoiceChannelInfo()) {
+                if (currentUser && currentUser.id === comment.author.id) {
                     const createVoiceChannelButton = document.createElement('button');
                     createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 create-vc-button';
                     createVoiceChannelButton.innerHTML = `

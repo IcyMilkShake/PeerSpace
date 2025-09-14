@@ -2241,7 +2241,7 @@
                     dropdownMenu.appendChild(reportButton);
                 }
                 
-                if (currentUser && currentUser.id === post.author.id && !post.voiceChannel) {
+                if (currentUser && currentUser.id === post.author.id) {
                     const createVoiceChannelButton = document.createElement('button');
                     createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 create-vc-button';
                     createVoiceChannelButton.innerHTML = `
@@ -2640,16 +2640,75 @@
                     replyButton.textContent = 'Reply';
                     replyButton.onclick = () => toggleReplyForm(comment.id, postId);
                     commentActionsDiv.appendChild(replyButton);
-
-                    if (currentUser.id === comment.author.id) { 
-                        const deleteButton = document.createElement('button');
-                        deleteButton.className = 'hover:text-red-600 font-medium text-xs ml-2';
-                        deleteButton.textContent = 'Delete';
-                        deleteButton.onclick = () => confirmDeleteComment(comment.id, !comment.parentComment);
-                        commentActionsDiv.appendChild(deleteButton);
-                    }
                 }
                 commentBody.appendChild(commentActionsDiv);
+
+                const commentMenuButton = document.createElement('button');
+                commentMenuButton.className = 'comment-menu-button text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
+                commentMenuButton.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
+                commentMenuButton.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleCommentActionMenu(comment.id);
+                };
+                
+                const commentActions = document.createElement('div');
+                commentActions.className = 'ml-auto relative';
+                commentActions.appendChild(commentMenuButton);
+
+                const dropdownMenu = document.createElement('div');
+                dropdownMenu.id = `comment-action-menu-${comment.id}`;
+                dropdownMenu.className = 'hidden absolute right-0 mt-2 min-w-max rounded-md shadow-lg py-1 z-20 comment-action-menu';
+                dropdownMenu.style.backgroundColor = 'var(--dropdown-bg)';
+
+                if (currentUser && currentUser.id === comment.author.id) {
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'block w-full text-left px-4 py-2 text-sm profile-menu-item profile-menu-item-danger';
+                    deleteButton.innerHTML = `
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        Delete
+                    `;
+                    deleteButton.onclick = (e) => {
+                        e.stopPropagation();
+                        confirmDeleteComment(comment.id, postId, !comment.parentComment);
+                        closeAllCommentActionMenus();
+                    };
+                    dropdownMenu.appendChild(deleteButton);
+                }
+
+                if (currentUser && currentUser.id !== comment.author.id) {
+                    const reportButton = document.createElement('button');
+                    reportButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
+                    reportButton.innerHTML = `
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4.25L16.25 3.5a2.121 2.121 0 013 3L6.25 19H3zm9-13l3 3"></path></svg>
+                        Report
+                    `;
+                    reportButton.onclick = (e) => {
+                        e.stopPropagation();
+                        openReportModal(null, comment.id);
+                        closeAllCommentActionMenus();
+                    };
+                    dropdownMenu.appendChild(reportButton);
+                }
+                
+                if (currentUser && currentUser.id === comment.author.id) {
+                    const createVoiceChannelButton = document.createElement('button');
+                    createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 create-vc-button';
+                    createVoiceChannelButton.innerHTML = `
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 14.5a3.5 3.5 0 10-7 0v-1.586a1 1 0 01.293-.707l4.414-4.414a1 1 0 01.707-.293H15.5V14.5zM12 18a4 4 0 100-8 4 4 0 000 8z"></path></svg>
+                        Create Voice Channel
+                    `;
+                    createVoiceChannelButton.onclick = (e) => {
+                        e.stopPropagation();
+                        createVoiceChannel('comment', comment.id);
+                        closeAllCommentActionMenus();
+                    };
+                    dropdownMenu.appendChild(createVoiceChannelButton);
+                }
+
+                if (dropdownMenu.hasChildNodes()) {
+                    commentActions.appendChild(dropdownMenu);
+                    commentHeader.appendChild(commentActions);
+                }
                 
                 const replyFormContainerId = `reply-form-container-${comment.id}`;
                 const replyFormContainer = document.createElement('div');
@@ -2843,10 +2902,29 @@
             });
         }
 
+        function toggleCommentActionMenu(commentId) {
+            const menu = document.getElementById(`comment-action-menu-${commentId}`);
+            if (menu) {
+                const isHidden = menu.classList.contains('hidden');
+                closeAllCommentActionMenus();
+                if (isHidden) {
+                    menu.classList.remove('hidden');
+                }
+            }
+        }
+
+        function closeAllCommentActionMenus() {
+            document.querySelectorAll('.comment-action-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        }
+
         document.addEventListener('click', (event) => {
-            const isActionsButton = event.target.closest('button') && event.target.closest('button').innerHTML.includes('M10 6a2');
-            if (!isActionsButton && !event.target.closest('[id^="post-action-menu-"]')) {
+            if (!event.target.closest('.post-menu-button') && !event.target.closest('.post-action-menu')) {
                 closeAllPostActionMenus();
+            }
+            if (!event.target.closest('.comment-menu-button') && !event.target.closest('.comment-action-menu')) {
+                closeAllCommentActionMenus();
             }
         });
 
