@@ -965,7 +965,9 @@
 
             if (itemType === 'post') {
                 const postIndex = posts.findIndex(p => p.id === itemId);
+                console.log("AA")
                 if (postIndex !== -1) {
+                    console.log("AAaa")
                     posts[postIndex].voiceChannel = voiceChannel;
                     postToUpdate = posts[postIndex];
                     itemToUpdate = postToUpdate;
