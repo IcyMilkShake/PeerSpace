@@ -10,6 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
     <link rel="stylesheet" href="themes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         nav .text-gray-800 {
             color: var(--text-primary);
@@ -76,6 +77,19 @@
         }
         .notification-item.font-bold {
             background-color: var(--accent-color-subtle);
+        }
+        #name-vc-modal {
+            background-color: var(--modal-content-bg);
+            color: var(--text-primary);
+        }
+        #name-vc-modal input[type="text"] {
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        #name-vc-modal input[type="text"]:focus {
+             border-color: var(--accent-color);
+             box-shadow: 0 0 0 2px var(--accent-color-subtle);
         }
     </style>
 </head>
@@ -280,6 +294,21 @@
         </div>
     </div>
 
+    <div id="name-vc-modal-overlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[90] p-4">
+        <div id="name-vc-modal" class="rounded-lg shadow-xl p-6 max-w-sm w-full">
+            <h3 id="name-vc-modal-title" class="text-lg font-semibold mb-4">Name your Voice Channel</h3>
+            <input type="text" id="vc-name-input" placeholder="Channel Name" class="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex justify-end space-x-3 mt-4">
+                <button id="name-vc-modal-cancel-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button id="name-vc-modal-confirm-btn" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+                    Create
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="report-modal-overlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[95] p-4">
             <div id="report-modal" class="rounded-lg shadow-xl p-6 max-w-md w-full">
                 <h3 id="report-modal-title" class="text-lg font-semibold mb-4">Report Post</h3>
@@ -361,6 +390,7 @@
         let posts = [];
         let currentFilter = 'all';
         let socket;
+        socket = io({ autoConnect: false });
         let profileUserId = null;
         let currentSinglePostId = null;
         let cropper = null;
@@ -611,6 +641,546 @@
             });
         }
 
+        // --- WebRTC & Socket.IO Globals ---
+        let localStream = null;
+        let peerConnections = {}; // key: socketId, value: RTCPeerConnection
+        let currentVoiceChannel = null; // { id: 'channelId', participants: [] }
+        let audioContext, meter, speakingTimer;
+        let isSpeaking = false;
+
+
+        // Create a container for remote audio elements that will be hidden
+        const remoteAudioContainer = document.createElement('div');
+        remoteAudioContainer.id = 'remote-audio-container';
+        remoteAudioContainer.style.display = 'none';
+        document.body.appendChild(remoteAudioContainer);
+
+        socket.on('update-participants', (participants) => {
+            if (!currentVoiceChannel) return;
+            currentVoiceChannel.participants = participants;
+            
+            // --- Update the main voice channel UI (in the post/comment) ---
+            const participantsDiv = document.getElementById(`voice-participants-${currentVoiceChannel.id}`);
+            if (participantsDiv) {
+                participantsDiv.innerHTML = '';
+                if (participants.length === 0) {
+                    participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">No one is here yet.</span>';
+                } else {
+                    participants.forEach(p => {
+                        const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-white dark:border-gray-800');
+                        pfp.title = p.displayName;
+                        pfp.dataset.socketId = p.socketId;
+                        participantsDiv.appendChild(pfp);
+                    });
+                }
+            }
+
+            // --- Update desktop floating voice chat panel ---
+            const desktopPanelParticipantsList = document.getElementById('desktop-voice-chat-participants-list');
+            if (desktopPanelParticipantsList) {
+                desktopPanelParticipantsList.innerHTML = '';
+                participants.forEach(p => {
+                    const participantEl = document.createElement('div');
+                    participantEl.className = 'flex items-center justify-between text-sm';
+                    
+                    const userInfo = document.createElement('div');
+                    userInfo.className = 'flex items-center space-x-2';
+                    const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-6 h-6', 'text-xs');
+                    pfp.dataset.socketId = p.socketId;
+                    userInfo.appendChild(pfp);
+                    const name = document.createElement('span');
+                    name.textContent = p.displayName;
+                    userInfo.appendChild(name);
+                    
+                    participantEl.appendChild(userInfo);
+
+                    if (p.socketId !== socket.id) {
+                        const volumeControl = document.createElement('button');
+                        volumeControl.className = 'text-gray-400 hover:text-white';
+                        volumeControl.innerHTML = '<i class="fas fa-volume-up"></i>';
+                        volumeControl.onclick = () => {
+                            const audioEl = document.getElementById(`remote-audio-${p.socketId}`);
+                            if (audioEl) {
+                                audioEl.muted = !audioEl.muted;
+                                volumeControl.innerHTML = `<i class="fas ${audioEl.muted ? 'fa-volume-mute' : 'fa-volume-up'}"></i>`;
+                            }
+                        };
+                        participantEl.appendChild(volumeControl);
+                    }
+                    
+                    desktopPanelParticipantsList.appendChild(participantEl);
+                });
+            }
+
+            // --- Update mobile floating voice chat panel ---
+            const mobilePanelParticipantsList = document.getElementById('mobile-voice-chat-participants-list');
+            if (mobilePanelParticipantsList) {
+                mobilePanelParticipantsList.innerHTML = '';
+                participants.forEach(p => {
+                    const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-gray-600');
+                    pfp.title = p.displayName;
+                    pfp.dataset.socketId = p.socketId;
+
+                    if (p.socketId !== socket.id) {
+                        pfp.style.cursor = 'pointer';
+                        pfp.onclick = () => {
+                            const audioEl = document.getElementById(`remote-audio-${p.socketId}`);
+                            if (audioEl) {
+                                audioEl.muted = !audioEl.muted;
+                                if (audioEl.muted) {
+                                    pfp.classList.add('muted-pfp');
+                                } else {
+                                    pfp.classList.remove('muted-pfp');
+                                }
+                            }
+                        };
+                        // Check initial muted state
+                        const audioEl = document.getElementById(`remote-audio-${p.socketId}`);
+                        if (audioEl && audioEl.muted) {
+                            pfp.classList.add('muted-pfp');
+                        }
+                    }
+
+                    mobilePanelParticipantsList.appendChild(pfp);
+                });
+            }
+        });
+
+        socket.on('user-left', ({ socketId }) => {
+            if (peerConnections[socketId]) {
+                peerConnections[socketId].close();
+                delete peerConnections[socketId];
+            }
+            const audioEl = document.getElementById(`remote-audio-${socketId}`);
+            if (audioEl) {
+                audioEl.remove();
+            }
+        });
+        
+        socket.on('voice-channel-updated', ({ channelId, participants }) => {
+            const participantElements = document.querySelectorAll(`#voice-participants-${channelId}`);
+            
+            participantElements.forEach(participantsDiv => {
+                if (participantsDiv) {
+                    participantsDiv.innerHTML = ''; // Clear existing content
+                    if (participants.length === 0) {
+                        participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">No one is here yet.</span>';
+                    } else {
+                        participants.forEach(p => {
+                            const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-white dark:border-gray-800');
+                            pfp.title = p.displayName;
+                            pfp.dataset.socketId = p.socketId;
+                            participantsDiv.appendChild(pfp);
+                        });
+                    }
+                }
+            });
+        });
+
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+
+        function createPeerConnection(targetSocketId) {
+            const pc = new RTCPeerConnection(rtcConfig);
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('ice-candidate', {
+                        targetSocketId: targetSocketId,
+                        candidate: event.candidate,
+                    });
+                }
+            };
+
+            pc.ontrack = (event) => {
+                const remoteAudioContainer = document.getElementById('remote-audio-container');
+                let audio = document.getElementById(`remote-audio-${targetSocketId}`);
+                if (!audio) {
+                    audio = document.createElement('audio');
+                    audio.id = `remote-audio-${targetSocketId}`;
+                    audio.className = 'remote-audio';
+                    audio.autoplay = true;
+                    remoteAudioContainer.appendChild(audio);
+                }
+                audio.srcObject = event.streams[0];
+            };
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    pc.addTrack(track, localStream);
+                });
+            }
+
+            peerConnections[targetSocketId] = pc;
+            return pc;
+        }
+
+        socket.on('existing-participants', ({ participants }) => {
+            participants.forEach(async (p) => {
+                const pc = createPeerConnection(p.socketId);
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                socket.emit('offer', {
+                    targetSocketId: p.socketId,
+                    offer: pc.localDescription
+                });
+            });
+        });
+
+        socket.on('offer', async ({ fromSocketId, offer }) => {
+            const pc = createPeerConnection(fromSocketId);
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit('answer', {
+                targetSocketId: fromSocketId,
+                answer: pc.localDescription,
+            });
+        });
+
+        socket.on('answer', async ({ fromSocketId, answer }) => {
+            const pc = peerConnections[fromSocketId];
+            if (pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            }
+        });
+
+        socket.on('ice-candidate', async ({ fromSocketId, candidate }) => {
+            const pc = peerConnections[fromSocketId];
+            if (pc && candidate) {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (error) {
+                    console.error('Error adding received ice candidate', error);
+                }
+            }
+        });
+
+        socket.on('speaking', ({ socketId }) => {
+            document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socketId}"], #mobile-voice-panel [data-socket-id="${socketId}"]`).forEach(el => {
+                el.classList.add('speaking');
+            });
+        });
+
+        socket.on('stopped-speaking', ({ socketId }) => {
+            document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socketId}"], #mobile-voice-panel [data-socket-id="${socketId}"]`).forEach(el => {
+                el.classList.remove('speaking');
+            });
+        });
+
+        socket.on('channel-full', () => {
+            showNotification('This voice channel is full and cannot be joined at this time.', 'error');
+            leaveVoiceChannel();
+        });
+
+        async function createAudioMeter(stream, onVolumeChange) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            audioContext.resume();
+            const source = audioContext.createMediaStreamSource(stream);
+
+            try {
+                await audioContext.audioWorklet.addModule('volume-meter.js');
+                const meterNode = new AudioWorkletNode(audioContext, 'volume-meter-processor');
+                meterNode.port.onmessage = event => {
+                    if (event.data.volume) {
+                        onVolumeChange(event.data.volume);
+                    }
+                }
+                source.connect(meterNode).connect(audioContext.destination);
+            } catch (e) {
+                console.error('Error setting up audio worklet.', e);
+            }
+        }
+
+        async function joinVoiceChannel(channelId) {
+            if (!currentUser) {
+                return showNotification('You must be logged in to join a voice channel.', 'warning');
+            }
+            if (currentVoiceChannel) {
+                return showNotification('You are already in a voice channel.', 'warning');
+            }
+
+            try {
+                const audioConstraints = { audio: true, video: false };
+                if (currentUser.audioSettings && currentUser.audioSettings.inputDevice) {
+                    audioConstraints.audio = { deviceId: { exact: currentUser.audioSettings.inputDevice } };
+                }
+                localStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                return showNotification('Could not access microphone. Please grant permission.', 'error');
+            }
+
+            await createAudioMeter(localStream, (volume) => {
+                const speakingThreshold = 0.02;
+                if (volume > speakingThreshold) {
+                    clearTimeout(speakingTimer);
+                    speakingTimer = null;
+                    if (!isSpeaking) {
+                        isSpeaking = true;
+                        socket.emit('speaking');
+                        document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socket.id}"], #mobile-voice-panel [data-socket-id="${socket.id}"]`).forEach(el => {
+                            el.classList.add('speaking');
+                        });
+                    }
+                } else { // volume <= threshold
+                    if (isSpeaking && !speakingTimer) {
+                        speakingTimer = setTimeout(() => {
+                            isSpeaking = false;
+                            socket.emit('stopped-speaking');
+                            document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socket.id}"], #mobile-voice-panel [data-socket-id="${socket.id}"]`).forEach(el => {
+                                el.classList.remove('speaking');
+                            });
+                            speakingTimer = null;
+                        }, 500);
+                    }
+                }
+            });
+
+            if (!socket.connected) {
+                socket.connect();
+            }
+
+            currentVoiceChannel = { id: channelId, participants: [] };
+            sessionStorage.setItem('inVoiceChannel', channelId);
+            createDesktopVoiceControlsUI(channelId);
+            createMobileVoiceControlsUI(channelId);
+            
+            // We need to wait for the socket to be connected before emitting
+            if (socket.connected) {
+                socket.emit('join-channel', { channelId, userId: currentUser.id });
+            } else {
+                socket.once('connect', () => {
+                    socket.emit('join-channel', { channelId, userId: currentUser.id });
+                });
+            }
+        }
+
+        function leaveVoiceChannel() {
+            if (!currentVoiceChannel) return;
+            const channelId = currentVoiceChannel.id;
+
+            socket.emit('leave-channel');
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            clearTimeout(speakingTimer);
+            isSpeaking = false;
+
+            Object.values(peerConnections).forEach(pc => pc.close());
+            peerConnections = {};
+            
+            const desktopPanel = document.getElementById('desktop-voice-panel');
+            if (desktopPanel) {
+                desktopPanel.remove();
+            }
+            const mobilePanel = document.getElementById('mobile-voice-panel');
+            if (mobilePanel) {
+                mobilePanel.remove();
+            }
+            
+            const remoteAudioContainer = document.getElementById('remote-audio-container');
+            if (remoteAudioContainer) {
+                remoteAudioContainer.innerHTML = '';
+            }
+            
+            fetch(`/api/voice-channel/${channelId}`)
+                .then(res => res.json())
+                .then(participants => {
+                    const participantsDiv = document.getElementById(`voice-participants-${channelId}`);
+                    if (participantsDiv) {
+                        participantsDiv.innerHTML = '';
+                        if (participants.length === 0) {
+                            participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">No one is here yet.</span>';
+                        } else {
+                            participants.forEach(p => {
+                                const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-white dark:border-gray-800');
+                                pfp.title = p.displayName;
+                                pfp.dataset.socketId = p.socketId;
+                                participantsDiv.appendChild(pfp);
+                            });
+                        }
+                    }
+                });
+
+            currentVoiceChannel = null;
+            sessionStorage.removeItem('inVoiceChannel');
+            sessionStorage.removeItem('voiceChannelRefresh');
+        }
+
+        async function deleteVoiceChannel(channelId, itemType, itemId) {
+            if (!currentUser) return;
+
+            showConfirmationDialog(
+                "Are you sure you want to delete this voice channel? This action cannot be undone.",
+                async () => {
+                    try {
+                        const response = await fetch(`/api/voice-channel/${channelId}`, {
+                            method: 'DELETE',
+                        });
+                        if (response.ok) {
+                            // Optimistic update
+
+                            const voiceChannelElement = document.querySelector(`.voice-channel-container #voice-participants-${channelId}`);
+                            if (voiceChannelElement) {
+                                voiceChannelElement.closest('.voice-channel-container').remove();
+                            }
+                            leaveVoiceChannel()
+                            // Update local data
+                            if (itemType === 'post') {
+                                const postIndex = posts.findIndex(p => p.id === itemId);
+                                if (postIndex !== -1) {
+                                    posts[postIndex].voiceChannel = null;
+                                }
+                            } else if (itemType === 'comment') {
+                                for (const p of posts) {
+                                    const found = findComment(p.comments, itemId);
+                                    if (found) {
+                                        found.voiceChannel = null;
+                                        break;
+                                    }
+                                }
+                            }
+                            showNotification('Voice channel deleted.', 'success');
+                        } else {
+                            const errorData = await response.json().catch(() => ({ error: "Server error" }));
+                            showNotification(`Failed to delete voice channel: ${errorData.error}`, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error deleting voice channel:', error);
+                        showNotification('An error occurred while deleting the voice channel.', 'error');
+                    }
+                },
+                null,
+                "Delete Voice Channel"
+            );
+        }
+
+        function createDesktopVoiceControlsUI(channelId) {
+            let panel = document.getElementById('desktop-voice-panel');
+            if (panel) {
+                panel.remove();
+            }
+
+            panel = document.createElement('div');
+            panel.id = 'desktop-voice-panel';
+            panel.className = 'fixed bottom-4 right-4 bg-gray-800 text-white rounded-lg shadow-lg w-64 flex-col z-[101]';
+            
+            panel.innerHTML = `
+                <div class="p-3 border-b border-gray-700">
+                    <p class="font-bold text-sm">Voice Connected</p>
+                    <p class="text-xs text-gray-400 truncate">Channel: ${channelId}</p>
+                </div>
+                <div id="desktop-voice-chat-participants-list" class="flex-grow p-3 space-y-2 overflow-y-auto" style="max-height: 200px;">
+                    <!-- Participants will be dynamically added here -->
+                </div>
+                <div class="p-2 bg-gray-900 rounded-b-lg flex items-center justify-around">
+                     <button id="desktop-mute-btn" class="hover:bg-gray-700 p-2 rounded-full" title="Mute/Unmute">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <button id="desktop-deafen-btn" data-deafened="false" class="hover:bg-gray-700 p-2 rounded-full" title="Deafen/Undeafen">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                    <button onclick="leaveVoiceChannel()" class="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full" title="Disconnect">
+                        <i class="fas fa-phone-slash"></i>
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(panel);
+
+            const muteBtn = document.getElementById('desktop-mute-btn');
+            muteBtn.addEventListener('click', () => {
+                if (!localStream) return;
+                const enabled = localStream.getAudioTracks()[0].enabled;
+                localStream.getAudioTracks()[0].enabled = !enabled;
+                muteBtn.innerHTML = `<i class="fas ${!enabled ? 'fa-microphone' : 'fa-microphone-slash'}"></i>`;
+            });
+
+            const deafenBtn = document.getElementById('desktop-deafen-btn');
+            deafenBtn.addEventListener('click', () => {
+                const audioElements = document.querySelectorAll('audio.remote-audio');
+                const isDeafened = deafenBtn.dataset.deafened === 'true';
+                audioElements.forEach(audio => {
+                    audio.muted = !isDeafened;
+                });
+                deafenBtn.dataset.deafened = !isDeafened;
+                deafenBtn.innerHTML = `<i class="fas ${!isDeafened ? 'fa-volume-mute' : 'fa-volume-up'}"></i>`;
+            });
+        }
+
+        function createMobileVoiceControlsUI(channelId) {
+            let panel = document.getElementById('mobile-voice-panel');
+            if (panel) {
+                panel.remove();
+            }
+
+            panel = document.createElement('div');
+            panel.id = 'mobile-voice-panel';
+            panel.className = 'fixed bottom-4 right-4 bg-gray-800 text-white rounded-lg shadow-lg p-2 flex items-center space-x-4 z-[101]';
+            
+            panel.innerHTML = `
+                <div id="mobile-voice-chat-participants-list" class="flex items-center space-x-1 overflow-hidden pr-2">
+                    <!-- Participants will be dynamically added here -->
+                </div>
+                <div class="flex items-center justify-around space-x-2">
+                     <button id="mobile-mute-btn" class="hover:bg-gray-700 p-2 rounded-full" title="Mute/Unmute">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <button id="mobile-deafen-btn" data-deafened="false" class="hover:bg-gray-700 p-2 rounded-full" title="Deafen/Undeafen">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                    <button onclick="leaveVoiceChannel()" class="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full" title="Disconnect">
+                        <i class="fas fa-phone-slash"></i>
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(panel);
+
+            const muteBtn = document.getElementById('mobile-mute-btn');
+            muteBtn.addEventListener('click', () => {
+                if (!localStream) return;
+                const enabled = localStream.getAudioTracks()[0].enabled;
+                localStream.getAudioTracks()[0].enabled = !enabled;
+                muteBtn.innerHTML = `<i class="fas ${!enabled ? 'fa-microphone' : 'fa-microphone-slash'}"></i>`;
+            });
+
+            const deafenBtn = document.getElementById('mobile-deafen-btn');
+            deafenBtn.addEventListener('click', () => {
+                const audioElements = document.querySelectorAll('audio.remote-audio');
+                const isDeafened = deafenBtn.dataset.deafened === 'true';
+                audioElements.forEach(audio => {
+                    audio.muted = !isDeafened;
+                });
+                deafenBtn.dataset.deafened = !isDeafened;
+                deafenBtn.innerHTML = `<i class="fas ${!isDeafened ? 'fa-volume-mute' : 'fa-volume-up'}"></i>`;
+            });
+        }
+
+        function findComment(comments, commentId) {
+            for (const c of comments) {
+                if (c.id === commentId || c._id === commentId) {
+                    return c;
+                }
+                if (c.replies) {
+                    const found = findComment(c.replies, commentId);
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
+            return null;
+        }
+
         // Checks if a user is logged in on the profile page.
         async function checkAuthStatusForProfilePage() {
             try {
@@ -687,52 +1257,200 @@
             }
         }
 
-        async function createVoiceChannel(itemType, itemId) {
+        function createVoiceChannelElement(item) {
+            const voiceChannel = item.voiceChannel;
+            if (!voiceChannel) return null;
+            const channelId = voiceChannel._id;
+
+            const container = document.createElement('div');
+            container.className = 'voice-channel-container border rounded-lg p-4 flex items-center justify-between';
+            container.innerHTML = `
+                <div class="flex-grow">
+                    <h4 class="font-bold text-lg">${escapeHtml(voiceChannel.name || 'Voice Channel')}</h4>
+                    <div id="voice-participants-${channelId}" class="flex items-center -space-x-2 overflow-hidden">
+                        <span class="text-sm text-gray-500 pl-2">Loading participants...</span>
+                    </div>
+                </div>
+                <div id="voice-channel-buttons-${channelId}" class="flex items-center space-x-2 flex-shrink-0">
+                    <button onclick="joinVoiceChannel('${channelId}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                        <i class="fas fa-phone-alt mr-2"></i>Join
+                    </button>
+                </div>
+            `;
+            container.onclick = (e) => e.stopPropagation();
+
+            const participantsDiv = container.querySelector(`#voice-participants-${channelId}`);
+            const buttonsContainer = container.querySelector(`#voice-channel-buttons-${channelId}`);
+
+            if (currentUser && voiceChannel.creator && currentUser.id === voiceChannel.creator.toString()) {
+                const deleteButton = document.createElement('button');
+                deleteButton.onclick = (e) => {
+                    e.stopPropagation();
+                    const itemType = item.title ? 'post' : 'comment'; // Heuristic to determine item type
+                    deleteVoiceChannel(channelId, itemType, item.id);
+                };
+                deleteButton.className = 'bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors';
+                deleteButton.innerHTML = `<i class="fas fa-trash-alt"></i>`;
+                deleteButton.title = "Delete Voice Channel";
+                buttonsContainer.appendChild(deleteButton);
+            }
+
+            fetch(`/api/voice-channel/${channelId}`)
+                .then(res => res.json())
+                .then(participants => {
+                    if (participantsDiv) {
+                        participantsDiv.innerHTML = '';
+                        if (participants.length === 0) {
+                            participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">No one is here yet.</span>';
+                        } else {
+                            participants.forEach(p => {
+                                const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-white dark:border-gray-800');
+                                pfp.title = p.displayName;
+                                pfp.dataset.socketId = p.socketId;
+                                participantsDiv.appendChild(pfp);
+                            });
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error(`Failed to fetch participants for channel ${channelId}`, err);
+                    if (participantsDiv) {
+                        participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">Error loading participants.</span>';
+                    }
+                });
+
+            return container;
+        }
+
+        function getActiveVoiceChannelInfo() {
+            if (!currentUser) return null;
+
+            const findChannelInComments = (comments, postId) => {
+                for (const comment of comments) {
+                    if (comment.voiceChannel && comment.voiceChannel.creator && comment.voiceChannel.creator.toString() === currentUser.id) {
+                        return { postId: postId, channelId: comment.voiceChannel._id };
+                    }
+                    if (comment.replies) {
+                        const found = findChannelInComments(comment.replies, postId);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
+
+            for (const post of posts) {
+                if (post.voiceChannel && post.voiceChannel.creator && post.voiceChannel.creator.toString() === currentUser.id) {
+                    return { postId: post.id, channelId: post.voiceChannel._id };
+                }
+                if (post.comments) {
+                    const foundInComment = findChannelInComments(post.comments, post.id);
+                    if (foundInComment) return foundInComment;
+                }
+            }
+
+            return null;
+        }
+
+        async function createVoiceChannel(type, id) {
             if (!currentUser) {
-                showNotification('You must be logged in to create a voice channel.', 'warning');
+                showNotification("Please sign in to create a voice channel.", "warning");
                 return;
             }
-            try {
-                let url;
-                if (itemType === 'post') {
-                    url = `/api/posts/${itemId}/voice-channel`;
-                } else if (itemType === 'comment') {
-                    url = `/api/comments/${itemId}/voice-channel`;
-                } else {
-                    showNotification('Invalid item type for voice channel creation.', 'error');
+
+            const activeChannelInfo = getActiveVoiceChannelInfo();
+            if (activeChannelInfo) {
+                const postId = activeChannelInfo.postId;
+                showNotification(
+                    'You already have a voice channel open. Click here to go to it.',
+                    'warning',
+                    5000,
+                    () => {
+                        window.location.href = `/?post=${postId}`;
+                    }
+                );
+                return;
+            }
+
+            const nameVcModalOverlay = document.getElementById('name-vc-modal-overlay');
+            const nameVcModalCancelBtn = document.getElementById('name-vc-modal-cancel-btn');
+            const nameVcModalConfirmBtn = document.getElementById('name-vc-modal-confirm-btn');
+            const vcNameInput = document.getElementById('vc-name-input');
+            
+            nameVcModalOverlay.classList.remove('hidden');
+
+            const onConfirm = async () => {
+                const name = vcNameInput.value.trim();
+                if (!name) {
+                    showNotification("Please enter a name for the voice channel.", "warning");
                     return;
                 }
 
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to create voice channel');
+                let url;
+                if (type === 'post') {
+                    url = `/api/posts/${id}/voice-channel`;
+                } else if (type === 'comment') {
+                    url = `/api/comments/${id}/voice-channel`;
+                } else {
+                    return;
                 }
-                
-                const { voiceChannelId } = await response.json();
-                
-                // This logic ensures the UI updates immediately for the current user.
-                // The existing socket event will handle updates for other users.
-                if (itemType === 'post') {
-                    const postIndex = posts.findIndex(p => p.id === itemId);
-                    if (postIndex !== -1) {
-                        posts[postIndex].voiceChannel = { _id: voiceChannelId }; // Add a placeholder with the ID
-                        if (itemId === currentSinglePostId) {
-                            renderSinglePost(itemId); // Re-render the single post view
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name })
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        showNotification("Voice channel created successfully!", "success");
+                    } else {
+                        if (response.status === 409) {
+                            const errorData = await response.json();
+                            const postId = errorData.postId;
+                            if (postId) {
+                                showNotification(
+                                    'You already have a voice channel open. Click here to go to it.',
+                                    'warning',
+                                    5000,
+                                    () => {
+                                        window.location.href = `/?post=${postId}`;
+                                    }
+                                );
+                            } else {
+                                showNotification(errorData.error || 'You already have a voice channel open.', 'error');
+                            }
+                        } else {
+                            const errorData = await response.json();
+                            showNotification(`Error: ${errorData.error || 'Failed to create voice channel.'}`, 'error');
                         }
                     }
+                } catch (error) {
+                    console.error(`Error creating voice channel for ${type} ${id}:`, error);
+                    showNotification('An error occurred while creating the voice channel.', 'error');
+                } finally {
+                    closeNameVcModal();
                 }
-                // Note: A similar block for 'comment' would be needed if comments could create VCs here.
+            };
+            
+            const onCancel = () => {
+                closeNameVcModal();
+            };
 
-            } catch (error) {
-                console.error('Error creating voice channel:', error);
-                showNotification(error.message, 'error');
-            }
+            const closeNameVcModal = () => {
+                nameVcModalOverlay.classList.add('hidden');
+                vcNameInput.value = '';
+                nameVcModalConfirmBtn.removeEventListener('click', onConfirm);
+                nameVcModalCancelBtn.removeEventListener('click', onCancel);
+            };
+
+            nameVcModalConfirmBtn.addEventListener('click', onConfirm);
+            nameVcModalCancelBtn.addEventListener('click', onCancel);
+        }
+
+        function closeAllPostActionMenus() {
+            document.querySelectorAll('.post-action-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
         }
         
         function escapeHtml(text, allowLinks = false) {
@@ -1512,6 +2230,21 @@
                     dropdownMenu.appendChild(reportButton);
                 }
                 
+                if (currentUser && currentUser.id === post.author.id && !post.voiceChannel && !getActiveVoiceChannelInfo()) {
+                    const createVoiceChannelButton = document.createElement('button');
+                    createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 create-vc-button';
+                    createVoiceChannelButton.innerHTML = `
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 14.5a3.5 3.5 0 10-7 0v-1.586a1 1 0 01.293-.707l4.414-4.414a1 1 0 01.707-.293H15.5V14.5zM12 18a4 4 0 100-8 4 4 0 000 8z"></path></svg>
+                        Create Voice Channel
+                    `;
+                    createVoiceChannelButton.onclick = (e) => {
+                        e.stopPropagation();
+                        createVoiceChannel('post', post.id);
+                        closeAllPostActionMenus();
+                    };
+                    dropdownMenu.appendChild(createVoiceChannelButton);
+                }
+
                 if (dropdownMenu.hasChildNodes()) {
                     postActions.appendChild(dropdownMenu);
                     postHeader.appendChild(postActions);
@@ -1704,6 +2437,11 @@
                 const linkPreviewsContainer = document.createElement('div');
                 linkPreviewsContainer.className = 'link-previews';
                 article.appendChild(linkPreviewsContainer);
+
+                if (post.voiceChannel) {
+                    const voiceChannelElement = createVoiceChannelElement(post);
+                    if (voiceChannelElement) article.appendChild(voiceChannelElement);
+                }
 
                 if (post.linkPreview && post.linkPreview.url) {
                     const preview = post.linkPreview;
@@ -2999,7 +3737,6 @@
             avatarContainer = document.getElementById('profile-avatar-container');
             await checkAuthStatusForProfilePage();
 
-            socket = io({ autoConnect: false });
             if (currentUser) {
                 socket.connect();
                 socket.on('voice-channel-created', ({ itemType, itemId, voiceChannel }) => {
@@ -3017,12 +3754,59 @@
                 });
 
                 socket.on('voice-channel-deleted', ({ channelId, postId, commentId }) => {
+                    let updatedPostId = null;
+
+                    // 1. Update local state
                     if (postId) {
-                        const postIndex = posts.findIndex(p => p.id === postId);
+                        const postIndex = posts.findIndex(p => p.id === postId || p._id === postId);
                         if (postIndex !== -1) {
                             posts[postIndex].voiceChannel = null;
-                            if (postId === currentSinglePostId) {
-                                renderSinglePost(postId);
+                            updatedPostId = posts[postIndex].id || posts[postIndex]._id;
+                        }
+                    } else if (commentId) {
+                        for (const post of posts) {
+                            const comment = findComment(post.comments, commentId);
+                            if (comment) {
+                                comment.voiceChannel = null;
+                                updatedPostId = post.id || post._id;
+                                break;
+                            }
+                        }
+                    }
+
+                    // 2. Update UI
+                    const singlePostContainer = document.getElementById('single-post-container');
+                    const isSinglePostView = !singlePostContainer.classList.contains('hidden');
+                    const currentSinglePostId = isSinglePostView ? singlePostContainer.querySelector('article')?.id.replace('post-card-', '') : null;
+
+                    if (isSinglePostView && updatedPostId === currentSinglePostId) {
+                        renderSinglePost(updatedPostId);
+                    } else {
+                        // For feeds or profile pages, directly manipulate the DOM.
+                        const vcElement = document.querySelector(`.voice-channel-container #voice-participants-${channelId}`);
+                        if (vcElement) {
+                            const container = vcElement.closest('.voice-channel-container');
+                            if (container) container.remove();
+                        }
+
+                        // Make the 'Create VC' button visible again.
+                        const cardId = postId ? `post-card-${postId}` : `comment-wrapper-${commentId}`;
+                        const cardElement = document.getElementById(cardId);
+                        if (cardElement) {
+                            const dropdownMenu = cardElement.querySelector('.post-action-menu');
+                            if (dropdownMenu) {
+                                const createVoiceChannelButton = document.createElement('button');
+                                createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 create-vc-button';
+                                createVoiceChannelButton.innerHTML = `
+                                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 14.5a3.5 3.5 0 10-7 0v-1.586a1 1 0 01.293-.707l4.414-4.414a1 1 0 01.707-.293H15.5V14.5zM12 18a4 4 0 100-8 4 4 0 000 8z"></path></svg>
+                                    Create Voice Channel
+                                `;
+                                createVoiceChannelButton.onclick = (e) => {
+                                    e.stopPropagation();
+                                    createVoiceChannel('post', postId);
+                                    closeAllPostActionMenus();
+                                };
+                                dropdownMenu.appendChild(createVoiceChannelButton);
                             }
                         }
                     }
