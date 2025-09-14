@@ -960,64 +960,76 @@
         });
 
         socket.on('voice-channel-created', async ({ itemType, itemId, voiceChannel }) => {
+            // Update local data store first
+            let postToUpdate;
+            if (itemType === 'post') {
+                const postIndex = posts.findIndex(p => p.id === itemId || p._id === itemId);
+                if (postIndex !== -1) {
+                    posts[postIndex].voiceChannel = voiceChannel;
+                    postToUpdate = posts[postIndex];
+                }
+            } else if (itemType === 'comment') {
+                for (const p of posts) {
+                    const found = findComment(p.comments, itemId);
+                    if (found) {
+                        found.voiceChannel = voiceChannel;
+                        postToUpdate = p;
+                        break;
+                    }
+                }
+            }
+
+            // Now, update the UI.
             const singlePostContainer = document.getElementById('single-post-container');
             const isSinglePostView = singlePostContainer && !singlePostContainer.classList.contains('hidden');
             const currentSinglePostId = isSinglePostView ? singlePostContainer.querySelector('article')?.id.replace('post-card-', '') : null;
 
-            const isRelevantSinglePost = (itemType === 'post' && itemId === currentSinglePostId) ||
-                                         (itemType === 'comment' && posts.some(p => (p.id === currentSinglePostId || p._id === currentSinglePostId) && findComment(p.comments, itemId)));
-
-            if (isSinglePostView && isRelevantSinglePost) {
-                // For the currently viewed single post, re-fetching is the most reliable way to get the updated state.
-                const response = await fetch(`/api/posts/${currentSinglePostId}`);
-                if (response.ok) {
-                    const updatedPost = await response.json();
-                    const postIndex = posts.findIndex(p => p.id === currentSinglePostId || p._id === currentSinglePostId);
-                    if (postIndex !== -1) {
-                        posts[postIndex] = updatedPost;
-                    } else {
-                        posts.unshift(updatedPost);
-                    }
-                    renderSinglePost(currentSinglePostId);
-                }
-            } else {
-                // For all other pages (main feed, profile, etc.), update the DOM directly.
-                // This is faster and avoids full re-renders.
-                if (itemType === 'post') {
-                    const postIndex = posts.findIndex(p => p.id === itemId || p._id === itemId);
-                    if (postIndex !== -1) posts[postIndex].voiceChannel = voiceChannel;
-                } else if (itemType === 'comment') {
-                    for (const p of posts) {
-                        const found = findComment(p.comments, itemId);
-                        if (found) {
-                            found.voiceChannel = voiceChannel;
-                            break;
-                        }
-                    }
-                }
-                
-                const containerId = itemType === 'post' ? `post-card-${itemId}` : `comment-wrapper-${itemId}`;
-                const containerElement = document.getElementById(containerId);
-                if (containerElement) {
-                    const syntheticItem = { id: itemId, voiceChannel: voiceChannel };
-                    const voiceChannelElement = createVoiceChannelElement(syntheticItem);
-                    if (voiceChannelElement) {
-                        const existingVcElement = containerElement.querySelector('.voice-channel-container');
-                        if (existingVcElement) {
-                            existingVcElement.replaceWith(voiceChannelElement);
-                        } else {
-                            const actionsArea = containerElement.querySelector('.post-actions') || containerElement.querySelector('.comment-actions');
-                            if (actionsArea) {
-                                actionsArea.insertAdjacentElement('beforebegin', voiceChannelElement);
-                            } else {
-                                containerElement.appendChild(voiceChannelElement);
-                            }
-                        }
-                    }
-                    const createVcButton = containerElement.querySelector('.create-vc-button');
-                    if (createVcButton) createVcButton.style.display = 'none';
-                }
+            // If the updated post is the one being viewed, just re-render it.
+            if (isSinglePostView && postToUpdate && (postToUpdate.id === currentSinglePostId || postToUpdate._id === currentSinglePostId)) {
+                renderSinglePost(currentSinglePostId);
+                return;
             }
+
+            // Otherwise, find the element in the DOM and update it directly.
+            const containerId = itemType === 'post' ? `post-card-${itemId}` : `comment-wrapper-${itemId}`;
+            const containerElements = document.querySelectorAll(`#${containerId}`);
+
+            containerElements.forEach(containerElement => {
+                const syntheticItem = { id: itemId, voiceChannel: voiceChannel };
+                // Add title for post items to help createVoiceChannelElement heuristic
+                if (itemType === 'post' && postToUpdate) {
+                    syntheticItem.title = postToUpdate.title;
+                }
+                const voiceChannelElement = createVoiceChannelElement(syntheticItem);
+
+                if (voiceChannelElement) {
+                    const existingVcElement = containerElement.querySelector('.voice-channel-container');
+                    if (existingVcElement) {
+                        existingVcElement.replaceWith(voiceChannelElement);
+                    } else {
+                        const actionsArea = containerElement.querySelector('.post-actions') || containerElement.querySelector('.comment-actions');
+                        if (actionsArea) {
+                            actionsArea.insertAdjacentElement('beforebegin', voiceChannelElement);
+                        } else {
+                            // Fallback for single post view where actions might not be there
+                            const contentArea = containerElement.querySelector('.text-gray-700.mb-4.whitespace-pre-wrap');
+                             if(contentArea) {
+                                contentArea.parentElement.appendChild(voiceChannelElement);
+                             } else {
+                                containerElement.appendChild(voiceChannelElement);
+                             }
+                        }
+                    }
+                }
+
+                // Hide the "Create VC" button from the dropdown menu
+                const menuButton = containerElement.querySelector('.post-menu-button, .comment-menu-button');
+                if (menuButton) {
+                    // We can't just hide the button as it might not be in the DOM.
+                    // A full re-render via renderSinglePost is the only truly reliable way for this.
+                    // For feed view, this is an acceptable degradation.
+                }
+            });
         });
 
         socket.on('voice-channel-deleted', ({ channelId, postId, commentId }) => {
