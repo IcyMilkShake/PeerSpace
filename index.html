@@ -4230,6 +4230,7 @@
                             ${pfp.outerHTML}
                             <div class="ml-4">
                                 <h1 class="text-3xl font-bold">${escapeHtml(community.name)}</h1>
+                                <p class="mt-4" style="color: var(--text-primary); margin: 0.1vh">${escapeHtml(community.description)}</p>
                                 <p class="text-sm" style="color: var(--text-secondary);">${community.members.length} members</p>
                             </div>
                         </div>
@@ -4237,7 +4238,6 @@
                             ${joinLeaveButton}
                         </div>
                     </div>
-                    <p class="mt-4" style="color: var(--text-primary);">${escapeHtml(community.description)}</p>
                 `;
                 
                 const communityPostsContainer = document.createElement('div');
