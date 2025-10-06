@@ -168,6 +168,10 @@
                 right: 16px;
             }
         }
+        .answered-comment {
+            border: 2px solid #4ade80; /* A nice green color */
+            box-shadow: 0 0 8px #4ade80;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -649,6 +653,26 @@
                 const emptyState = document.getElementById('empty-state');
                 if (emptyState && emptyState.style.display !== 'none') {
                     emptyState.style.display = 'none';
+                }
+            }
+        });
+
+        socket.on('post:answer_marked', ({ postId, answeredCommentId }) => {
+            const postIndex = posts.findIndex(p => p.id === postId);
+            if (postIndex !== -1) {
+                posts[postIndex].answeredComment = answeredCommentId;
+                if (!document.getElementById('single-post-container').classList.contains('hidden')) {
+                    renderSinglePost(postId);
+                }
+            }
+        });
+
+        socket.on('post:answer_unmarked', ({ postId }) => {
+            const postIndex = posts.findIndex(p => p.id === postId);
+            if (postIndex !== -1) {
+                posts[postIndex].answeredComment = null;
+                if (!document.getElementById('single-post-container').classList.contains('hidden')) {
+                    renderSinglePost(postId);
                 }
             }
         });
@@ -1145,6 +1169,51 @@
                 source.connect(meterNode).connect(audioContext.destination);
             } catch (e) {
                 console.error('Error setting up audio worklet.', e);
+            }
+        }
+
+        async function markCommentAsAnswer(commentId) {
+            try {
+                const response = await fetch(`/api/comments/${commentId}/mark-answer`, {
+                    method: 'POST',
+                });
+                if (response.ok) {
+                    showNotification('Comment marked as answer.', 'success');
+                    const data = await response.json();
+                    const post = posts.find(p => p.comments.some(c => findComment(p.comments, commentId)));
+                    if (post) {
+                        post.answeredComment = data.answeredComment;
+                        renderSinglePost(post.id);
+                    }
+                } else {
+                    const errorData = await response.json();
+                    showNotification(`Error: ${errorData.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error marking comment as answer:', error);
+                showNotification('An error occurred while marking the answer.', 'error');
+            }
+        }
+
+        async function unmarkCommentAsAnswer(commentId, postId) {
+            try {
+                const response = await fetch(`/api/comments/${commentId}/unmark-answer`, {
+                    method: 'POST',
+                });
+                if (response.ok) {
+                    showNotification('Answer un-marked.', 'success');
+                    const post = posts.find(p => p.id === postId);
+                    if (post) {
+                        post.answeredComment = null;
+                        renderSinglePost(post.id);
+                    }
+                } else {
+                    const errorData = await response.json();
+                    showNotification(`Error: ${errorData.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error unmarking comment as answer:', error);
+                showNotification('An error occurred while un-marking the answer.', 'error');
             }
         }
 
@@ -2235,7 +2304,7 @@
         }
 
         // Renders a tree of comments and their replies.
-        function renderCommentTree(comments, parentElement, postId, depth) {
+        function renderCommentTree(comments, parentElement, postId, depth, answeredCommentId) {
             comments.forEach(comment => {
                 const commentWrapper = document.createElement('div');
                 commentWrapper.id = `comment-wrapper-${comment.id}`;
@@ -2243,6 +2312,10 @@
 
                 const commentDiv = document.createElement('div');
                 commentDiv.className = 'flex items-start space-x-3 bg-gray-50 p-3 rounded-lg shadow-sm'; 
+
+                if (comment.id === answeredCommentId) {
+                    commentDiv.classList.add('answered-comment');
+                }
 
                 const commentBody = document.createElement('div');
                 commentBody.className = 'flex-1';
@@ -2432,6 +2505,31 @@
                     dropdownMenu.appendChild(createVoiceChannelButton);
                 }
 
+                const post = posts.find(p => p.id === postId);
+                if (post && post.postType === 'question' && currentUser && currentUser.id === post.author.id) {
+                    if (post.answeredComment && post.answeredComment === comment.id) {
+                        const unmarkButton = document.createElement('button');
+                        unmarkButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
+                        unmarkButton.innerHTML = `<svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Unmark as Answer`;
+                        unmarkButton.onclick = (e) => {
+                            e.stopPropagation();
+                            unmarkCommentAsAnswer(comment.id, postId);
+                            closeAllCommentActionMenus();
+                        };
+                        dropdownMenu.appendChild(unmarkButton);
+                    } else {
+                        const markButton = document.createElement('button');
+                        markButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
+                        markButton.innerHTML = `<svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Mark as Answer`;
+                        markButton.onclick = (e) => {
+                            e.stopPropagation();
+                            markCommentAsAnswer(comment.id);
+                            closeAllCommentActionMenus();
+                        };
+                        dropdownMenu.appendChild(markButton);
+                    }
+                }
+
                 if (dropdownMenu.hasChildNodes()) {
                     commentActions.appendChild(dropdownMenu);
                     commentHeader.appendChild(commentActions);
@@ -2447,7 +2545,7 @@
                 commentWrapper.appendChild(commentDiv);
 
                 if (comment.replies && comment.replies.length > 0) {
-                    renderCommentTree(comment.replies, commentWrapper, postId, depth + 1);
+                    renderCommentTree(comment.replies, commentWrapper, postId, depth + 1, answeredCommentId);
                 }
                 
                 parentElement.appendChild(commentWrapper);
@@ -4949,7 +5047,17 @@
             
             const commentsContainer = document.createElement('div');
             commentsContainer.className = 'space-y-3';
-            renderCommentTree(post.comments, commentsContainer, post.id, 0);
+
+            let commentsToRender = [...post.comments];
+            if (post.answeredComment) {
+                const answeredCommentIndex = commentsToRender.findIndex(c => c.id === post.answeredComment);
+                if (answeredCommentIndex > -1) {
+                    const [answeredComment] = commentsToRender.splice(answeredCommentIndex, 1);
+                    commentsToRender.unshift(answeredComment);
+                }
+            }
+
+            renderCommentTree(commentsToRender, commentsContainer, post.id, 0, post.answeredComment);
             
             commentsSection.appendChild(commentsContainer);
             

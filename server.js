@@ -1522,7 +1522,8 @@ async function populatePostDetails(post, currentUserId) {
         isLiked: currentUserId ? post.likes.includes(currentUserId) : false,
         createdAt: post.createdAt.toISOString(),
         comments: topLevelComments,
-        usersWhoVoted: post.postType === 'poll' ? post.usersWhoVoted : undefined
+        usersWhoVoted: post.postType === 'poll' ? post.usersWhoVoted : undefined,
+        answeredComment: post.answeredComment
     };
 }
 
@@ -2128,6 +2129,82 @@ app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error liking/unliking comment:', error);
     res.status(500).json({ error: 'Failed to update comment like status.' });
+  }
+});
+
+// Mark a comment as the answer to a question post
+app.post('/api/comments/:commentId/mark-answer', isAuthenticated, async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user._id;
+
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found.' });
+    }
+
+    const post = await Post.findById(comment.post);
+    if (!post) {
+      return res.status(404).json({ error: 'Associated post not found.' });
+    }
+
+    if (post.postType !== 'question') {
+      return res.status(400).json({ error: 'This feature is only available for question posts.' });
+    }
+
+    if (post.author.toString() !== userId.toString()) {
+      return res.status(403).json({ error: 'You are not authorized to mark an answer for this post.' });
+    }
+
+    post.answeredComment = commentId;
+    await post.save();
+
+    const io = req.app.get('socketio');
+    io.to(`post-${post._id}`).emit('post:answer_marked', { postId: post._id, answeredCommentId: commentId });
+
+    res.json({ success: true, answeredComment: commentId });
+
+  } catch (error) {
+    console.error('Error marking comment as answer:', error);
+    res.status(500).json({ error: 'Failed to mark comment as answer.' });
+  }
+});
+
+// Unmark a comment as the answer
+app.post('/api/comments/:commentId/unmark-answer', isAuthenticated, async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const userId = req.user._id;
+
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found.' });
+    }
+
+    const post = await Post.findById(comment.post);
+    if (!post) {
+      return res.status(404).json({ error: 'Associated post not found.' });
+    }
+
+    if (post.author.toString() !== userId.toString()) {
+      return res.status(403).json({ error: 'You are not authorized to unmark an answer for this post.' });
+    }
+
+    if (post.answeredComment && post.answeredComment.toString() === commentId) {
+        post.answeredComment = null;
+        await post.save();
+    } else {
+        return res.status(400).json({ error: 'This comment is not the marked answer.' });
+    }
+    
+    const io = req.app.get('socketio');
+    io.to(`post-${post._id}`).emit('post:answer_unmarked', { postId: post._id });
+
+    res.json({ success: true, answeredComment: null });
+
+  } catch (error) {
+    console.error('Error unmarking comment as answer:', error);
+    res.status(500).json({ error: 'Failed to unmark comment as answer.' });
   }
 });
 
