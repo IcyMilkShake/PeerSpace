@@ -1475,7 +1475,12 @@
 
             } catch (error) {
                 console.error('Error accessing microphone:', error);
-                showNotification('Microphone access was denied. Please enable it in your browser settings to use voice chat.', 'error');
+                showNotification(
+                    'Microphone access denied. Click to try again.',
+                    'error',
+                    10000,
+                    () => _requestMicAndProceed(channelId)
+                );
                 return;
             }
         }
