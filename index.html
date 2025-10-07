@@ -1462,7 +1462,7 @@
             try {
                 const audioConstraints = { audio: true, video: false };
                 if (currentUser.audioSettings && currentUser.audioSettings.inputDevice) {
-                    audioConstraints.audio = { deviceId: { exact: currentUser.audioSettings.inputDevice } };
+                    audioConstraints.audio = { deviceId: { ideal: currentUser.audioSettings.inputDevice } };
                 }
                 localStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
             } catch (error) {
