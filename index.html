@@ -1436,7 +1436,21 @@
         }
 
         // --- Voice Channel Functions ---
-
+        async function requestMicrophonePermission() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // Permission granted! Stop the stream immediately since we just wanted permission
+                stream.getTracks().forEach(track => track.stop());
+                
+                // Now populate the device list
+                await getAudioDevices();
+                
+                alert('Microphone access granted!');
+            } catch (err) {
+                console.error('Microphone permission denied:', err);
+                alert('Microphone access denied. Please enable it in your browser settings.');
+            }
+        }
         async function joinVoiceChannel(channelId) {
             if (!currentUser) {
                 return showNotification('You must be logged in to join a voice channel.', 'warning');
@@ -1446,6 +1460,7 @@
             }
 
             try {
+                requestMicrophonePermission()
                 const audioConstraints = { audio: true, video: false };
                 if (currentUser.audioSettings && currentUser.audioSettings.inputDevice) {
                     audioConstraints.audio = { deviceId: { exact: currentUser.audioSettings.inputDevice } };
