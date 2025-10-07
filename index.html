@@ -87,10 +87,6 @@
              border-color: var(--accent-color);
              box-shadow: 0 0 0 2px var(--accent-color-subtle);
         }
-        #mic-permission-modal {
-            background-color: var(--modal-content-bg);
-            color: var(--text-primary);
-        }
         #name-vc-modal {
             background-color: var(--modal-content-bg);
             color: var(--text-primary);
@@ -228,25 +224,6 @@
                 </button>
                 <button id="confirmation-modal-confirm-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
                     Confirm
-                </button>
-            </div>
-        </div>
-    </div>
-    <div id="mic-permission-modal-overlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[90] p-4">
-        <div id="mic-permission-modal" class="rounded-lg shadow-xl p-6 max-w-sm w-full">
-            <div class="text-center">
-                <i class="fas fa-microphone-slash text-red-500 text-4xl mb-4"></i>
-                <h3 class="text-lg font-semibold mb-2">Microphone Access Denied</h3>
-                <p class="text-sm mb-4">
-                    To use voice chat, you need to grant microphone access in your browser's settings. Please enable it and try again.
-                </p>
-            </div>
-            <div class="flex justify-center space-x-4">
-                <button id="mic-permission-modal-close-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors">
-                    Got it
-                </button>
-                <button id="mic-permission-retry-btn" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
-                    Try Again
                 </button>
             </div>
         </div>
@@ -1469,7 +1446,19 @@
                 return showNotification('You are already in a voice channel.', 'warning');
             }
             _lastAttemptedChannelId = channelId;
-            await _requestMicAndProceed(channelId);
+
+            showConfirmationDialog(
+                "Enable microphone?",
+                () => { // onConfirm
+                    _requestMicAndProceed(channelId);
+                },
+                () => { // onCancel
+                    showNotification('Microphone access is required to join a voice channel.', 'info');
+                },
+                "Microphone Access",
+                "Enable",
+                "Nay"
+            );
         }
 
         async function _requestMicAndProceed(channelId) {
@@ -1482,19 +1471,11 @@
                 }
                 localStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
                 
-                const micPermissionModal = document.getElementById('mic-permission-modal-overlay');
-                if (micPermissionModal) {
-                    micPermissionModal.classList.add('hidden');
-                }
-                
                 await _setupAudioAndConnect(channelId);
 
             } catch (error) {
                 console.error('Error accessing microphone:', error);
-                const micPermissionModal = document.getElementById('mic-permission-modal-overlay');
-                if (micPermissionModal) {
-                    micPermissionModal.classList.remove('hidden');
-                }
+                showNotification('Microphone access was denied. Please enable it in your browser settings to use voice chat.', 'error');
                 return;
             }
         }
@@ -3823,23 +3804,6 @@
 
         // Initializes the page when the DOM is fully loaded.
         document.addEventListener('DOMContentLoaded', async () => {
-            const micPermissionModalOverlay = document.getElementById('mic-permission-modal-overlay');
-            const micPermissionModalCloseBtn = document.getElementById('mic-permission-modal-close-btn');
-            const micPermissionRetryBtn = document.getElementById('mic-permission-retry-btn');
-
-            if (micPermissionModalCloseBtn) {
-                micPermissionModalCloseBtn.addEventListener('click', () => {
-                    if (micPermissionModalOverlay) {
-                        micPermissionModalOverlay.classList.add('hidden');
-                    }
-                });
-            }
-
-            if (micPermissionRetryBtn) {
-                micPermissionRetryBtn.addEventListener('click', () => {
-                    _requestMicAndProceed(_lastAttemptedChannelId);
-                });
-            }
             console.log("DOM fully loaded. Current URL:", window.location.href);
 
             await checkAuth();
