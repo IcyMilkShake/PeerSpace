@@ -1460,7 +1460,6 @@
             }
 
             try {
-                await requestMicrophonePermission()
                 const audioConstraints = { audio: true, video: false };
                 if (currentUser.audioSettings && currentUser.audioSettings.inputDevice) {
                     audioConstraints.audio = { deviceId: { exact: currentUser.audioSettings.inputDevice } };
@@ -1468,7 +1467,8 @@
                 localStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
             } catch (error) {
                 console.error('Error accessing microphone:', error);
-                return showNotification('Could not access microphone. Please grant permission.', 'error');
+                return showNotification(error);
+                //return showNotification('Could not access microphone. Please grant permission.', 'error');
             }
 
             await createAudioMeter(localStream, (volume) => {
