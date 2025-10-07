@@ -2233,7 +2233,9 @@ app.post('/api/comments/:commentId/voice-channel', isAuthenticated, async (req, 
         if (comment.author.toString() !== userId.toString()) {
             return res.status(403).json({ error: 'You are not authorized to create a voice channel on this comment.' });
         }
+
         if (comment.voiceChannel) {
+            console.log("didnt work")
             return res.status(409).json({ error: 'This comment already has a voice channel.' });
         }
 
@@ -2245,7 +2247,7 @@ app.post('/api/comments/:commentId/voice-channel', isAuthenticated, async (req, 
             participants: []
         });
         await voiceChannel.save();
-
+        console.log("saved?")
         comment.voiceChannel = voiceChannel._id;
         await comment.save();
 
@@ -2340,10 +2342,12 @@ app.delete('/api/voice-channel/:channelId', isAuthenticated, async (req, res) =>
     await VoiceChannel.findByIdAndDelete(channelId);
 
     const io = req.app.get('socketio');
-    if (voiceChannel.post) {
+    if (voiceChannel.post && !voiceChannel.comment) {
+      console.log("JaE")
         await Post.findByIdAndUpdate(voiceChannel.post, { $unset: { voiceChannel: "" } });
         io.emit('voice-channel-deleted', { channelId: channelId, postId: voiceChannel.post });
     } else if (voiceChannel.comment) {
+        console.log("JEE")
         await Comment.findByIdAndUpdate(voiceChannel.comment, { $unset: { voiceChannel: "" } });
         io.emit('voice-channel-deleted', { channelId: channelId, commentId: voiceChannel.comment });
     }
