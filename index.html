@@ -1460,7 +1460,7 @@
             }
 
             try {
-                requestMicrophonePermission()
+                await requestMicrophonePermission()
                 const audioConstraints = { audio: true, video: false };
                 if (currentUser.audioSettings && currentUser.audioSettings.inputDevice) {
                     audioConstraints.audio = { deviceId: { exact: currentUser.audioSettings.inputDevice } };
