@@ -1060,13 +1060,13 @@
             let updatedPostId = null;
 
             // 1. Update local state
-            if (postId) {
+            if (postId && !commentId) {
                 const postIndex = posts.findIndex(p => p.id === postId || p._id === postId);
                 if (postIndex !== -1) {
                     posts[postIndex].voiceChannel = null;
                     updatedPostId = posts[postIndex].id || posts[postIndex]._id;
                 }
-            } else if (commentId) {
+            } else if (postId && commentId) {
                 for (const post of posts) {
                     const comment = findComment(post.comments, commentId);
                     if (comment) {
@@ -1090,6 +1090,7 @@
                 if (vcElement) {
                     const container = vcElement.closest('.voice-channel-container');
                     if (container) container.remove();
+                    renderSinglePost(updatedPostId);
                 }
 
                 // Make the 'Create VC' button visible again.

@@ -2351,11 +2351,11 @@ app.delete('/api/voice-channel/:channelId', isAuthenticated, async (req, res) =>
     if (voiceChannel.post && !voiceChannel.comment) {
       console.log("JaE")
         await Post.findByIdAndUpdate(voiceChannel.post, { $unset: { voiceChannel: "" } });
-        io.emit('voice-channel-deleted', { channelId: channelId, postId: voiceChannel.post });
+        io.emit('voice-channel-deleted', { channelId: channelId, postId: voiceChannel.post, commentId: voiceChannel.comment});
     } else if (voiceChannel.comment) {
         console.log("JEE")
         await Comment.findByIdAndUpdate(voiceChannel.comment, { $unset: { voiceChannel: "" } });
-        io.emit('voice-channel-deleted', { channelId: channelId, commentId: voiceChannel.comment });
+        io.emit('voice-channel-deleted', { channelId: channelId, postId:voiceChannel.post, commentId: voiceChannel.comment });
     }
     
     console.log(`User ${userId} deleted voice channel ${channelId}`);
@@ -2506,13 +2506,13 @@ function scheduleVoiceChannelDeletion(channelId, io) {
         
         // Emit a notification count update to the creator
         await emitNotificationCountUpdate(creatorId, io);
-
-        if (postId) {
+        console.log(postId,commentId)
+        if (postId && !commentId) {
           await Post.findByIdAndUpdate(postId, { $unset: { voiceChannel: "" } });
-          io.emit('voice-channel-deleted', { channelId: channelId, postId: postId });
-        } else if (commentId) {
+          io.emit('voice-channel-deleted', { channelId: channelId, postId: postId, commentId: commentId });
+        } else if (postId && commentId) {
           await Comment.findByIdAndUpdate(commentId, { $unset: { voiceChannel: "" } });
-          io.emit('voice-channel-deleted', { channelId: channelId, commentId: commentId });
+          io.emit('voice-channel-deleted', { channelId: channelId, postId: postId, commentId: commentId });
         }
         console.log(`Deleted empty voice channel ${channelId}`);
       } else {
