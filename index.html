@@ -391,6 +391,9 @@
             <p class="text-gray-500">Be the first to start a discussion!</p>
         </div>
     </main>
+    <div id="notification-bin" class="fixed top-1/2 -translate-y-1/2 right-24 w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center text-white text-4xl shadow-lg cursor-pointer hover:bg-red-600 transition-colors duration-300 hidden" style="z-index: 100;">
+        <i class="fas fa-trash-alt"></i>
+    </div>
     <div id="inbox-container-main" class="main-view hidden max-w-3xl mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold mb-6">Inbox</h1>
         <div id="inbox-container" class="space-y-4">
@@ -403,12 +406,6 @@
         </div>
         <div id="inbox-error" class="hidden text-center py-12">
             <p>Could not load notifications. Please try again later.</p>
-        </div>
-        <div class="relative mt-8 h-24">
-             <div class="absolute inset-x-0 -top-8 h-16" style="background: linear-gradient(to top, var(--bg-secondary), transparent); z-index: 10;"></div>
-            <div id="notification-bin" class="relative mx-auto w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center text-white text-4xl shadow-lg cursor-pointer hover:bg-red-600 transition-colors duration-300 hidden" style="z-index: 20;">
-                <i class="fas fa-trash-alt"></i>
-            </div>
         </div>
     </div>
     <div id="friends-container-main" class="main-view hidden max-w-3xl mx-auto px-4 py-8">
@@ -5393,6 +5390,7 @@ async function renderInbox() {
             const videos = document.querySelectorAll('.post-video');
             videos.forEach(video => videoObserver.observe(video));
         }
+
 
         // Handles the intersection of videos with the viewport.
         function handleVideoIntersection(entries, observer) {

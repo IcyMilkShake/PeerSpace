@@ -2523,7 +2523,7 @@ function scheduleVoiceChannelDeletion(channelId, io) {
     } finally {
       delete channelTimeouts[channelId.toString()];
     }
-  }, 180000); // 3 minutes
+  }, 18); // 3 minutes
 
   channelTimeouts[channelId.toString()] = timeoutId;
 }
