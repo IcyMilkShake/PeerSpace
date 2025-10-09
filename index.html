@@ -174,6 +174,12 @@
                 right: 16px;
             }
         }
+        .crop-modal-content {
+            background-color: var(--modal-content-bg);
+        }
+        .crop-image-container {
+            max-height: 70vh;
+        }
         .answered-comment {
             border: 2px solid #4ade80; /* A nice green color */
             box-shadow: 0 0 8px #4ade80;
@@ -537,6 +543,31 @@
         <img id="lightbox-image" class="max-w-full max-h-full">
         <button id="lightbox-prev" class="absolute left-4 text-white text-3xl">&#10094;</button>
         <button id="lightbox-next" class="absolute right-4 text-white text-3xl">&#10095;</button>
+    </div>
+    <div id="crop-modal" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[60] p-4">
+        <div class="crop-modal-content max-w-4xl w-full max-h-[95vh] overflow-hidden">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="crop-modal-title" class="text-lg font-semibold">Crop Image</h3>
+                    <button id="crop-cancel" class="text-gray-500 hover:text-gray-700">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="crop-image-container mb-4">
+                    <img id="crop-image" />
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button id="crop-cancel-btn" class="px-4 py-2 hover:text-gray-800 transition-colors">
+                        Cancel
+                    </button>
+                    <button id="crop-save" class="px-6 py-2 rounded-lg font-medium transition-colors">
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
     <script>
         history.scrollRestoration = 'manual';
@@ -3794,6 +3825,19 @@
 
         function renderCreateCommunityPage() {
             showView('create-community-container');
+            // Reset blobs when opening the form
+            croppedPfpBlob = null;
+            croppedBannerBlob = null;
+
+            // Add event listeners for the new crop functionality
+            const communityPfpInput = document.getElementById('community-profile-picture');
+            const communityBannerInput = document.getElementById('community-banner-picture');
+            
+            communityPfpInput.removeEventListener('change', handleCommunityPfpSelect); // Prevent duplicate listeners
+            communityPfpInput.addEventListener('change', handleCommunityPfpSelect);
+
+            communityBannerInput.removeEventListener('change', handleCommunityBannerSelect); // Prevent duplicate listeners
+            communityBannerInput.addEventListener('change', handleCommunityBannerSelect);
         }
 
         // Initializes the page when the DOM is fully loaded.
@@ -3826,12 +3870,66 @@
             if (createCommunityBtn) {
                 createCommunityBtn.addEventListener('click', () => {
                     if (currentUser) {
+                        
+                        const bannerPreview = document.getElementById('community-banner-preview');
+                        bannerPreview.src = null;
+                        bannerPreview.classList.add('hidden');
+                        const bannerLabel = document.getElementById('community-banner-upload-label')
+                        bannerLabel.classList.remove('hidden')
+
+                        const pfpPreview = document.getElementById('community-pfp-preview');
+                        pfpPreview.src = null;
+                        pfpPreview.classList.add('hidden');
+                        const pfpLabel = document.getElementById('community-pfp-upload-label')
+                        pfpLabel.classList.remove('hidden')
+                        
+                        createCommunityForm.reset();
+                        delete createCommunityForm.dataset.editMode;
+                        delete createCommunityForm.dataset.communityId;
+                        document.getElementById('community-form-title').textContent = 'Create a New Community';
+                        document.getElementById('create-community-submit-btn').textContent = 'Ship It!';
                         renderCreateCommunityPage();
                     } else {
                         showNotification('You must be logged in to create a community.', 'warning');
                     }
                 });
             }
+
+            document.getElementById('crop-save').addEventListener('click', async () => {
+                let currentCropper = currentCropType === 'banner' ? bannerCropper : cropper;
+                if (!currentCropper) {
+                    showNotification('Cropper not initialized.', 'error');
+                    return;
+                }
+
+                const canvas = currentCropper.getCroppedCanvas({
+                    width: currentCropType === 'banner' ? 1500 : 300,
+                    height: currentCropType === 'banner' ? 500 : 300,
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high',
+                });
+
+                canvas.toBlob((blob) => {
+                    if (currentCropType === 'pfp') {
+                        croppedPfpBlob = blob;
+                        const pfpPreview = document.getElementById('community-pfp-preview');
+                        pfpPreview.src = URL.createObjectURL(blob);
+                        pfpPreview.classList.remove('hidden');
+                        document.getElementById('community-pfp-upload-label').classList.add('hidden');
+                    } else if (currentCropType === 'banner') {
+                        croppedBannerBlob = blob;
+                        const bannerPreview = document.getElementById('community-banner-preview');
+                        bannerPreview.src = URL.createObjectURL(blob);
+                        bannerPreview.classList.remove('hidden');
+                        document.getElementById('community-banner-upload-label').classList.add('hidden');
+                    }
+                    closeCropModal();
+                    showNotification('Image cropped and ready for upload.', 'success');
+                }, 'image/png', 0.9);
+            });
+
+            document.getElementById('crop-cancel').addEventListener('click', closeCropModal);
+            document.getElementById('crop-cancel-btn').addEventListener('click', closeCropModal);
 
             const createCommunityForm = document.getElementById('create-community-form');
             if (createCommunityForm) {
@@ -3840,6 +3938,14 @@
                     const formData = new FormData(createCommunityForm);
                     const isEditMode = createCommunityForm.dataset.editMode === 'true';
                     const communityId = createCommunityForm.dataset.communityId;
+
+                    // Append cropped images if they exist
+                    if (croppedPfpBlob) {
+                        formData.append('profilePicture', croppedPfpBlob, 'pfp.png');
+                    }
+                    if (croppedBannerBlob) {
+                        formData.append('bannerPicture', croppedBannerBlob, 'banner.png');
+                    }
 
                     const url = isEditMode ? `/api/communities/${communityId}` : '/api/communities';
                     const method = isEditMode ? 'PUT' : 'POST';
@@ -3875,47 +3981,15 @@
             const createCommunityCancelBtn = document.getElementById('create-community-cancel-btn');
             if(createCommunityCancelBtn) {
                 createCommunityCancelBtn.addEventListener('click', () => {
+                    createCommunityForm.reset();
+                    delete createCommunityForm.dataset.editMode;
+                    delete createCommunityForm.dataset.communityId;
+                    document.getElementById('community-form-title').textContent = 'Create a New Community';
+                    document.getElementById('create-community-submit-btn').textContent = 'Ship It!';
                     renderCommunitiesPage(); // Go back to the communities list
                 });
             }
 
-            const communityBannerInput = document.getElementById('community-banner-picture');
-            const communityBannerPreview = document.getElementById('community-banner-preview');
-            const communityBannerUploadLabel = document.getElementById('community-banner-upload-label');
-
-            if(communityBannerInput) {
-                communityBannerInput.addEventListener('change', function(event) {
-                    const file = event.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            communityBannerPreview.src = e.target.result;
-                            communityBannerPreview.classList.remove('hidden');
-                            communityBannerUploadLabel.classList.add('hidden'); 
-                        }
-                        reader.readAsDataURL(file);
-                    }
-                });
-            }
-
-            const communityPfpInput = document.getElementById('community-profile-picture');
-            const communityPfpPreview = document.getElementById('community-pfp-preview');
-            const communityPfpUploadLabel = document.getElementById('community-pfp-upload-label');
-
-            if(communityPfpInput) {
-                communityPfpInput.addEventListener('change', function(event) {
-                    const file = event.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            communityPfpPreview.src = e.target.result;
-                            communityPfpPreview.classList.remove('hidden');
-                            communityPfpUploadLabel.classList.add('hidden');
-                        }
-                        reader.readAsDataURL(file);
-                    }
-                });
-            }
             
             createPostFormParent = document.getElementById('create-post-form').parentElement;
 
@@ -5339,6 +5413,130 @@ async function renderInbox() {
 
         let currentImageIndex = 0;
         let currentImageList = [];
+        let cropper = null;
+        let bannerCropper = null;
+        let croppedPfpBlob = null;
+        let croppedBannerBlob = null;
+        let currentCropType = null; // 'pfp' or 'banner'
+
+
+        function initializeCropper(imageElement) {
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            cropper = new Cropper(imageElement, {
+                aspectRatio: 1,
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 0.8,
+                restore: false,
+                guides: true,
+                center: true,
+                highlight: false,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                toggleDragModeOnDblclick: false,
+                responsive: true,
+                checkOrientation: false,
+                modal: true,
+                background: true,
+                minContainerWidth: 200,
+                minContainerHeight: 200,
+            });
+        }
+
+        function initializeBannerCropper(imageElement) {
+            if (bannerCropper) {
+                bannerCropper.destroy();
+                bannerCropper = null;
+            }
+            bannerCropper = new Cropper(imageElement, {
+                aspectRatio: 3 / 1,
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 1,
+                restore: false,
+                guides: true,
+                center: true,
+                highlight: false,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                toggleDragModeOnDblclick: false,
+                responsive: true,
+                checkOrientation: false,
+                modal: true,
+                background: true,
+                minContainerWidth: 300,
+                minContainerHeight: 100,
+            });
+        }
+
+        function handleCommunityPfpSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            event.target.value = ''; // Reset file input
+
+            if (!file.type.startsWith('image/')) {
+                showNotification('Please select an image file.', 'warning');
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                showNotification('Image too large (max 5MB).', 'warning');
+                return;
+            }
+
+            currentCropType = 'pfp';
+            openCropModalWithImage(file, initializeCropper, 'Crop Profile Picture');
+        }
+
+        function handleCommunityBannerSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            event.target.value = ''; // Reset file input
+
+            if (!file.type.startsWith('image/')) {
+                showNotification('Please select an image file.', 'warning');
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                showNotification('Image too large (max 5MB).', 'warning');
+                return;
+            }
+            
+            currentCropType = 'banner';
+            openCropModalWithImage(file, initializeBannerCropper, 'Crop Banner Image');
+        }
+
+        function openCropModalWithImage(file, cropperInitializer, modalTitle) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const cropImage = document.getElementById('crop-image');
+                cropImage.src = e.target.result;
+                document.getElementById('crop-modal-title').textContent = modalTitle;
+                document.getElementById('crop-modal').classList.remove('hidden');
+                
+                // Ensure the cropper is initialized after the image has loaded into the element
+                cropImage.onload = () => {
+                    setTimeout(() => cropperInitializer(cropImage), 100);
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function closeCropModal() {
+            document.getElementById('crop-modal').classList.add('hidden');
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            if (bannerCropper) {
+                bannerCropper.destroy();
+                bannerCropper = null;
+            }
+            currentCropType = null;
+        }
+
 
         // Opens the lightbox with a list of images.
         function openLightbox(images, index) {
