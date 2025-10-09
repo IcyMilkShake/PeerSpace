@@ -15,6 +15,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="navigation.css">
     <style>
+        ::-webkit-scrollbar {width: 6px; height: 4px; background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background-color: var(--text-secondary); -webkit-border-radius: 1ex; }
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
         .modal-overlay {
             background-color: var(--modal-overlay-bg);
             backdrop-filter: blur(4px);
@@ -4199,7 +4205,7 @@
                     communities.forEach(community => {
                         const pfp = createProfileImage(community.profilePicture ? community.profilePicture.path : null, community.name, 'w-12 h-12', 'text-lg');
                         communitiesHtml += `
-                            <a href="/?community=${community._id}" class="community-link flex items-center justify-between p-4 rounded-lg shadow-md cursor-pointer" data-community-id="${community._id}">
+                            <a href="/?community=${community._id}" class="community-link flex items-center justify-between p-4 rounded-lg shadow-md cursor-pointer" data-community-id="${community._id}" style="background-color: var(--post-card-bg)">
                                 <div class="flex items-center" style="pointer-events: none;">
                                     <div class="mr-4">${pfp.outerHTML}</div>
                                     <div>
@@ -5281,6 +5287,7 @@ async function renderInbox() {
 
                     Draggable.create(notificationEl, {
                         type: "x,y",
+                        bounds: "body",
                         onPress: function() {
                             gsap.to(this.target, { scale: 1.05, duration: 0.2, rotation: 'random(-3, 3)' });
                         },

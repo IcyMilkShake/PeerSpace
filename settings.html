@@ -8,6 +8,12 @@
     <script src="theme-loader.js"></script>
     <link rel="stylesheet" href="themes.css">
     <style>
+        ::-webkit-scrollbar {width: 6px; height: 4px; background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background-color: var(--text-secondary); -webkit-border-radius: 1ex; }
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
         main > h1.text-3xl {
             color: var(--text-primary);
         }
