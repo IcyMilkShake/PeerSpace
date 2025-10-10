@@ -3882,7 +3882,7 @@
                         pfpPreview.classList.add('hidden');
                         const pfpLabel = document.getElementById('community-pfp-upload-label')
                         pfpLabel.classList.remove('hidden')
-                        
+
                         createCommunityForm.reset();
                         delete createCommunityForm.dataset.editMode;
                         delete createCommunityForm.dataset.communityId;
@@ -4403,10 +4403,19 @@
                 const isMember = currentUser && community.members.some(member => member._id === currentUser.id);
                 const isOwner = currentUser && community.owner._id === currentUser.id;
 
+                const menuButton = document.createElement('button');
+                menuButton.className = 'post-menu-button text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
+                menuButton.innerHTML = `<svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
+                menuButton.onclick = (e) => {
+                    e.stopPropagation();
+                    togglePostActionMenu(post.id);
+                };
+                header.appendChild(menuButton);
+
                 let joinLeaveButton = '';
                 if (currentUser) {
                     if (isOwner) {
-                        joinLeaveButton = `<button onclick="renderEditCommunityPage('${communityId}')" class="button-secondary"><i class="fas fa-edit sm:hidden"></i><span class="hidden sm:inline">Edit Community</span></button><button onclick="deleteCommunity('${communityId}')" class="button-danger ml-2"><i class="fas fa-trash-alt sm:hidden"></i><span class="hidden sm:inline">Delete Community</span></button>`;
+                        joinLeaveButton = `<button onclick="renderEditCommunityPage('${communityId}')" class="button-secondary"><i class="fas fa-edit sm:hidden"></i><span class="hidden sm:inline text-sm">Edit Community</span></button><button onclick="deleteCommunity('${communityId}')" class="button-danger ml-2 w-25 text-sm"><i class="fas fa-trash-alt sm:hidden"></i><span class="hidden sm:inline">Delete Community</span></button>`;
                     } else if (isMember) {
                         joinLeaveButton = `<button onclick="leaveCommunity('${communityId}')" class="button-danger">Leave Community</button>`;
                     } else {
@@ -4427,6 +4436,20 @@
                                 <p class="text-sm" style="color: var(--text-secondary);">${community.members.length} members</p>
                             </div>
                         </div>
+
+                        <div class="ml-auto relative">
+                            <button onclick="togglePostActionMenu(post.id);e.stopPropagation();" class="post-menu-button text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors">
+                            <svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg></button><div id="post-action-menu-68c3ae351a4feb8db8eb4bb3" class="hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-20 post-action-menu"><button class="block w-full text-left px-4 py-2 text-sm profile-menu-item profile-menu-item-danger">
+                                <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            Delete Post
+                                </button>
+                                <button class="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 create-vc-button">
+                                <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 14.5a3.5 3.5 0 10-7 0v-1.586a1 1 0 01.293-.707l4.414-4.414a1 1 0 01.707-.293H15.5V14.5zM12 18a4 4 0 100-8 4 4 0 000 8z"></path></svg>
+                                            Create Voice Channel
+                                </button>
+                                </div>
+                        </div>
+
                         <div class="actions mt-4 sm:mt-0">
                             ${joinLeaveButton}
                         </div>
