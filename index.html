@@ -2826,6 +2826,9 @@
                             }
                         }
                         renderSinglePost(postId);
+                        if (post.postType === 'question') {
+                            showEmailVerificationModal();
+                        }
                     }
 
                     showNotification("Comment added successfully.", "success");
@@ -3638,6 +3641,20 @@
             e.target.value = null;
         });
 
+        // --- Email Verification Modal Logic ---
+        function showEmailVerificationModal() {
+            const modal = document.getElementById('email-verification-modal-overlay');
+            if (modal && currentUser && !currentUser.emailVerified && !currentUser.hideCredibilityNotification) {
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function hideEmailVerificationModal() {
+            const modal = document.getElementById('email-verification-modal-overlay');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
         // Handles the selection of files for attachment.
         function handleFiles(files) {
             for (const file of files) {
@@ -3828,6 +3845,42 @@
 
         // Initializes the page when the DOM is fully loaded.
         document.addEventListener('DOMContentLoaded', async () => {
+            const emailVerificationSendBtn = document.getElementById('email-verification-send-btn');
+            const emailVerificationCancelBtn = document.getElementById('email-verification-cancel-btn');
+            const emailVerificationDontShowAgainBtn = document.getElementById('email-verification-dont-show-again-btn');
+
+            if (emailVerificationSendBtn) {
+                emailVerificationSendBtn.addEventListener('click', async () => {
+                    try {
+                        const response = await fetch('/api/user/send-verification-email', { method: 'POST' });
+                        if (response.ok) {
+                            showNotification('Verification email sent! Please check your inbox.', 'success');
+                        } else {
+                            const errorData = await response.json();
+                            showNotification(`Error: ${errorData.error}`, 'error');
+                        }
+                    } catch (error) {
+                        showNotification('An error occurred. Please try again.', 'error');
+                    }
+                    hideEmailVerificationModal();
+                });
+            }
+
+            if (emailVerificationCancelBtn) {
+                emailVerificationCancelBtn.addEventListener('click', hideEmailVerificationModal);
+            }
+
+            if (emailVerificationDontShowAgainBtn) {
+                emailVerificationDontShowAgainBtn.addEventListener('click', async () => {
+                    try {
+                        await fetch('/api/user/hide-credibility-notification', { method: 'POST' });
+                        if(currentUser) currentUser.hideCredibilityNotification = true;
+                    } catch (error) {
+                        console.error('Failed to update "don\'t show again" preference.');
+                    }
+                    hideEmailVerificationModal();
+                });
+            }
             console.log("DOM fully loaded. Current URL:", window.location.href);
 
             await checkAuth();
@@ -5636,6 +5689,23 @@ async function renderInbox() {
 
             }, 500);
         }, 3000);
+    </script>
+    <div id="email-verification-modal-overlay" class="hidden fixed inset-0 modal-overlay flex items-center justify-center z-[90] p-4">
+        <div id="email-verification-modal" class="rounded-lg shadow-xl p-6 max-w-sm w-full">
+                <h3 class="text-lg font-semibold mb-4">Verify Your Email to Earn Credibility</h3>
+                <p class="text-sm mb-6">You need to verify your email to be eligible for credibility points for answering questions. A verification link will be sent to your email.</p>
+            <div class="flex justify-end space-x-3">
+                    <button id="email-verification-cancel-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition-colors">Close</button>
+                    <button id="email-verification-send-btn" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">Send Verification Email</button>
+            </div>
+             <div class="mt-4 text-center">
+                <button id="email-verification-dont-show-again-btn" class="text-xs text-gray-500 hover:underline">Don't show this again</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // This script block is intentionally left here.
+        // The main script logic has been consolidated above.
     </script>
 </body>
 </html>

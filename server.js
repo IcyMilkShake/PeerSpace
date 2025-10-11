@@ -15,6 +15,8 @@ const AWS = require('aws-sdk');
 const ffmpeg = require('fluent-ffmpeg');
 const axios = require('axios');
 const cheerio = require('cheerio');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const { User, Post, Comment, Notification, FriendRequest, VoiceChannel, Community } = require('./schema');
@@ -42,13 +44,23 @@ AWS.config.update({
 
 const s3 = new AWS.S3();
 const BUCKET_NAME = 'peerspace-database';
+
+// Nodemailer transport for AWS SES
+const transporter = nodemailer.createTransport({
+  SES: new AWS.SES({
+    apiVersion: '2010-12-01',
+    region: process.env.AWS_REGION // Credentials will be picked up from environment variables
+  })
+});
 const channelTimeouts = {};
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/PeerSpace', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+if (process.env.VERIFICATION !== 'true') {
+  mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/PeerSpace', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+}
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
@@ -142,16 +154,19 @@ const sessionConfig = {
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/PeerSpace',
-    touchAfter: 24 * 3600,
-    ttl: 24 * 60 * 60
-  }),
   cookie: {
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000,
   },
 };
+
+if (process.env.VERIFICATION !== 'true') {
+  sessionConfig.store = MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/PeerSpace',
+    touchAfter: 24 * 3600,
+    ttl: 24 * 60 * 60
+  });
+}
 
 if (!development) {
   sessionConfig.cookie.secure = false;
@@ -227,63 +242,65 @@ const CALLBACK_URL = development
   : 'https://peerspace.ipo-servers.net/auth/google/callback';
 
 // Sets up the Google OAuth 2.0 strategy for Passport.
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    let user = await User.findOne({ googleId: profile.id });
-    const profilePictureUrl = profile.photos && profile.photos[0] ? profile.photos[0].value : null;
-    
-    if (user) {
-      user.lastLogin = new Date();
-      if (!user.displayName) {
-        user.displayName = profile.displayName;
-      }
-      const hasCustomProfilePic = user.profilePicture.path && !user.profilePicture.path.includes('googleusercontent.com');
+if (process.env.VERIFICATION !== 'true') {
+  passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: CALLBACK_URL
+  }, async (accessToken, refreshToken, profile, done) => {
+    try {
+      let user = await User.findOne({ googleId: profile.id });
+      const profilePictureUrl = profile.photos && profile.photos[0] ? profile.photos[0].value : null;
       
-      if (!hasCustomProfilePic && profilePictureUrl) {
-        try {
-          const filename = `google_${uuidv4()}`;
-          const s3Url = await downloadProfilePicture(profilePictureUrl, filename);
-          user.profilePicture = { path: s3Url, contentType: 'image/png' };
-        } catch (error) {
-          console.error('Error downloading profile picture:', error);
+      if (user) {
+        user.lastLogin = new Date();
+        if (!user.displayName) {
+          user.displayName = profile.displayName;
         }
-      }
-      await user.save();
-      return done(null, user);
-    } else {
-      let profilePicturePath = null;
-      if (profilePictureUrl) {
-        try {
-          const filename = `google_${uuidv4()}`;
-          profilePicturePath = await downloadProfilePicture(profilePictureUrl, filename);
-        } catch (error) {
-          console.error('Error downloading profile picture for new user:', error);
+        const hasCustomProfilePic = user.profilePicture.path && !user.profilePicture.path.includes('googleusercontent.com');
+        
+        if (!hasCustomProfilePic && profilePictureUrl) {
+          try {
+            const filename = `google_${uuidv4()}`;
+            const s3Url = await downloadProfilePicture(profilePictureUrl, filename);
+            user.profilePicture = { path: s3Url, contentType: 'image/png' };
+          } catch (error) {
+            console.error('Error downloading profile picture:', error);
+          }
         }
-      }
+        await user.save();
+        return done(null, user);
+      } else {
+        let profilePicturePath = null;
+        if (profilePictureUrl) {
+          try {
+            const filename = `google_${uuidv4()}`;
+            profilePicturePath = await downloadProfilePicture(profilePictureUrl, filename);
+          } catch (error) {
+            console.error('Error downloading profile picture for new user:', error);
+          }
+        }
 
-      const email = profile.emails && profile.emails[0] ? profile.emails[0].value : '';
-      const username = await generateUniqueUsername(email);
-      
-      const newUser = new User({
-        googleId: profile.id,
-        username: username,
-        displayName: profile.displayName,
-        email: email,
-        profilePicture: { path: profilePicturePath, contentType: 'image/png' }
-      });
-      
-      await newUser.save();
-      return done(null, newUser);
+        const email = profile.emails && profile.emails[0] ? profile.emails[0].value : '';
+        const username = await generateUniqueUsername(email);
+        
+        const newUser = new User({
+          googleId: profile.id,
+          username: username,
+          displayName: profile.displayName,
+          email: email,
+          profilePicture: { path: profilePicturePath, contentType: 'image/png' }
+        });
+        
+        await newUser.save();
+        return done(null, newUser);
+      }
+    } catch (error) {
+      console.error('Error in Google Strategy:', error);
+      return done(error, null);
     }
-  } catch (error) {
-    console.error('Error in Google Strategy:', error);
-    return done(error, null);
-  }
-}));
+  }));
+}
 
 // Saves user's ID to the session.
 passport.serializeUser((user, done) => {
@@ -495,7 +512,7 @@ app.post('/auth/logout', (req, res) => {
 // Gets the data for the currently logged-in user.
 app.get('/api/user', (req, res) => {
   if (req.isAuthenticated() && req.user) {
-    const { _id, username, displayName, email, profilePicture, bannerPicture, description, createdAt, theme, audioSettings } = req.user;
+    const { _id, username, displayName, email, profilePicture, bannerPicture, description, createdAt, theme, audioSettings, credibility, emailVerified, hideCredibilityNotification } = req.user;
     return res.json({
       id: _id,
       username,
@@ -506,7 +523,10 @@ app.get('/api/user', (req, res) => {
       description: description || '',
       createdAt: createdAt,
       theme: theme,
-      audioSettings: audioSettings
+      audioSettings: audioSettings,
+      credibility,
+      emailVerified,
+      hideCredibilityNotification
     });
   } else {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -835,6 +855,83 @@ app.put('/api/user/displayName', isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error('Error updating user display name:', error);
     res.status(500).json({ error: 'Failed to update display name' });
+  }
+});
+
+// Send verification email
+app.post('/api/user/send-verification-email', isAuthenticated, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (user.emailVerified) {
+      return res.status(400).json({ error: 'Email is already verified' });
+    }
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    user.emailVerificationToken = verificationToken;
+    user.emailVerificationExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
+
+    const verificationUrl = `${req.protocol}://${req.get('host')}/api/user/verify-email/${verificationToken}`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM, // replace with your "from" email address
+      to: user.email,
+      subject: 'Verify Your Email for Our Forum',
+      html: `<p>Please click this link to verify your email address: <a href="${verificationUrl}">${verificationUrl}</a></p>`,
+      text: `Please copy and paste this URL into your browser to verify your email: ${verificationUrl}`
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.json({ success: true, message: 'Verification email sent.' });
+
+  } catch (error) {
+    console.error('Error sending verification email:', error);
+    res.status(500).json({ error: 'Failed to send verification email.' });
+  }
+});
+
+// Verify email
+app.get('/api/user/verify-email/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const user = await User.findOne({
+      emailVerificationToken: token,
+      emailVerificationExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).send('<h1>Invalid or expired verification link.</h1><p>Please request a new verification email.</p>');
+    }
+
+    user.emailVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save();
+
+    res.send('<h1>Email successfully verified!</h1><p>You can now close this tab and return to the forum.</p>');
+
+  } catch (error) {
+    console.error('Error verifying email:', error);
+    res.status(500).send('<h1>Error</h1><p>An error occurred during email verification. Please try again later.</p>');
+  }
+});
+
+// Hide credibility notification
+app.post('/api/user/hide-credibility-notification', isAuthenticated, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    user.hideCredibilityNotification = true;
+    await user.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error hiding credibility notification:', error);
+    res.status(500).json({ error: 'Failed to update user settings.' });
   }
 });
 
@@ -2104,13 +2201,52 @@ app.post('/api/posts/:postId/voice-channel', isAuthenticated, async (req, res) =
   }
 });
 
+// Helper function to award credibility points
+async function awardCredibility(user, points, comment = null) {
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    if (user.createdAt > threeDaysAgo || !user.emailVerified) {
+        return; // Conditions not met
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const lastUpdated = new Date(user.dailyCredibility.lastUpdated);
+    lastUpdated.setHours(0, 0, 0, 0);
+
+    if (lastUpdated < today) {
+        user.dailyCredibility.value = 0;
+    }
+
+    if (user.dailyCredibility.value >= 50) {
+        return; // Daily limit reached
+    }
+
+    const potentialGain = points;
+    const gain = Math.min(potentialGain, 50 - user.dailyCredibility.value);
+
+    if (gain > 0) {
+        user.credibility += gain;
+        user.dailyCredibility.value += gain;
+        user.dailyCredibility.lastUpdated = new Date();
+        
+        if (comment && points === 1) { // Only for the 1-point like award
+            comment.credibilityAwardedForLikes = true;
+            await comment.save();
+        }
+        await user.save();
+    }
+}
+
 // Likes or unlikes a comment.
 app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
   try {
     const { commentId } = req.params;
     const userId = req.user._id;
 
-    const comment = await Comment.findById(commentId);
+    const comment = await Comment.findById(commentId).populate('author');
     if (!comment) {
       return res.status(404).json({ error: 'Comment not found.' });
     }
@@ -2121,8 +2257,13 @@ app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
     } else {
       comment.likes.push(userId);
     }
-
+    
     await comment.save();
+
+    // Credibility logic for likes
+    if (comment.likes.length >= 10 && !comment.credibilityAwardedForLikes) {
+        await awardCredibility(comment.author, 1, comment);
+    }
 
     const io = req.app.get('socketio');
     io.emit('comment:like', { commentId: comment._id, postId: comment.post, likesCount: comment.likes.length });
@@ -2144,7 +2285,7 @@ app.post('/api/comments/:commentId/mark-answer', isAuthenticated, async (req, re
     const { commentId } = req.params;
     const userId = req.user._id;
 
-    const comment = await Comment.findById(commentId);
+    const comment = await Comment.findById(commentId).populate('author');
     if (!comment) {
       return res.status(404).json({ error: 'Comment not found.' });
     }
@@ -2161,9 +2302,17 @@ app.post('/api/comments/:commentId/mark-answer', isAuthenticated, async (req, re
     if (post.author.toString() !== userId.toString()) {
       return res.status(403).json({ error: 'You are not authorized to mark an answer for this post.' });
     }
+    
+    if (post.answeredComment && post.answeredComment.equals(commentId)) {
+        // If the same comment is marked again, do nothing.
+        return res.json({ success: true, answeredComment: commentId });
+    }
 
     post.answeredComment = commentId;
     await post.save();
+    
+    // Award credibility to the author of the answer
+    await awardCredibility(comment.author, 10);
 
     const io = req.app.get('socketio');
     io.to(`post-${post._id}`).emit('post:answer_marked', { postId: post._id, answeredCommentId: commentId });

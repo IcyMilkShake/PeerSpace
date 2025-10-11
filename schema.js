@@ -75,6 +75,24 @@ const userSchema = new mongoose.Schema({
     inputDevice: { type: String, default: 'default' },
     outputDevice: { type: String, default: 'default' },
     micVolume: { type: Number, default: 100 }
+  },
+  credibility: {
+    type: Number,
+    default: 0
+  },
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: String,
+  emailVerificationExpires: Date,
+  dailyCredibility: {
+    value: { type: Number, default: 0 },
+    lastUpdated: { type: Date, default: Date.now }
+  },
+  hideCredibilityNotification: {
+    type: Boolean,
+    default: false
   }
 }, { collection: 'User' });
 
@@ -202,7 +220,11 @@ const commentSchema = new mongoose.Schema({
     reasonType: { type: String, required: true },
     reasonDetails: { type: String },
     reportedAt: { type: Date, default: Date.now }
-  }]
+  }],
+  credibilityAwardedForLikes: {
+    type: Boolean,
+    default: false
+  }
 });
 
 // Community Schema

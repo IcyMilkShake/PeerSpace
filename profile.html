@@ -225,6 +225,7 @@
                 </div>
 
                 <p id="profile-joined-date" class="text-sm mt-1"></p>
+                <p id="profile-credibility" class="text-sm mt-1"></p>
                 <p id="profile-country" class="text-sm mt-1"></p>
 
                 <div id="edit-display-name-form" class="hidden mt-4">
@@ -1765,6 +1766,7 @@
             document.getElementById('profile-display-name').textContent = escapeHtml(profile.displayName);
             document.getElementById('profile-username').textContent = `@${escapeHtml(profile.username)}`;
             document.getElementById('profile-joined-date').textContent = `Joined on ${formatDate(profile.createdAt)}`;
+            document.getElementById('profile-credibility').textContent = `Credibility: ${profile.credibility || 0}`;
             if (profile.displayCountry && profile.country) {
                 document.getElementById('profile-country').textContent = `From ${profile.country}`;
             } else {
@@ -2886,7 +2888,8 @@
                     if (post) {
                         const commentCountSpan = document.querySelector(`#post-${postId} .comment-count`);
                         if (commentCountSpan) {
-                            commentCountSpan.textContent = `${post.comments.length} Comments`;
+                            const totalComments = countAllComments(post.comments);
+                            commentCountSpan.textContent = `${totalComments} Comments`;
                         }
                     }
                 } else {
