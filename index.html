@@ -2939,7 +2939,8 @@
         }
 
         function toggleActionMenu(type, id) {
-            const isSinglePostView = !document.getElementById('single-post-container').classList.contains('hidden');
+            const singlePostContainer = document.getElementById('single-post-container');
+            const isSinglePostView = singlePostContainer.style.display === 'block';
             let menuId;
 
             if (type === 'post' && isSinglePostView) {

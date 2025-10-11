@@ -119,6 +119,21 @@
              border-color: var(--accent-color);
              box-shadow: 0 0 0 2px var(--accent-color-subtle);
         }
+        .back-to-posts-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            z-index: 10;
+        }
+
+        /* Overlap zone: move to center to avoid profile button */
+        @media (max-width: 1225px) and (min-width: 641px) {
+            .back-to-posts-btn {
+                left: 50%;
+                right: auto;
+                transform: translateX(-50%);
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen"> 
@@ -128,18 +143,20 @@
     <nav class="shadow-md border-b">
         <div class="max-w-4xl mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
-                <a href="/" class="flex items-center space-x-2">
-                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <span class="text-white font-bold text-lg">F</span>
+                <div class="hidden sm:flex items-center space-x-2 flex-shrink-0">
+                    <div class="w-6 h-6 sm:w-8 sm:h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-base sm:text-lg">F</span>
                     </div>
-                    <h1 class="text-2xl font-bold">Forum</h1>
-                </a>
+                    <h1 class="text-xl sm:text-2xl font-bold">Forum</h1>
+                </div>
                 <div id="auth-section-profile">
                 </div>
             </div>
         </div>
     </nav>
-
+<button class="back-to-posts-btn text-blue-600 hover:underline" onclick="window.location.href='/'">
+    &larr; Back to main
+</button>
     <div id="user-profile-dropdown-profile" class="hidden fixed top-16 right-4 rounded-lg shadow-lg p-2 border z-50 w-60" style="border-color: var(--border-color);">
         <div class="flex items-center space-x-3 p-2 mb-2 border-b" style="border-bottom-color: var(--border-color);">
             <div id="modal-profile-img-container-profile">
