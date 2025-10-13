@@ -93,6 +93,10 @@ const userSchema = new mongoose.Schema({
   hideCredibilityNotification: {
     type: Boolean,
     default: false
+  },
+  lastMarkedAnswer: {
+    type: Date,
+    default: null
   }
 }, { collection: 'User' });
 

@@ -2251,6 +2251,21 @@ app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
     const { commentId } = req.params;
     const userId = req.user._id;
 
+    const user = await User.findById(userId); // Get the user who is marking the answer.
+    if (!user) {
+        return res.status(404).json({ error: 'User not found.' });
+    }
+
+    // Cooldown check: 1 hour
+    if (user.lastMarkedAnswer) {
+        const oneHour = 60 * 60 * 1000;
+        const timeSinceLastMark = new Date() - new Date(user.lastMarkedAnswer);
+        if (timeSinceLastMark < oneHour) {
+            const timeLeftMinutes = Math.ceil((oneHour - timeSinceLastMark) / (1000 * 60));
+            return res.status(429).json({ error: `You must wait ${timeLeftMinutes} more minutes before marking another answer.` });
+        }
+    }
+
     const comment = await Comment.findById(commentId).populate('author');
     if (!comment) {
       return res.status(404).json({ error: 'Comment not found.' });
@@ -2314,10 +2329,15 @@ app.post('/api/comments/:commentId/mark-answer', isAuthenticated, async (req, re
     }
 
     post.answeredComment = commentId;
-    await post.save();
+    user.lastMarkedAnswer = new Date(); // Update the timestamp
     
-    // Award credibility to the author of the answer
-    await awardCredibility(comment.author, 10);
+    await post.save();
+    await user.save();
+    
+    // Award credibility to the author of the answer, only if they are not the post author
+    if (comment.author._id.toString() !== post.author.toString()) {
+      await awardCredibility(comment.author, 10);
+    }
 
     const io = req.app.get('socketio');
     io.to(`post-${post._id}`).emit('post:answer_marked', { postId: post._id, answeredCommentId: commentId });
