@@ -49,7 +49,7 @@ const BUCKET_NAME = 'peerspace-database';
 const transporter = nodemailer.createTransport({
   SES: new AWS.SES({
     apiVersion: '2010-12-01',
-    region: process.env.AWS_REGION // Credentials will be picked up from environment variables
+    region:  'ap-southeast-1'// Credentials will be picked up from environment variables
   })
 });
 const channelTimeouts = {};
@@ -564,7 +564,7 @@ app.get('/api/users/search', async (req, res) => {
 // Gets the public profile information for a user.
 app.get('/api/users/:userId', async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId).select('username displayName profilePicture bannerPicture description createdAt');
+    const user = await User.findById(req.params.userId).select('username displayName profilePicture bannerPicture description createdAt credibility');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -575,7 +575,8 @@ app.get('/api/users/:userId', async (req, res) => {
       photo: user.profilePicture.path || '/default-profile.png',
       banner: user.bannerPicture.path || null,
       description: user.description || '',
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
+      credibility: user.credibility || '0'
     });
   } catch (error) {
     console.error('Error fetching user profile:', error);
@@ -589,7 +590,7 @@ app.get('/api/users/:userId', async (req, res) => {
 // Gets a user's profile by their username.
 app.get('/api/users/by-username/:username', async (req, res) => {
     try {
-        const user = await User.findOne({ username: req.params.username.toLowerCase() }).select('username displayName profilePicture bannerPicture description createdAt');
+        const user = await User.findOne({ username: req.params.username.toLowerCase() }).select('username displayName profilePicture bannerPicture description createdAt credibility');
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
@@ -600,7 +601,8 @@ app.get('/api/users/by-username/:username', async (req, res) => {
             photo: user.profilePicture.path || '/default-profile.png',
             banner: user.bannerPicture.path || null,
             description: user.description || '',
-            createdAt: user.createdAt
+            createdAt: user.createdAt,
+            credibility: user.credibility || '0'
         });
     } catch (error) {
         console.error('Error fetching user by username:', error);
@@ -877,7 +879,7 @@ app.post('/api/user/send-verification-email', isAuthenticated, async (req, res) 
     const verificationUrl = `${req.protocol}://${req.get('host')}/api/user/verify-email/${verificationToken}`;
 
     const mailOptions = {
-      from: process.env.EMAIL_FROM, // replace with your "from" email address
+      from: "Peerspace <noreply@ipo-servers.net>", // replace with your "from" email address
       to: user.email,
       subject: 'Verify Your Email for Our Forum',
       html: `<p>Please click this link to verify your email address: <a href="${verificationUrl}">${verificationUrl}</a></p>`,
@@ -2207,7 +2209,8 @@ async function awardCredibility(user, points, comment = null) {
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
     if (user.createdAt > threeDaysAgo || !user.emailVerified) {
-        return; // Conditions not met
+      console.log("gaig")  
+      return; // Conditions not met
     }
 
     const today = new Date();
@@ -2228,6 +2231,7 @@ async function awardCredibility(user, points, comment = null) {
     const gain = Math.min(potentialGain, 50 - user.dailyCredibility.value);
 
     if (gain > 0) {
+        console.log("gaining")
         user.credibility += gain;
         user.dailyCredibility.value += gain;
         user.dailyCredibility.lastUpdated = new Date();
@@ -2235,6 +2239,7 @@ async function awardCredibility(user, points, comment = null) {
         if (comment && points === 1) { // Only for the 1-point like award
             comment.credibilityAwardedForLikes = true;
             await comment.save();
+            console.log("gainings")
         }
         await user.save();
     }
@@ -2261,8 +2266,9 @@ app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
     await comment.save();
 
     // Credibility logic for likes
-    if (comment.likes.length >= 10 && !comment.credibilityAwardedForLikes) {
+    if (comment.likes.length >= 1 && !comment.credibilityAwardedForLikes) {
         await awardCredibility(comment.author, 1, comment);
+        console.log("AWARD")
     }
 
     const io = req.app.get('socketio');
