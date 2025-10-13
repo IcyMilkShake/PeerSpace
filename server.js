@@ -564,7 +564,7 @@ app.get('/api/users/search', async (req, res) => {
 // Gets the public profile information for a user.
 app.get('/api/users/:userId', async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId).select('username displayName profilePicture bannerPicture description createdAt credibility');
+    const user = await User.findById(req.params.userId).select('username displayName profilePicture bannerPicture description createdAt credibililike');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -2266,9 +2266,8 @@ app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
     await comment.save();
 
     // Credibility logic for likes
-    if (comment.likes.length >= 1 && !comment.credibilityAwardedForLikes) {
+    if (comment.likes.length >= 10 && !comment.credibilityAwardedForLikes) {
         await awardCredibility(comment.author, 1, comment);
-        console.log("AWARD")
     }
 
     const io = req.app.get('socketio');
