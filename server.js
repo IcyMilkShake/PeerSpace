@@ -564,7 +564,7 @@ app.get('/api/users/search', async (req, res) => {
 // Gets the public profile information for a user.
 app.get('/api/users/:userId', async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId).select('username displayName profilePicture bannerPicture description createdAt credibililike');
+    const user = await User.findById(req.params.userId).select('username displayName profilePicture bannerPicture description createdAt credibility');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -2327,7 +2327,7 @@ app.post('/api/comments/:commentId/mark-answer', isAuthenticated, async (req, re
         // If the same comment is marked again, do nothing.
         return res.json({ success: true, answeredComment: commentId });
     }
-
+    const user = await User.findById(post.author)
     post.answeredComment = commentId;
     user.lastMarkedAnswer = new Date(); // Update the timestamp
     
