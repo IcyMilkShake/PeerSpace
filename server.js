@@ -564,7 +564,7 @@ app.get('/api/users/search', async (req, res) => {
 // Gets the public profile information for a user.
 app.get('/api/users/:userId', async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId).select('username displayName profilePicture bannerPicture description createdAt credibility');
+    const user = await User.findById(req.params.userId).select('username displayName profilePicture bannerPicture description createdAt credibililike');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -2245,52 +2245,53 @@ async function awardCredibility(user, points, comment = null) {
     }
 }
 
+// Helper function to revoke credibility points
+async function revokeCredibility(user, points, comment = null) {
+    user.credibility = Math.max(0, user.credibility - points);
+
+    if (comment && points === 1) {
+        comment.credibilityAwardedForLikes = false;
+        await comment.save();
+    }
+    await user.save();
+}
+
 // Likes or unlikes a comment.
 app.post('/api/comments/:commentId/like', isAuthenticated, async (req, res) => {
   try {
     const { commentId } = req.params;
     const userId = req.user._id;
 
-    const user = await User.findById(userId); // Get the user who is marking the answer.
-    if (!user) {
-        return res.status(404).json({ error: 'User not found.' });
-    }
-
-    // Cooldown check: 1 hour
-    if (user.lastMarkedAnswer) {
-        const oneHour = 60 * 60 * 1000;
-        const timeSinceLastMark = new Date() - new Date(user.lastMarkedAnswer);
-        if (timeSinceLastMark < oneHour) {
-            const timeLeftMinutes = Math.ceil((oneHour - timeSinceLastMark) / (1000 * 60));
-            return res.status(429).json({ error: `You must wait ${timeLeftMinutes} more minutes before marking another answer.` });
-        }
-    }
-
     const comment = await Comment.findById(commentId).populate('author');
     if (!comment) {
       return res.status(404).json({ error: 'Comment not found.' });
     }
 
-    const likedIndex = comment.likes.indexOf(userId);
-    if (likedIndex > -1) {
-      comment.likes.splice(likedIndex, 1);
+    const wasLiked = comment.likes.includes(userId);
+    const originalLikeCount = comment.likes.length;
+
+    if (wasLiked) {
+      comment.likes.pull(userId);
     } else {
       comment.likes.push(userId);
     }
     
     await comment.save();
+    const newLikeCount = comment.likes.length;
 
     // Credibility logic for likes
-    if (comment.likes.length >= 10 && !comment.credibilityAwardedForLikes) {
+    if (newLikeCount >= 10 && !comment.credibilityAwardedForLikes) {
         await awardCredibility(comment.author, 1, comment);
+    } else if (originalLikeCount >= 10 && newLikeCount < 10 && comment.credibilityAwardedForLikes) {
+        await revokeCredibility(comment.author, 1, comment);
     }
 
     const io = req.app.get('socketio');
-    io.emit('comment:like', { commentId: comment._id, postId: comment.post, likesCount: comment.likes.length });
+    io.emit('comment:like', { commentId: comment._id, postId: comment.post, likesCount: newLikeCount });
     
     res.json({
-      likesCount: comment.likes.length,
-      isLiked: comment.likes.includes(userId)
+      likesCount: newLikeCount,
+      isLiked: !wasLiked
     });
 
   } catch (error) {
@@ -2310,7 +2311,7 @@ app.post('/api/comments/:commentId/mark-answer', isAuthenticated, async (req, re
       return res.status(404).json({ error: 'Comment not found.' });
     }
 
-    const post = await Post.findById(comment.post);
+    const post = await Post.findById(comment.post).populate('author');
     if (!post) {
       return res.status(404).json({ error: 'Associated post not found.' });
     }
@@ -2319,23 +2320,35 @@ app.post('/api/comments/:commentId/mark-answer', isAuthenticated, async (req, re
       return res.status(400).json({ error: 'This feature is only available for question posts.' });
     }
 
-    if (post.author.toString() !== userId.toString()) {
+    if (post.author._id.toString() !== userId.toString()) {
       return res.status(403).json({ error: 'You are not authorized to mark an answer for this post.' });
     }
     
+    const markingUser = post.author;
+
+    // Cooldown check: 10 minutes
+    if (markingUser.lastMarkedAnswer) {
+        const tenMinutes = 10 * 60 * 1000;
+        const timeSinceLastMark = new Date() - new Date(markingUser.lastMarkedAnswer);
+        if (timeSinceLastMark < tenMinutes) {
+            const timeLeftMinutes = Math.ceil((tenMinutes - timeSinceLastMark) / (1000 * 60));
+            return res.status(429).json({ error: `You must wait ${timeLeftMinutes} more minutes before marking another answer.` });
+        }
+    }
+
     if (post.answeredComment && post.answeredComment.equals(commentId)) {
         // If the same comment is marked again, do nothing.
         return res.json({ success: true, answeredComment: commentId });
     }
-    const user = await User.findById(post.author)
+
     post.answeredComment = commentId;
-    user.lastMarkedAnswer = new Date(); // Update the timestamp
+    markingUser.lastMarkedAnswer = new Date(); // Update the timestamp
     
     await post.save();
-    await user.save();
+    await markingUser.save();
     
     // Award credibility to the author of the answer, only if they are not the post author
-    if (comment.author._id.toString() !== post.author.toString()) {
+    if (comment.author._id.toString() !== post.author._id.toString()) {
       await awardCredibility(comment.author, 10);
     }
 
@@ -2356,7 +2369,7 @@ app.post('/api/comments/:commentId/unmark-answer', isAuthenticated, async (req, 
     const { commentId } = req.params;
     const userId = req.user._id;
 
-    const comment = await Comment.findById(commentId);
+    const comment = await Comment.findById(commentId).populate('author');
     if (!comment) {
       return res.status(404).json({ error: 'Comment not found.' });
     }
@@ -2373,6 +2386,8 @@ app.post('/api/comments/:commentId/unmark-answer', isAuthenticated, async (req, 
     if (post.answeredComment && post.answeredComment.toString() === commentId) {
         post.answeredComment = null;
         await post.save();
+        // Revoke credibility from the author of the answer
+        await revokeCredibility(comment.author, 10);
     } else {
         return res.status(400).json({ error: 'This comment is not the marked answer.' });
     }
