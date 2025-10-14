@@ -5375,7 +5375,13 @@ async function renderInbox() {
                 }
 
                 notifications.forEach(notification => {
+                    const existingEl = document.getElementById(`notification-${notification._id}`);
+                    if (existingEl) {
+                        return;
+                    }
+
                     const notificationEl = document.createElement('div');
+                    notificationEl.id = `notification-${notification._id}`;
                     notificationEl.className = 'notification-item p-4 border rounded-lg cursor-pointer';
                     if (!notification.read) {
                         notificationEl.classList.add('font-bold');
@@ -5414,7 +5420,19 @@ async function renderInbox() {
                             gsap.to(this.target, { scale: 1.05, duration: 0.2, rotation: 'random(-3, 3)' });
                         },
                         onRelease: function() {
-                            if (this.hitTest("#notification-bin", "50%")) {
+                            const bin = document.getElementById('notification-bin');
+                            const binBounds = bin.getBoundingClientRect();
+                            const pointerX = this.pointerX;
+                            const pointerY = this.pointerY;
+
+                            const isOverBin = (
+                                pointerX >= binBounds.left &&
+                                pointerX <= binBounds.right &&
+                                pointerY >= binBounds.top &&
+                                pointerY <= binBounds.bottom
+                            );
+
+                            if (isOverBin) {
                                 gsap.to(this.target, { 
                                     duration: 0.5,
                                     scale: 0, 
@@ -5427,7 +5445,6 @@ async function renderInbox() {
                                             .then(response => {
                                                 if (!response.ok) {
                                                     console.error('Failed to delete notification');
-                                                    // Optional: Re-add the element or show an error
                                                 }
                                             });
                                     }
