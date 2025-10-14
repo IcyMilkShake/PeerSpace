@@ -2119,17 +2119,18 @@
                 const firstVideoIndex = post.attachments.findIndex(a => a.fileType === 'video');
 
                 const attachmentsContainer = document.createElement('div');
+                attachmentsContainer.className = 'flex flex-col space-y-4';
 
                 const createImageSlideshow = () => {
                     if (imageAttachments.length > 0) {
                         const imageSlideshowContainer = document.createElement('div');
-                        imageSlideshowContainer.className = 'mt-4 mb-4 relative';
+                        imageSlideshowContainer.className = 'relative';
                         if (imageAttachments.length > 1) {
-                            imageSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4 slideshow-scrollbar';
+                            imageSlideshowContainer.className += ' flex overflow-x-auto space-x-2';
                         }
                         imageAttachments.forEach((attachment, index) => {
                             const attachmentWrapper = document.createElement('div');
-                            attachmentWrapper.className = imageAttachments.length > 1 ? 'w-1/2 flex-shrink-0' : 'w-full';
+                            attachmentWrapper.className = imageAttachments.length > 1 ? 'w-full md:w-1/2 h-96 flex-shrink-0' : 'w-full';
                             const img = document.createElement('img');
                             img.src = attachment.url;
                             img.className = 'w-full h-full object-cover rounded cursor-pointer';
@@ -2141,6 +2142,12 @@
                             attachmentWrapper.appendChild(img);
                             imageSlideshowContainer.appendChild(attachmentWrapper);
                         });
+                        imageSlideshowContainer.addEventListener('wheel', (e) => {
+                            if (imageAttachments.length > 1) {
+                                e.preventDefault();
+                                imageSlideshowContainer.scrollLeft += e.deltaY;
+                            }
+                        });
                         attachmentsContainer.appendChild(imageSlideshowContainer);
                     }
                 };
@@ -2148,19 +2155,19 @@
                 const createVideoSlideshow = () => {
                     if (videoAttachments.length > 0) {
                         const videoSlideshowContainer = document.createElement('div');
-                        videoSlideshowContainer.className = 'mt-4 mb-4 relative';
+                        videoSlideshowContainer.className = 'relative';
                         if (videoAttachments.length > 1) {
-                            videoSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4 slideshow-scrollbar';
+                            videoSlideshowContainer.className += ' flex overflow-x-auto space-x-2';
                         }
                         videoAttachments.forEach(attachment => {
                             const attachmentWrapper = document.createElement('div');
-                            attachmentWrapper.className = videoAttachments.length > 1 ? 'w-1/2 flex-shrink-0' : 'w-full';
+                            attachmentWrapper.className = videoAttachments.length > 1 ? 'w-full md:w-1/2 h-96 flex-shrink-0' : 'w-full';
                             const videoWrapper = document.createElement('div');
-                            videoWrapper.style.width = '100%';
+                            videoWrapper.className = 'w-full h-full';
                             videoWrapper.style.overflow = 'hidden';
                             videoWrapper.onclick = (e) => e.stopPropagation();
                             const video = document.createElement('video');
-                            video.className = 'w-full h-auto object-cover rounded post-video';
+                            video.className = 'w-full h-full object-cover rounded post-video';
                             video.controls = true;
                             video.setAttribute('playsinline', '');
                             video.setAttribute('loop', '');
@@ -2173,6 +2180,12 @@
                             videoWrapper.appendChild(video);
                             attachmentWrapper.appendChild(videoWrapper);
                             videoSlideshowContainer.appendChild(attachmentWrapper);
+                        });
+                        videoSlideshowContainer.addEventListener('wheel', (e) => {
+                            if (videoAttachments.length > 1) {
+                                e.preventDefault();
+                                videoSlideshowContainer.scrollLeft += e.deltaY;
+                            }
                         });
                         attachmentsContainer.appendChild(videoSlideshowContainer);
                     }
@@ -4842,10 +4855,8 @@
             const container = document.getElementById('single-post-container');
             container.innerHTML = '';
 
-            const article = document.createElement('article');
-            article.id = `post-card-${post.id}`;
-            article.className = 'rounded-lg shadow-md p-6';
-
+            const article = createPostElement(post, `scrollPosition-single`);
+            
             const backButton = document.createElement('button');
             backButton.className = 'back-to-posts-btn text-blue-600 hover:underline mb-4';
 
@@ -4878,264 +4889,8 @@
                 };
             }
             container.appendChild(backButton);
-
-            const postHeader = document.createElement('div');
-            postHeader.className = 'flex items-center space-x-3 mb-4';
-
-            const authorProfileLink = document.createElement('a');
-            authorProfileLink.href = `/profile.html?id=${post.author.id}`;
-            authorProfileLink.className = "flex items-center space-x-3 group flex-grow"; 
-
-            const postProfileImg = createProfileImage(post.author.photo, post.author.displayName, "w-10 h-10");
-            authorProfileLink.appendChild(postProfileImg);
+            container.appendChild(article);
             
-            const postHeaderInfo = document.createElement('div');
-            postHeaderInfo.innerHTML = `
-                <div class="font-medium text-gray-800 group-hover:underline">${escapeHtml(post.author.displayName)}</div>
-                <div class="text-sm text-gray-500">${formatDate(post.createdAt)}</div>
-            `;
-            authorProfileLink.appendChild(postHeaderInfo);
-            postHeader.appendChild(authorProfileLink);
-
-            const postActionsMenu = document.createElement('div');
-            postActionsMenu.className = 'ml-auto relative';
-
-            const menuButton = document.createElement('button');
-            menuButton.className = 'post-menu-button text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
-            menuButton.innerHTML = `<svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
-            menuButton.onclick = (e) => {
-                e.stopPropagation();
-                toggleActionMenu('post', post.id);
-            };
-            postActionsMenu.appendChild(menuButton);
-
-            const dropdownMenu = document.createElement('div');
-            dropdownMenu.id = `post-action-menu-single-${post.id}`;
-            dropdownMenu.className = 'hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-20 post-action-menu';
-
-            if (currentUser && currentUser.id === post.author.id) {
-                const deleteButton = document.createElement('button');
-                deleteButton.className = 'block w-full text-left px-4 py-2 text-sm profile-menu-item profile-menu-item-danger';
-                deleteButton.innerHTML = `
-                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                    Delete Post
-                `;
-                deleteButton.onclick = () => {
-                    confirmDeletePost(post.id);
-                    closeAllActionMenus();
-                };
-                dropdownMenu.appendChild(deleteButton);
-            }
-
-            if (currentUser && currentUser.id !== post.author.id) {
-                const reportButton = document.createElement('button');
-                reportButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
-                reportButton.innerHTML = `
-                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4.25L16.25 3.5a2.121 2.121 0 013 3L6.25 19H3zm9-13l3 3"></path></svg>
-                    Report Post
-                `;
-                reportButton.onclick = () => {
-                    openReportModal(post.id);
-                    closeAllActionMenus();
-                };
-                dropdownMenu.appendChild(reportButton);
-            }
-            
-            if (currentUser && currentUser.id === post.author.id && !post.voiceChannel && !getActiveVoiceChannelInfo()) {
-                const createVoiceChannelButton = document.createElement('button');
-                createVoiceChannelButton.className = 'block w-full text-left px-4 py-2 text-sm hover:bg-gray-100';
-                createVoiceChannelButton.innerHTML = `
-                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.5 14.5a3.5 3.5 0 10-7 0v-1.586a1 1 0 01.293-.707l4.414-4.414a1 1 0 01.707-.293H15.5V14.5zM12 18a4 4 0 100-8 4 4 0 000 8z"></path></svg>
-                    Create Voice Channel
-                `;
-                createVoiceChannelButton.onclick = (e) => {
-                    e.stopPropagation();
-                    createVoiceChannel('post', post.id);
-                    closeAllActionMenus();
-                };
-                dropdownMenu.appendChild(createVoiceChannelButton);
-            }
-            if (dropdownMenu.hasChildNodes()) {
-                postActionsMenu.appendChild(dropdownMenu);
-                postHeader.appendChild(postActionsMenu);
-            }
-            
-            const postTagsContainer = document.createElement('div');
-            postTagsContainer.className = 'mb-2';
-
-            if (post.postType && post.postType !== 'normal') {
-                const typeBadge = document.createElement('span');
-                typeBadge.className = `inline-block rounded-full px-3 py-1 text-xs font-semibold`; 
-                let badgeColor = 'bg-gray-200 text-gray-700';
-                if (post.postType === 'question') badgeColor = 'bg-blue-100 text-blue-700';
-                else if (post.postType === 'guide') badgeColor = 'bg-green-100 text-green-700';
-                else if (post.postType === 'poll') badgeColor = 'bg-purple-100 text-purple-700';
-                typeBadge.classList.add(...badgeColor.split(' '));
-                typeBadge.textContent = post.postType.charAt(0).toUpperCase() + post.postType.slice(1);
-                postTagsContainer.appendChild(typeBadge);
-            }
-
-            const postContentElement = document.createElement('div');
-            const postTitleHtml = `<h2 class="text-xl font-bold mb-3">${escapeHtml(post.title)}</h2>`;
-            postContentElement.innerHTML = postTitleHtml;
-
-            const postTextParagraph = document.createElement('p');
-            postTextParagraph.className = "text-gray-700 mb-4 whitespace-pre-wrap";
-            
-            const seeMoreContainer = document.createElement('div');
-            seeMoreContainer.className = 'see-more-container post-see-more';
-
-            const content = post.content;
-            const fullContent = document.createElement('p');
-            fullContent.className = 'text-gray-700 mb-4 whitespace-pre-wrap';
-            fullContent.innerHTML = escapeHtml(content, true);
-
-            seeMoreContainer.appendChild(fullContent);
-            if (content.length > 500) {
-                const seeMoreBtn = document.createElement('button');
-                seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
-                seeMoreBtn.textContent = 'See More';
-                seeMoreBtn.onclick = () => {
-                    if (seeMoreContainer.classList.contains('expanded')) {
-                        seeMoreContainer.classList.remove('expanded');
-                        seeMoreBtn.textContent = 'See More';
-                    } else {
-                        seeMoreContainer.classList.add('expanded');
-                        seeMoreBtn.textContent = 'See Less';
-                    }
-                };
-                postContentElement.appendChild(seeMoreContainer);
-                postContentElement.appendChild(seeMoreBtn);
-            } else {
-                postTextParagraph.innerHTML = escapeHtml(content, true);
-                postContentElement.appendChild(postTextParagraph);
-            }
-
-            if (post.attachments && post.attachments.length > 0) {
-                const imageAttachments = post.attachments.filter(a => a.fileType === 'image');
-                const videoAttachments = post.attachments.filter(a => a.fileType === 'video');
-
-                const firstImageIndex = post.attachments.findIndex(a => a.fileType === 'image');
-                const firstVideoIndex = post.attachments.findIndex(a => a.fileType === 'video');
-
-                const attachmentsContainer = document.createElement('div');
-
-                const createImageSlideshow = () => {
-                    if (imageAttachments.length > 0) {
-                        const imageSlideshowContainer = document.createElement('div');
-                        imageSlideshowContainer.className = 'mt-4 mb-4 relative';
-                        if (imageAttachments.length > 1) {
-                            imageSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4 slideshow-scrollbar';
-                        }
-                        imageAttachments.forEach((attachment, index) => {
-                            const attachmentWrapper = document.createElement('div');
-                            attachmentWrapper.className = imageAttachments.length > 1 ? 'w-1/2 flex-shrink-0' : 'w-full';
-                            const img = document.createElement('img');
-                            img.src = attachment.url;
-                            img.className = 'w-full h-full object-cover rounded cursor-pointer';
-                            img.onclick = (e) => {
-                                e.stopPropagation();
-                                const imageUrls = imageAttachments.map(a => a.url);
-                                openLightbox(imageUrls, index);
-                            };
-                            attachmentWrapper.appendChild(img);
-                            imageSlideshowContainer.appendChild(attachmentWrapper);
-                        });
-                        attachmentsContainer.appendChild(imageSlideshowContainer);
-                    }
-                };
-
-                const createVideoSlideshow = () => {
-                    if (videoAttachments.length > 0) {
-                        const videoSlideshowContainer = document.createElement('div');
-                        videoSlideshowContainer.className = 'mt-4 mb-4 relative';
-                        if (videoAttachments.length > 1) {
-                            videoSlideshowContainer.className += ' flex overflow-x-auto space-x-2 pr-4 slideshow-scrollbar';
-                        }
-                        videoAttachments.forEach(attachment => {
-                            const attachmentWrapper = document.createElement('div');
-                            attachmentWrapper.className = videoAttachments.length > 1 ? 'w-1/2 flex-shrink-0' : 'w-full';
-                            const videoWrapper = document.createElement('div');
-                            videoWrapper.style.width = '100%';
-                            videoWrapper.style.overflow = 'hidden';
-                            videoWrapper.onclick = (e) => e.stopPropagation();
-                            const video = document.createElement('video');
-                            video.className = 'w-full h-auto object-cover rounded post-video';
-                            video.controls = true;
-                            video.setAttribute('playsinline', '');
-                            video.setAttribute('loop', '');
-                            video.muted = true;
-                            const source = document.createElement('source');
-                            source.src = attachment.url;
-                            source.type = 'video/mp4';
-                            video.appendChild(source);
-                            video.innerHTML += 'Your browser does not support the video tag.';
-                            videoWrapper.appendChild(video);
-                            attachmentWrapper.appendChild(videoWrapper);
-                            videoSlideshowContainer.appendChild(attachmentWrapper);
-                        });
-                        attachmentsContainer.appendChild(videoSlideshowContainer);
-                    }
-                };
-
-                if (firstImageIndex !== -1 && (firstVideoIndex === -1 || firstImageIndex < firstVideoIndex)) {
-                    createImageSlideshow();
-                    createVideoSlideshow();
-                } else {
-                    createVideoSlideshow();
-                    createImageSlideshow();
-                }
-
-                postContentElement.appendChild(attachmentsContainer);
-            }
-
-            if (post.postType === 'poll' && post.pollOptions && post.pollOptions.length > 0) {
-                const pollContainer = document.createElement('div');
-                pollContainer.className = 'mb-4 p-4 border rounded-lg';
-                pollContainer.id = `poll-${post.id}`;
-                pollContainer.onclick = (e) => e.stopPropagation();
-
-                const currentUserVote = post.usersWhoVoted && currentUser ? post.usersWhoVoted.find(vote => vote.userId === currentUser.id) : null;
-                
-                post.pollOptions.forEach((option, index) => {
-                    const optionDiv = document.createElement('div');
-                    optionDiv.className = 'mb-2';
-                    
-                    const totalVotes = post.pollOptions.reduce((sum, opt) => sum + (opt.votes || 0), 0);
-                    const percentage = totalVotes > 0 ? ((option.votes || 0) / totalVotes * 100).toFixed(1) : 0;
-
-                    let buttonClass = "w-full text-left p-2 rounded-md transition-colors flex justify-between items-center text-sm";
-                    let votedIndicator = '';
-                    let isDisabled = !currentUser; 
-
-                    if (currentUserVote && currentUserVote.optionIndex === index) {
-                        buttonClass += ' selected-poll-option';
-                        votedIndicator = '<span class="text-xs font-semibold ml-2">(Your Vote)</span>';
-                    }
-                    
-                    if (currentUser) {
-                         buttonClass += ' themed-hover-bg';
-                    }
-
-
-                    optionDiv.innerHTML = `
-                        <button 
-                            onclick="event.stopPropagation(); voteInPoll('${post.id}', ${index})" 
-                            class="${buttonClass}"
-                            data-option-index="${index}"
-                            ${isDisabled ? 'disabled' : ''} 
-                            ${!currentUser ? 'title="Sign in to vote"' : 'title="Click to vote or change your vote"'} >
-                            <span>${escapeHtml(option.option)} ${votedIndicator}</span>
-                            <span class="text-xs text-gray-500 vote-count">${option.votes || 0} votes (${percentage}%)</span>
-                        </button>
-                        <div class="h-2 rounded-full mt-1 overflow-hidden poll-progress-track">
-                            <div class="h-full transition-all duration-300 poll-progress-fill" style="width: ${percentage}%;"></div>
-                        </div>
-                    `;
-                    pollContainer.appendChild(optionDiv);
-                });
-                postContentElement.appendChild(pollContainer);
-            }
             const commentsSection = document.createElement('div');
             commentsSection.className = 'border-t pt-4';
             
@@ -5203,56 +4958,6 @@
             
             commentsSection.appendChild(commentsContainer);
             
-            article.appendChild(postHeader);
-            if (postTagsContainer.hasChildNodes()) {
-                article.appendChild(postTagsContainer);
-            }
-            article.appendChild(postContentElement);
-            
-            if (post.linkPreview && post.linkPreview.url) {
-                const preview = post.linkPreview;
-                const previewContainer = document.createElement('a');
-                previewContainer.href = preview.url;
-                previewContainer.target = '_blank';
-                previewContainer.rel = 'noopener noreferrer';
-                previewContainer.className = 'flex items-center border rounded-lg overflow-hidden my-4 text-sm';
-                previewContainer.style.textDecoration = 'none';
-
-                let imageHtml = '';
-                if (preview.image) {
-                    imageHtml = `<img src="${escapeHtml(preview.image)}" alt="Preview" class="w-16 h-16 sm:w-24 sm:h-24 object-cover flex-shrink-0">`;
-                }
-
-                previewContainer.innerHTML = `
-                    ${imageHtml}
-                    <div class="p-3 overflow-hidden">
-                    <div class="font-bold mb-1 truncate">${escapeHtml(preview.title || '')}</div>
-                    <div class="text-gray-600 text-xs truncate">${(preview.description || '').substring(0, 100)}</div>
-                    </div>
-                `;
-                article.appendChild(previewContainer);
-            }
-
-            if (post.voiceChannel) {
-                const voiceChannelElement = createVoiceChannelElement(post);
-                if (voiceChannelElement) article.appendChild(voiceChannelElement);
-            }
-
-            const postActionsDiv = document.createElement('div');
-            postActionsDiv.className = 'post-actions flex items-center space-x-4 text-sm text-gray-500 mt-2 mb-4 pb-2'; 
-            
-            const likeButtonPost = document.createElement('button');
-            likeButtonPost.className = `like-button flex items-center space-x-1 ${post.isLiked ? 'like-button-active' : ''}`;
-            likeButtonPost.innerHTML = `
-                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                </svg>
-            <span id="post-like-count-${post.id}">${post.likes || 0} Likes</span>
-            `;
-            likeButtonPost.onclick = () => toggleLike('post', post.id);
-            postActionsDiv.appendChild(likeButtonPost);
-            
-            article.appendChild(postActionsDiv);
             article.appendChild(commentsSection);
             
             container.appendChild(article);
