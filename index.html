@@ -5410,7 +5410,6 @@ async function renderInbox() {
 
                     Draggable.create(notificationEl, {
                         type: "x,y",
-                        bounds: "body",
                         onPress: function() {
                             gsap.to(this.target, { scale: 1.05, duration: 0.2, rotation: 'random(-3, 3)' });
                         },
