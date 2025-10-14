@@ -875,8 +875,10 @@ app.post('/api/user/send-verification-email', isAuthenticated, async (req, res) 
     user.emailVerificationToken = verificationToken;
     user.emailVerificationExpires = Date.now() + 3600000; // 1 hour
     await user.save();
-
-    const verificationUrl = `${req.protocol}://${req.get('host')}/api/user/verify-email/${verificationToken}`;
+    
+    const verificationUrl = development
+      ? `http://localhost:8082/api/user/verify-email/${verificationToken}`
+      : `https://peerspace.ipo-servers.net/api/user/verify-email/${verificationToken}`;
 
     const mailOptions = {
       from: "Peerspace <noreply@ipo-servers.net>", // replace with your "from" email address
