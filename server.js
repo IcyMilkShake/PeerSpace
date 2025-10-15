@@ -48,12 +48,17 @@ const BUCKET_NAME = 'peerspace-database';
 // Nodemailer transport
 let transporter;
 if (process.env.NODE_ENV === 'production') {
-    // Nodemailer transport for AWS SES
-    transporter = nodemailer.createTransport({
-        SES: { ses: new AWS.SES(), aws: AWS }
-    });
+  console.log("AAAS")
+  transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+          user: "cogcog9000@gmail.com",
+          pass: "bwun jaxk lgnn leal",
+      },
+  });
 } else {
-    // For development, log emails to the console
+    console.log("AAA")
+    // For development, log emails to the console.
     transporter = nodemailer.createTransport({
         streamTransport: true,
         newline: 'unix',
