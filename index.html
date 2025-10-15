@@ -154,6 +154,28 @@
             border: 2px solid #4ade80; /* A nice green color */
             box-shadow: 0 0 8px #4ade80;
         }
+        .post-collapsed .post-content-container {
+            max-height: 400px;
+            overflow: hidden;
+            position: relative;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .post-collapsed .post-content-container::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: linear-gradient(to bottom, transparent, var(--post-card-bg));
+            pointer-events: none;
+        }
+        .see-more-btn-container {
+            position: relative;
+            text-align: center;
+            margin-top: -2rem;
+            padding-bottom: 1rem;
+        }
         .muted-pfp {
             opacity: 0.5;
             cursor: pointer;
@@ -2074,6 +2096,7 @@
             }
 
             const postContentElement = document.createElement('div');
+            postContentElement.className = 'post-content-container';
             const postTitleHtml = `<h2 class="text-xl font-bold mb-3">${escapeHtml(post.title)}</h2>`;
             postContentElement.innerHTML = postTitleHtml;
 
@@ -2081,35 +2104,8 @@
             postTextParagraph.className = "text-gray-700 mb-4 whitespace-pre-wrap";
 
             const content = post.content;
-            if (content.length > 300) {
-                const seeMoreContainer = document.createElement('div');
-                seeMoreContainer.className = 'see-more-container post-see-more';
-
-                const fullContent = document.createElement('p');
-                fullContent.className = 'text-gray-700 mb-4 whitespace-pre-wrap';
-                fullContent.innerHTML = escapeHtml(content, true);
-
-                seeMoreContainer.appendChild(fullContent);
-
-                const seeMoreBtn = document.createElement('button');
-                seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
-                seeMoreBtn.textContent = 'See More';
-                seeMoreBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    if (seeMoreContainer.classList.contains('expanded')) {
-                        seeMoreContainer.classList.remove('expanded');
-                        seeMoreBtn.textContent = 'See More';
-                    } else {
-                        seeMoreContainer.classList.add('expanded');
-                        seeMoreBtn.textContent = 'See Less';
-                    }
-                };
-                postContentElement.appendChild(seeMoreContainer);
-                postContentElement.appendChild(seeMoreBtn);
-            } else {
-                postTextParagraph.innerHTML = escapeHtml(content, true);
-                postContentElement.appendChild(postTextParagraph);
-            }
+            postTextParagraph.innerHTML = escapeHtml(content, true);
+            postContentElement.appendChild(postTextParagraph);
 
             if (post.attachments && post.attachments.length > 0) {
                 const imageAttachments = post.attachments.filter(a => a.fileType === 'image');
@@ -2341,6 +2337,7 @@
             posts.forEach(post => {
                 const article = createPostElement(post, 'scrollPosition');
                 container.appendChild(article);
+                checkAndCollapsePost(article);
             });
 
             if (!hasMorePosts && posts.length > 0) {
@@ -2364,8 +2361,42 @@
             }
 
             setupVideoObserver();
-        }
 
+        }
+        function checkAndCollapsePost(articleElement) {
+            const contentContainer = articleElement.querySelector('.post-content-container');
+            if (!contentContainer) return;
+
+            const threshold = 400;
+            // Use a timeout to allow the browser to render the content and get the correct scrollHeight
+            setTimeout(() => {
+                if (contentContainer.scrollHeight > threshold) {
+                    articleElement.classList.add('post-collapsed');
+                    
+                    const seeMoreContainer = document.createElement('div');
+                    seeMoreContainer.className = 'see-more-btn-container';
+                    
+                    const seeMoreBtn = document.createElement('button');
+                    seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
+                    seeMoreBtn.textContent = 'See More';
+                    seeMoreBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        if (articleElement.classList.contains('post-collapsed')) {
+                            articleElement.classList.remove('post-collapsed');
+                            seeMoreBtn.textContent = 'See Less';
+                            seeMoreContainer.style.marginTop = '0';
+                        } else {
+                            articleElement.classList.add('post-collapsed');
+                            seeMoreBtn.textContent = 'See More';
+                            seeMoreContainer.style.marginTop = '-2rem';
+                        }
+                    };
+
+                    seeMoreContainer.appendChild(seeMoreBtn);
+                    articleElement.appendChild(seeMoreContainer);
+                }
+            }, 0);
+        }
         // Renders a tree of comments and their replies.
         function renderCommentTree(comments, parentElement, postId, depth, answeredCommentId) {
             comments.forEach(comment => {
@@ -2426,34 +2457,8 @@
                 commentText.className = "text-gray-700 whitespace-pre-wrap break-all";
                 
                 const content = comment.content;
-                if (content.length > 300) {
-                    const seeMoreContainer = document.createElement('div');
-                    seeMoreContainer.className = `see-more-container ${depth === 0 ? 'comment-see-more' : 'reply-see-more'}`;
-
-                    const fullContent = document.createElement('p');
-                    fullContent.className = 'text-gray-700 whitespace-pre-wrap break-all';
-                    fullContent.innerHTML = escapeHtml(content, true);
-
-                    seeMoreContainer.appendChild(fullContent);
-
-                    const seeMoreBtn = document.createElement('button');
-                    seeMoreBtn.className = 'see-more-btn text-blue-600 hover:underline';
-                    seeMoreBtn.textContent = 'See More';
-                    seeMoreBtn.onclick = () => {
-                        if (seeMoreContainer.classList.contains('expanded')) {
-                            seeMoreContainer.classList.remove('expanded');
-                            seeMoreBtn.textContent = 'See More';
-                        } else {
-                            seeMoreContainer.classList.add('expanded');
-                            seeMoreBtn.textContent = 'See Less';
-                        }
-                    };
-                    commentBody.appendChild(seeMoreContainer);
-                    commentBody.appendChild(seeMoreBtn);
-                } else {
-                    commentText.innerHTML = escapeHtml(content, true);
-                    commentBody.appendChild(commentText);
-                }
+                commentText.innerHTML = escapeHtml(content, true);
+                commentBody.appendChild(commentText);
 
                 if (comment.linkPreview && comment.linkPreview.url) {
                     const preview = comment.linkPreview;
