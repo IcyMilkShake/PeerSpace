@@ -47,24 +47,14 @@ const BUCKET_NAME = 'peerspace-database';
 
 // Nodemailer transport
 let transporter;
-if (process.env.NODE_ENV === 'production') {
-  console.log("AAAS")
-  transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-          user: "cogcog9000@gmail.com",
-          pass: "bwun jaxk lgnn leal",
-      },
-  });
-} else {
-    console.log("AAA")
-    // For development, log emails to the console.
-    transporter = nodemailer.createTransport({
-        streamTransport: true,
-        newline: 'unix',
-        buffer: true
-    });
-}
+console.log("AAAS")
+transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: "cogcog9000@gmail.com",
+        pass: "bwun jaxk lgnn leal",
+    },
+});
 const channelTimeouts = {};
 
 // MongoDB connection
