@@ -2101,7 +2101,7 @@
             postContentElement.innerHTML = postTitleHtml;
 
             const postTextParagraph = document.createElement('p');
-            postTextParagraph.className = "text-gray-700 mb-4 whitespace-pre-wrap";
+            postTextParagraph.className = "text-gray-700 mb-6 whitespace-pre-wrap";
 
             const content = post.content;
             postTextParagraph.innerHTML = escapeHtml(content, true);
@@ -2393,7 +2393,12 @@
                     };
 
                     seeMoreContainer.appendChild(seeMoreBtn);
-                    articleElement.appendChild(seeMoreContainer);
+                    const postActionsDiv = articleElement.querySelector('.post-actions');
+                    if (postActionsDiv) {
+                        articleElement.insertBefore(seeMoreContainer, postActionsDiv);
+                    } else {
+                        articleElement.appendChild(seeMoreContainer);
+                    }
                 }
             }, 0);
         }
