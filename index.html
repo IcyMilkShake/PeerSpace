@@ -172,9 +172,7 @@
         }
         .see-more-btn-container {
             position: relative;
-            text-align: center;
             margin-top: -2rem;
-            padding-bottom: 1rem;
         }
         .muted-pfp {
             opacity: 0.5;
@@ -1092,7 +1090,7 @@
                             actionsArea.insertAdjacentElement('beforebegin', voiceChannelElement);
                         } else {
                             // Fallback for single post view where actions might not be there
-                            const contentArea = containerElement.querySelector('.text-gray-700.mb-4.whitespace-pre-wrap');
+                            const contentArea = containerElement.querySelector('.text-gray-700.mb-6.whitespace-pre-wrap');
                              if(contentArea) {
                                 contentArea.parentElement.appendChild(voiceChannelElement);
                              } else {
@@ -1984,13 +1982,15 @@
             article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in';
             article.classList.add("cursor-pointer");
             article.onclick = () => {
-                sessionStorage.setItem(scrollPositionKey, window.scrollY);
-                let url = `/?post=${post.id}`;
-                if (post.community && post.community._id) {
-                    url += `&community=${post.community._id}`;
+                if (document.getElementById('single-post-container').style.display != 'block') {
+                    sessionStorage.setItem(scrollPositionKey, window.scrollY);
+                    let url = `/?post=${post.id}`;
+                    if (post.community && post.community._id) {
+                        url += `&community=${post.community._id}`;
+                    }
+                    history.pushState({ postId: post.id }, "", url);
+                    renderSinglePost(post.id);
                 }
-                history.pushState({ postId: post.id }, "", url);
-                renderSinglePost(post.id);
             };
             
             const postHeader = document.createElement('div');
@@ -2115,7 +2115,7 @@
                 const firstVideoIndex = post.attachments.findIndex(a => a.fileType === 'video');
 
                 const attachmentsContainer = document.createElement('div');
-                attachmentsContainer.className = 'flex flex-col space-y-4';
+                attachmentsContainer.className = 'flex flex-col space-y-4 ';
 
                 const createImageSlideshow = () => {
                     if (imageAttachments.length > 0) {
@@ -2385,10 +2385,12 @@
                             articleElement.classList.remove('post-collapsed');
                             seeMoreBtn.textContent = 'See Less';
                             seeMoreContainer.style.marginTop = '0';
+                            seeMoreContainer.style.marginBottom = '1rem';
                         } else {
                             articleElement.classList.add('post-collapsed');
                             seeMoreBtn.textContent = 'See More';
                             seeMoreContainer.style.marginTop = '-2rem';
+                            seeMoreContainer.style.marginBottom = '0';
                         }
                     };
 

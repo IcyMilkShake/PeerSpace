@@ -2199,15 +2199,17 @@
                 article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in';
                 article.classList.add("cursor-pointer");
                 article.onclick = () => {
-                    let url = `/?post=${post.id}`;
-                    if (post.community) {
-                        const communityId = typeof post.community === 'object' ? post.community._id : post.community;
-                        if (communityId) {
-                            url += `&community=${communityId}`;
+                    if (document.getElementById('single-post-container').classList.contains('hidden')) {
+                        let url = `/?post=${post.id}`;
+                        if (post.community) {
+                            const communityId = typeof post.community === 'object' ? post.community._id : post.community;
+                            if (communityId) {
+                                url += `&community=${communityId}`;
+                            }
                         }
+                        const referrer = `&ref=profile&refId=${profileUserId}`;
+                        window.location.href = url + referrer;
                     }
-                    const referrer = `&ref=profile&refId=${profileUserId}`;
-                    window.location.href = url + referrer;
                 };
                 
                 const postHeader = document.createElement('div');

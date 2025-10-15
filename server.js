@@ -45,13 +45,21 @@ AWS.config.update({
 const s3 = new AWS.S3();
 const BUCKET_NAME = 'peerspace-database';
 
-// Nodemailer transport for AWS SES
-const transporter = nodemailer.createTransport({
-  SES: new AWS.SES({
-    apiVersion: '2010-12-01',
-    region:  'ap-southeast-1'// Credentials will be picked up from environment variables
-  })
-});
+// Nodemailer transport
+let transporter;
+if (process.env.NODE_ENV === 'production') {
+    // Nodemailer transport for AWS SES
+    transporter = nodemailer.createTransport({
+        SES: { ses: new AWS.SES(), aws: AWS }
+    });
+} else {
+    // For development, log emails to the console
+    transporter = nodemailer.createTransport({
+        streamTransport: true,
+        newline: 'unix',
+        buffer: true
+    });
+}
 const channelTimeouts = {};
 
 // MongoDB connection
