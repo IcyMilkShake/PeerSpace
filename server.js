@@ -2387,7 +2387,7 @@ app.post('/api/comments/:commentId/unmark-answer', isAuthenticated, async (req, 
       if (post.answeredComment !== post.author) {
         post.answeredComment = null;
         await post.save();
-        return res.status(200)
+        return res.json({ success: true, answeredComment: null });
       }
         post.answeredComment = null;
         await post.save();
