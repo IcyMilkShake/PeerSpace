@@ -796,8 +796,12 @@ app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
     if (post.answeredComment && post.answeredComment.toString() === commentId) {
         post.answeredComment = null;
         await post.save();
-        // Revoke credibility from the author of the answer
-        await revokeCredibility(comment.author, 10);
+        
+        // Revoke credibility only if the comment author is not the post author
+        const commentAuthor = await User.findById(comment.author);
+        if (commentAuthor && comment.author.toString() !== post.author.toString()) {
+            await revokeCredibility(commentAuthor, 10);
+        }
     }
     const io = req.app.get('socketio');
     io.emit('comment:delete', { commentId, postId, parentCommentId });
@@ -2384,14 +2388,12 @@ app.post('/api/comments/:commentId/unmark-answer', isAuthenticated, async (req, 
     }
 
     if (post.answeredComment && post.answeredComment.toString() === commentId) {
-      console.log(comment, post)
-      if (comment !== post) {
-        post.answeredComment = null;
-        await post.save();
+      post.answeredComment = null;
+      await post.save();
+
+      // Revoke credibility only if the comment author is not the post author
+      if (comment.author._id.toString() !== post.author.toString()) {
         await revokeCredibility(comment.author, 10);
-      }else{
-        post.answeredComment = null;
-        await post.save();
       }
     } else {
         return res.status(400).json({ error: 'This comment is not the marked answer.' });
