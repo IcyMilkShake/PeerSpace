@@ -2384,11 +2384,6 @@ app.post('/api/comments/:commentId/unmark-answer', isAuthenticated, async (req, 
     }
 
     if (post.answeredComment && post.answeredComment.toString() === commentId) {
-      if (post.answeredComment !== post.author) {
-        post.answeredComment = null;
-        await post.save();
-        return res.json({ success: true, answeredComment: null });
-      }
         post.answeredComment = null;
         await post.save();
         // Revoke credibility from the author of the answer
