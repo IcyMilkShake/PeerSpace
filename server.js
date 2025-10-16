@@ -796,9 +796,8 @@ app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
     if (post.answeredComment && post.answeredComment.toString() === commentId) {
         post.answeredComment = null;
         await post.save();
-        const commen = comment.populate('author')
         // Revoke credibility from the author of the answer
-        await revokeCredibility(commen.author, 10, commen);
+        await revokeCredibility(comment.author, 10);
     }
     const io = req.app.get('socketio');
     io.emit('comment:delete', { commentId, postId, parentCommentId });
