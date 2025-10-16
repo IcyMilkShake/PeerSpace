@@ -2384,7 +2384,7 @@ app.post('/api/comments/:commentId/unmark-answer', isAuthenticated, async (req, 
     }
 
     if (post.answeredComment && post.answeredComment.toString() === commentId) {
-      if (post.answeredComment !== post.author) {
+      if (comment.author !== post.author.toString()) {
         post.answeredComment = null;
         await post.save();
         await revokeCredibility(comment.author, 10);
