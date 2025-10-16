@@ -774,7 +774,7 @@ app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
     const { commentId } = req.params;
     const userId = req.user._id;
 
-    const comment = await Comment.findById(commentId).populate('author');
+    const comment = await Comment.findById(commentId);
     if (!comment) {
       return res.status(404).json({ error: 'Comment not found.' });
     }
@@ -796,8 +796,9 @@ app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
     if (post.answeredComment && post.answeredComment.toString() === commentId) {
         post.answeredComment = null;
         await post.save();
+        const commen = comment.populate('author')
         // Revoke credibility from the author of the answer
-        await revokeCredibility(comment.author, 10, comment);
+        await revokeCredibility(commen.author, 10, commen);
     }
     const io = req.app.get('socketio');
     io.emit('comment:delete', { commentId, postId, parentCommentId });
