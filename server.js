@@ -2263,13 +2263,21 @@ async function awardCredibility(user, points, comment = null) {
 // Helper function to revoke credibility points
 async function revokeCredibility(user, points, comment = null) {
     user.credibility = Math.max(0, user.credibility - points);
-    console.log(user.credibility)
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const lastUpdated = new Date(user.dailyCredibility.lastUpdated);
+    lastUpdated.setHours(0, 0, 0, 0);
+
+    if (lastUpdated.getTime() === today.getTime()) {
+        user.dailyCredibility.value = Math.max(0, user.dailyCredibility.value - points);
+    }
 
     if (comment && points === 1) {
         comment.credibilityAwardedForLikes = false;
         await comment.save();
     }
-    console.log(user)
     await user.save();
 }
 
