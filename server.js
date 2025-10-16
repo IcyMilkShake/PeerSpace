@@ -2387,12 +2387,10 @@ app.post('/api/comments/:commentId/unmark-answer', isAuthenticated, async (req, 
       if (post.answeredComment !== post.author) {
         post.answeredComment = null;
         await post.save();
-        return res.json({ success: true, answeredComment: null });
+        await revokeCredibility(comment.author, 10);
       }
         post.answeredComment = null;
         await post.save();
-        // Revoke credibility from the author of the answer
-        await revokeCredibility(comment.author, 10);
     } else {
         return res.status(400).json({ error: 'This comment is not the marked answer.' });
     }
