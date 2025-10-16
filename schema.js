@@ -224,6 +224,10 @@ const commentSchema = new mongoose.Schema({
   credibilityAwardedForLikes: {
     type: Boolean,
     default: false
+  },
+  credibilityAwardedForAnswer: {
+    type: Boolean,
+    default: false
   }
 });
 

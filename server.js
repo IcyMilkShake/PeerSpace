@@ -796,10 +796,9 @@ app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
     if (post.answeredComment && post.answeredComment.toString() === commentId) {
         post.answeredComment = null;
         await post.save();
-        
-        // Revoke credibility only if the comment author is not the post author
+
         const commentAuthor = await User.findById(comment.author);
-        if (commentAuthor && comment.author.toString() !== post.author.toString()) {
+        if (commentAuthor && comment.author.toString() !== post.author.toString() && comment.credibilityAwardedForAnswer) {
             await revokeCredibility(commentAuthor, 10);
         }
     }
@@ -2224,8 +2223,7 @@ async function awardCredibility(user, points, comment = null) {
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
     if (user.createdAt > threeDaysAgo || !user.emailVerified) {
-      console.log("gaig")  
-      return; // Conditions not met
+        return false; // Conditions not met
     }
 
     const today = new Date();
@@ -2239,25 +2237,25 @@ async function awardCredibility(user, points, comment = null) {
     }
 
     if (user.dailyCredibility.value >= 50) {
-        return; // Daily limit reached
+        return false; // Daily limit reached
     }
 
     const potentialGain = points;
     const gain = Math.min(potentialGain, 50 - user.dailyCredibility.value);
 
     if (gain > 0) {
-        console.log("gaining")
         user.credibility += gain;
         user.dailyCredibility.value += gain;
         user.dailyCredibility.lastUpdated = new Date();
-        
+
         if (comment && points === 1) { // Only for the 1-point like award
             comment.credibilityAwardedForLikes = true;
             await comment.save();
-            console.log("gainings")
         }
         await user.save();
+        return true; // Points awarded
     }
+    return false; // No points awarded
 }
 
 // Helper function to revoke credibility points
@@ -2360,8 +2358,11 @@ app.post('/api/comments/:commentId/mark-answer', isAuthenticated, async (req, re
     
     // Award credibility to the author of the answer, only if they are not the post author
     if (comment.author._id.toString() !== post.author._id.toString()) {
-      await awardCredibility(comment.author, 10);
-      console.log("awarded credit")
+      const awarded = await awardCredibility(comment.author, 10);
+      if (awarded) {
+        comment.credibilityAwardedForAnswer = true;
+        await comment.save();
+      }
     }
 
     const io = req.app.get('socketio');
@@ -2399,9 +2400,13 @@ app.post('/api/comments/:commentId/unmark-answer', isAuthenticated, async (req, 
       post.answeredComment = null;
       await post.save();
 
-      // Revoke credibility only if the comment author is not the post author
-      if (comment.author._id.toString() !== post.author.toString()) {
-        await revokeCredibility(comment.author, 10);
+      // Revoke credibility only if it was previously awarded for the answer
+      if (comment.credibilityAwardedForAnswer) {
+        if (comment.author._id.toString() !== post.author.toString()) {
+            await revokeCredibility(comment.author, 10);
+        }
+        comment.credibilityAwardedForAnswer = false;
+        await comment.save();
       }
     } else {
         return res.status(400).json({ error: 'This comment is not the marked answer.' });
