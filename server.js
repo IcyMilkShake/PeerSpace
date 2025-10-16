@@ -775,7 +775,6 @@ app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
     const userId = req.user._id;
 
     const comment = await Comment.findById(commentId);
-
     if (!comment) {
       return res.status(404).json({ error: 'Comment not found.' });
     }
@@ -785,6 +784,7 @@ app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
     }
 
     const postId = comment.post;
+    const post = await Post.findById(postId);
     const parentCommentId = comment.parentComment;
 
     if (comment.parentComment === null) {
@@ -792,7 +792,15 @@ app.delete('/api/comments/:commentId', isAuthenticated, async (req, res) => {
     } else {
       await Comment.findByIdAndDelete(commentId);
     }
-
+    
+    if (post.answeredComment && post.answeredComment.toString() === commentId) {
+        post.answeredComment = null;
+        await post.save();
+        // Revoke credibility from the author of the answer
+        await revokeCredibility(comment.author, 10);
+    } else {
+        return res.status(400).json({ error: 'This comment is not the marked answer.' });
+    }
     const io = req.app.get('socketio');
     io.emit('comment:delete', { commentId, postId, parentCommentId });
 
@@ -2328,18 +2336,6 @@ app.post('/api/comments/:commentId/mark-answer', isAuthenticated, async (req, re
     if (post.author._id.toString() !== userId.toString()) {
       return res.status(403).json({ error: 'You are not authorized to mark an answer for this post.' });
     }
-    
-    const markingUser = post.author;
-
-    // Cooldown check: 10 minutes
-    if (markingUser.lastMarkedAnswer) {
-        const tenMinutes = 10 * 60 * 1000;
-        const timeSinceLastMark = new Date() - new Date(markingUser.lastMarkedAnswer);
-        if (timeSinceLastMark < tenMinutes) {
-            const timeLeftMinutes = Math.ceil((tenMinutes - timeSinceLastMark) / (1000 * 60));
-            return res.status(429).json({ error: `You must wait ${timeLeftMinutes} more minutes before marking another answer.` });
-        }
-    }
 
     if (post.answeredComment && post.answeredComment.equals(commentId)) {
         // If the same comment is marked again, do nothing.
@@ -2347,14 +2343,13 @@ app.post('/api/comments/:commentId/mark-answer', isAuthenticated, async (req, re
     }
 
     post.answeredComment = commentId;
-    markingUser.lastMarkedAnswer = new Date(); // Update the timestamp
     
     await post.save();
-    await markingUser.save();
     
     // Award credibility to the author of the answer, only if they are not the post author
     if (comment.author._id.toString() !== post.author._id.toString()) {
       await awardCredibility(comment.author, 10);
+      console.log("awarded credit")
     }
 
     const io = req.app.get('socketio');
@@ -2389,6 +2384,11 @@ app.post('/api/comments/:commentId/unmark-answer', isAuthenticated, async (req, 
     }
 
     if (post.answeredComment && post.answeredComment.toString() === commentId) {
+      if (post.answeredComment !== post.author) {
+        post.answeredComment = null;
+        await post.save();
+        return res.status(200)
+      }
         post.answeredComment = null;
         await post.save();
         // Revoke credibility from the author of the answer
