@@ -1,6 +1,8 @@
-const { Post, Comment } = require('../models');
+const { Post, Comment, User } = require('../models');
 const { generateLinkPreview } = require('../services/linkPreviewService');
 const { createNotificationsForMentions } = require('../services/notificationService');
+const { awardCredibility, revokeCredibility } = require('../services/credibilityService');
+const { deleteCommentAndChildren } = require('../services/fileUploadService');
 
 exports.createComment = async (req, res) => {
     try {

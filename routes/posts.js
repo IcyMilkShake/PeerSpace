@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const postController = require('../controllers/postController');
+const commentController = require('../controllers/commentController');
 const { isAuthenticated } = require('../middleware/auth');
 const { postAttachmentUpload } = require('../config/multer');
 
@@ -47,6 +48,7 @@ router.post('/:postId/report', isAuthenticated, async (req, res) => {
     res.status(500).json({ error: 'Failed to report post.' });
   }
 });
+router.post('/:postId/comments', isAuthenticated, commentController.createComment);
 router.post('/:postId/vote', isAuthenticated, async (req, res) => {
   try {
     const { postId } = req.params;

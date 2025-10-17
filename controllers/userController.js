@@ -1,5 +1,12 @@
 const { User, Post, Comment } = require('../models');
 const mongoose = require('mongoose');
+const { populatePostDetails } = require('../services/utils');
+const crypto = require('crypto');
+const transporter = require('../config/nodemailer');
+const { s3, BUCKET_NAME } = require('../config/s3');
+const { v4: uuidv4 } = require('uuid');
+
+const development = process.env.NODE_ENV !== 'production';
 
 exports.getCurrentUser = (req, res) => {
     if (req.isAuthenticated() && req.user) {

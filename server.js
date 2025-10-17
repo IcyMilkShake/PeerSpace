@@ -146,6 +146,7 @@ app.set('socketio', io);
 // Configure Socket.IO
 configureSocket(io);
 
+console.log(`Attempting to start server on port ${PORT}`);
 server.listen(PORT, () => {
   if (development) {
     console.log(`Development server with socket.io running on http://localhost:${PORT}`);
