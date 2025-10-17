@@ -1813,24 +1813,35 @@
             if (currentUser) {
                 const navProfileImg = createProfileImage(currentUser.photo, currentUser.displayName, "w-8 h-8 sm:w-10 sm:h-10", "text-xs");
 
-                authSection.innerHTML = `
-                    <button onclick="toggleUserProfile()" class="nav-profile-button-hover flex items-center p-1 rounded-lg transition-colors">
-                    <div id="nav-profile-container" class="mr-1"></div>
-                    <span class="font-medium text-base sm:text-sm truncate max-w-[150px]">${escapeHtml(currentUser.displayName)}</span>
-                    </button>
-                `;
-                document.getElementById('nav-profile-container').appendChild(navProfileImg);
+                if (authSection) {
+                    authSection.innerHTML = `
+                        <button onclick="toggleUserProfile()" class="nav-profile-button-hover flex items-center p-1 rounded-lg transition-colors">
+                        <div id="nav-profile-container" class="mr-1"></div>
+                        <span class="font-medium text-base sm:text-sm truncate max-w-[150px]">${escapeHtml(currentUser.displayName)}</span>
+                        </button>
+                    `;
+                    const navProfileContainer = document.getElementById('nav-profile-container');
+                    if (navProfileContainer) {
+                        navProfileContainer.appendChild(navProfileImg);
+                    }
+                }
 
                 const modalProfileImgContainer = document.getElementById('modal-profile-img-container');
-                modalProfileImgContainer.innerHTML = '';
-                modalProfileImgContainer.appendChild(createProfileImage(currentUser.photo, currentUser.displayName, "w-10 h-10", "text-base", "border-2"));
-
-                document.getElementById('user-name').textContent = currentUser.displayName;
+                if (modalProfileImgContainer) {
+                    modalProfileImgContainer.innerHTML = '';
+                    modalProfileImgContainer.appendChild(createProfileImage(currentUser.photo, currentUser.displayName, "w-10 h-10", "text-base", "border-2"));
+                }
+                
+                const userNameElem = document.getElementById('user-name');
+                if (userNameElem) {
+                    userNameElem.textContent = currentUser.displayName;
+                }
 
                 const userEmailElem = document.getElementById('user-email');
-                userEmailElem.textContent = currentUser.email;
-                userEmailElem.classList.add('truncate');
-
+                if (userEmailElem) {
+                    userEmailElem.textContent = currentUser.email;
+                    userEmailElem.classList.add('truncate');
+                }
 
                 const profileMenuLink = document.getElementById('profile-menu-profile');
                 if (profileMenuLink) {
@@ -1838,18 +1849,24 @@
                 }
 
                 const logoutBtn = document.getElementById('logout-btn');
-                logoutBtn.removeEventListener('click', logout);
-                logoutBtn.addEventListener('click', logout);
+                if (logoutBtn) {
+                    logoutBtn.removeEventListener('click', logout);
+                    logoutBtn.addEventListener('click', logout);
+                }
 
-                welcomeMessage.classList.add('hidden');
+                if (welcomeMessage) {
+                    welcomeMessage.classList.add('hidden');
+                }
                 
                 const friendsVisible = friendsContainer && !friendsContainer.classList.contains('hidden');
                 const inboxVisible = inboxContainer && !inboxContainer.classList.contains('hidden');
 
-                if (friendsVisible || inboxVisible) {
-                    createPostForm.classList.add('hidden');
-                } else {
-                    createPostForm.classList.remove('hidden');
+                if (createPostForm) {
+                    if (friendsVisible || inboxVisible) {
+                        createPostForm.classList.add('hidden');
+                    } else {
+                        createPostForm.classList.remove('hidden');
+                    }
                 }
                 
                 if (!socket.connected) {
@@ -4544,11 +4561,17 @@
 
                 const filterButtons = filterBar.querySelectorAll('.filter-btn');
                 filterButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        currentFilter = button.getAttribute('data-filter-type');
+                    button.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        const filterType = button.getAttribute('data-filter-type');
+                        
                         filterButtons.forEach(btn => btn.classList.remove('active-filter-btn'));
                         button.classList.add('active-filter-btn');
-                        renderCommunityPage(communityId, currentFilter);
+
+                        const postsRes = await fetch(`/api/posts?communityId=${communityId}&filter=${filterType}`);
+                        const { posts: filteredPosts } = await postsRes.json();
+                        posts = filteredPosts;
+                        renderPostsIntoContainer(posts, communityPostsContainer, communityId);
                     });
                 });
 

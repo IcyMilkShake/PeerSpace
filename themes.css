@@ -974,7 +974,7 @@ html {
 }
 
 /* Filter Bar Styling */
-#filter-bar {
+#filter-bar, #community-filter-bar {
     /* Applied via Tailwind: sticky top-0 z-40 mb-6 p-4 rounded-b-lg shadow-lg backdrop-blur-md */
     /* Background color needs to be theme-aware */
     background-color: var(--filter-bar-bg);
@@ -982,7 +982,7 @@ html {
 }
 
 
-#filter-bar span { /* "Filter by:" text */
+#filter-bar span, #community-filter-bar span { /* "Filter by:" text */
     color: var(--text-secondary);
 }
 
