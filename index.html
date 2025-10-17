@@ -4526,6 +4526,32 @@
                     createPostFormParent.appendChild(createPostForm);
                 }
 
+                const filterBar = document.createElement('div');
+                filterBar.id = 'community-filter-bar';
+                filterBar.className = 'sticky top-20 z-40 mb-6 p-4 rounded-b-lg shadow-lg backdrop-blur-md bg-white/80 dark:bg-gray-900/80';
+                filterBar.style.transition = 'top 0.3s ease-in-out';
+                filterBar.innerHTML = `
+                    <div class="flex flex-wrap gap-x-3 gap-y-2 items-center">
+                        <span class="font-medium mr-2 text-sm">Filter by:</span>
+                        <button data-filter-type="all" class="filter-btn active-filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md">All</button>
+                        <button data-filter-type="normal" class="filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md">Normal</button>
+                        <button data-filter-type="question" class="filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md">Question</button>
+                        <button data-filter-type="guide" class="filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md">Guide</button>
+                        <button data-filter-type="poll" class="filter-btn px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md">Poll</button>
+                    </div>
+                `;
+                container.appendChild(filterBar);
+
+                const filterButtons = filterBar.querySelectorAll('.filter-btn');
+                filterButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        currentFilter = button.getAttribute('data-filter-type');
+                        filterButtons.forEach(btn => btn.classList.remove('active-filter-btn'));
+                        button.classList.add('active-filter-btn');
+                        renderCommunityPage(communityId, currentFilter);
+                    });
+                });
+
                 container.appendChild(communityPostsContainer);
                 
                 renderPostsIntoContainer(posts, communityPostsContainer, communityId);
