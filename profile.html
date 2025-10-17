@@ -196,7 +196,7 @@
                 </div>
                 <div id="profile-avatar-container" class="absolute -bottom-12 sm:-bottom-16 left-4 sm:left-8 flex items-center justify-center">
                 </div>
-                <div id="change-banner-section" class="hidden absolute top-4 right-4">
+                <div id="change-banner-section" class="hidden absolute top-4 right-4 edit-control">
                     <input type="file" id="banner-picture-input" accept="image/*" class="hidden"/>
                     <label for="banner-picture-input" id="change-banner-button" class="button-primary cursor-pointer inline-block text-sm">
                         Change Banner
@@ -205,26 +205,31 @@
             </div>
 
             <div class="pt-16 sm:pt-20 px-4 sm:px-6 pb-6">
-                <div class="flex items-center justify-between w-full">
-                    <h2 id="profile-display-name" class="text-2xl sm:text-3xl font-bold"></h2>
-                    <button id="change-display-name" class="hidden translate-y-[3px] opacity-70">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3zM4 20h16" />
-                        </svg>
-                    </button>
-                </div>
-                <div class="flex items-center justify-between w-full">
-                    <p id="profile-username" class="text-sm text-gray-500"></p>
-                    <button id="change-username" class="hidden translate-y-[3px] opacity-70">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3zM4 20h16" />
-                        </svg>
-                    </button>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h2 id="profile-display-name" class="text-2xl sm:text-3xl font-bold"></h2>
+                            <button id="change-display-name" class="hidden opacity-70 hover:opacity-100 edit-control">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3zM4 20h16" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <p id="profile-username" class="text-sm text-gray-500"></p>
+                            <button id="change-username" class="hidden opacity-70 hover:opacity-100 edit-control">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3zM4 20h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button id="edit-profile-button" class="hidden button-primary text-sm">Edit Profile</button>
                 </div>
 
-                <p id="profile-joined-date" class="text-sm mt-1"></p>
+                <p id="profile-joined-date" class="text-sm mt-2"></p>
                 <div class="flex items-center text-sm mt-1">
                     <p id="profile-credibility"></p>
                     <div class="group relative flex items-center ml-1.5">
@@ -283,17 +288,19 @@
                     </div>
                 </div>
 
-                <button id="edit-description-button" class="button-primary hidden mt-4 text-sm">
-                    Edit Description
-                </button>
+                <div id="edit-controls-container" class="hidden">
+                    <button id="edit-description-button" class="button-primary mt-4 text-sm">
+                        Edit Description
+                    </button>
 
-                <div id="change-picture-section" class="hidden mt-6 pt-6 border-t">
-                    <h3 class="text-xl font-semibold mb-3">Profile Picture</h3>
-                    <div class="file-upload">
-                        <input type="file" id="profile-picture-input-profile-page" accept="image/*" class="hidden"/>
-                        <label for="profile-picture-input-profile-page" id="change-profile-picture-button" class="button-primary cursor-pointer inline-block text-sm">
-                            Change Profile Picture
-                        </label>
+                    <div id="change-picture-section" class="mt-6 pt-6 border-t">
+                        <h3 class="text-xl font-semibold mb-3">Profile Picture</h3>
+                        <div class="file-upload">
+                            <input type="file" id="profile-picture-input-profile-page" accept="image/*" class="hidden"/>
+                            <label for="profile-picture-input-profile-page" id="change-profile-picture-button" class="button-primary cursor-pointer inline-block text-sm">
+                                Change Profile Picture
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div id="friend-request-container" class="mt-4"></div>
@@ -1789,32 +1796,28 @@
             descriptionView.textContent = profile.description || 'No description provided.';
             descriptionEditInput.value = profile.description || '';
 
-            const editButton = document.getElementById('edit-description-button');
+            const editProfileButton = document.getElementById('edit-profile-button');
+            const editControlsContainer = document.getElementById('edit-controls-container');
             const changeDisplayNameButton = document.getElementById('change-display-name');
             const changeUsernameButton = document.getElementById('change-username');
+
             if (currentUser && currentUser.id === profile.id) {
-                editButton.classList.remove('hidden');
-                changeDisplayNameButton.classList.remove('hidden');
-                changeUsernameButton.classList.remove('hidden');
-                editButton.onclick = () => {
+                editProfileButton.classList.remove('hidden');
+                editProfileButton.addEventListener('click', toggleEditMode);
+
+                document.getElementById('edit-description-button').onclick = () => {
                     descriptionView.classList.add('hidden');
-                    editButton.classList.add('hidden');
+                    document.getElementById('edit-description-button').classList.add('hidden');
                     document.getElementById('edit-description-form').classList.remove('hidden');
                     descriptionEditInput.focus();
                 };
 
-                document.getElementById('change-picture-section').classList.remove('hidden');
                 document.getElementById('profile-picture-input-profile-page').addEventListener('change', handleProfilePictureSelect);
-
-                document.getElementById('change-banner-section').classList.remove('hidden');
                 document.getElementById('banner-picture-input').addEventListener('change', handleBannerPictureSelect);
 
             } else {
-                editButton.classList.add('hidden');
-                changeDisplayNameButton.classList.add('hidden');
-                changeUsernameButton.classList.add('hidden');
-                document.getElementById('change-picture-section').classList.add('hidden');
-                document.getElementById('change-banner-section').classList.add('hidden');
+                editProfileButton.classList.add('hidden');
+                editControlsContainer.classList.add('hidden');
 
                 const friendRequestContainer = document.getElementById('friend-request-container');
                 if (currentUser && currentUser.id !== profile.id) {
@@ -1933,6 +1936,23 @@
             document.getElementById('edit-description-form').classList.add('hidden');
             document.getElementById('profile-description-view').classList.remove('hidden');
             document.getElementById('edit-description-button').classList.remove('hidden');
+        }
+
+        function toggleEditMode() {
+            const editControlsContainer = document.getElementById('edit-controls-container');
+            const editControls = document.querySelectorAll('.edit-control');
+            const editProfileButton = document.getElementById('edit-profile-button');
+            const isEditing = !editControlsContainer.classList.contains('hidden');
+
+            if (isEditing) {
+                editControlsContainer.classList.add('hidden');
+                editControls.forEach(control => control.classList.add('hidden'));
+                editProfileButton.textContent = 'Edit Profile';
+            } else {
+                editControlsContainer.classList.remove('hidden');
+                editControls.forEach(control => control.classList.remove('hidden'));
+                editProfileButton.textContent = 'Finish Editing';
+            }
         }
         
         // Closes the image cropper modal.

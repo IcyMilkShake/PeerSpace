@@ -2022,6 +2022,7 @@
             menuButton.className = 'post-menu-button text-gray-500 hover:text-gray-700 p-1 rounded-md hover:bg-gray-100 transition-colors';
             menuButton.innerHTML = `<svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
             menuButton.onclick = (e) => {
+                console.log("HI")
                 e.stopPropagation();
                 toggleActionMenu('post', post.id);
             };
@@ -2970,16 +2971,19 @@
             const singlePostContainer = document.getElementById('single-post-container');
             const isSinglePostView = singlePostContainer.style.display === 'block';
             let menuId;
-
+            menuId = `post-action-menu-${id}`;
+            console.log(document.getElementById(menuId))
             if (type === 'post' && isSinglePostView) {
-                menuId = `post-action-menu-single-${id}`;
+                console.log("here")
+                menuId = `post-action-menu-${id}`;
             } else {
                 menuId = `${type}-action-menu-${id}`;
             }
-            
+            console.log(menuId)
             const menu = document.getElementById(menuId);
-
+            console.log(menu)
             if (menu) {
+                console.log("is")
                 const isHidden = menu.classList.contains('hidden');
                 
                 // Close all other menus first, but only if a new one is being opened.
@@ -2988,13 +2992,14 @@
                 }
         
                 // Toggle the state.
-                menu.classList.toggle('hidden');
+                menu.classList.remove('hidden');
             }
         }
 
         function closeAllActionMenus() {
             document.querySelectorAll('.post-action-menu, .comment-action-menu, .community-action-menu').forEach(menu => {
                 menu.classList.add('hidden');
+                console.log("closse")
             });
         }
 
