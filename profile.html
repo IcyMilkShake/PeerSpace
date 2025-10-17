@@ -2262,7 +2262,7 @@
                 menuButton.innerHTML = `<svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
                 menuButton.onclick = (e) => {
                     e.stopPropagation();
-                    togglePostActionMenu(post.id);
+                    toggleActionMenu('post', post.id);
                 };
                 postActions.appendChild(menuButton);
 
@@ -2706,7 +2706,7 @@
                 commentMenuButton.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
                 commentMenuButton.onclick = (e) => {
                     e.stopPropagation();
-                    toggleCommentActionMenu(comment.id);
+                    toggleActionMenu('comment', comment.id);
                 };
                 
                 const commentActions = document.createElement('div');
@@ -2935,55 +2935,49 @@
             }
         }
 
-        function togglePostActionMenu(postId) {
+        function toggleActionMenu(type, id) {
             const singlePostContainer = document.getElementById('single-post-container');
-            let menu;
-            if (!singlePostContainer.classList.contains('hidden')) {
-                menu = document.getElementById(`post-action-menu-single-${postId}`);
-            } else {
-                menu = document.getElementById(`post-action-menu-${postId}`);
+            const isSinglePostView = !singlePostContainer.classList.contains('hidden');
+            
+            let context = document;
+            if (isSinglePostView) {
+                // When in single post view, the menu ID might have a '-single' suffix
+                // but let's try a more robust querySelector within the visible container.
+                context = singlePostContainer;
+            }
+
+            const menuId = `${type}-action-menu-${id}`;
+            // A special case for single post view on the profile page where the ID is different
+            const singlePostMenuId = `post-action-menu-single-${id}`;
+
+            let menu = context.querySelector(`#${menuId}`);
+            if (!menu && isSinglePostView) {
+                 menu = context.querySelector(`#${singlePostMenuId}`);
             }
             
             if (menu) {
                 const isHidden = menu.classList.contains('hidden');
                 
-                closeAllPostActionMenus();
-        
+                // Close all menus first if we are about to open a new one.
                 if (isHidden) {
-                    menu.classList.remove('hidden');
+                    closeAllActionMenus();
                 }
+
+                // Now, toggle the specific menu.
+                menu.classList.toggle('hidden');
             }
         }
 
-        function closeAllPostActionMenus() {
-            document.querySelectorAll('.post-action-menu').forEach(menu => {
-                menu.classList.add('hidden');
-            });
-        }
-
-        function toggleCommentActionMenu(commentId) {
-            const menu = document.getElementById(`comment-action-menu-${commentId}`);
-            if (menu) {
-                const isHidden = menu.classList.contains('hidden');
-                closeAllCommentActionMenus();
-                if (isHidden) {
-                    menu.classList.remove('hidden');
-                }
-            }
-        }
-
-        function closeAllCommentActionMenus() {
-            document.querySelectorAll('.comment-action-menu').forEach(menu => {
+        function closeAllActionMenus() {
+            document.querySelectorAll('.post-action-menu, .comment-action-menu').forEach(menu => {
                 menu.classList.add('hidden');
             });
         }
 
         document.addEventListener('click', (event) => {
-            if (!event.target.closest('.post-menu-button') && !event.target.closest('.post-action-menu')) {
-                closeAllPostActionMenus();
-            }
-            if (!event.target.closest('.comment-menu-button') && !event.target.closest('.comment-action-menu')) {
-                closeAllCommentActionMenus();
+            if (!event.target.closest('.post-menu-button') && !event.target.closest('.post-action-menu') &&
+                !event.target.closest('.comment-menu-button') && !event.target.closest('.comment-action-menu')) {
+                closeAllActionMenus();
             }
         });
 
@@ -3466,7 +3460,7 @@
             menuButton.innerHTML = `<svg id="menubuttons" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
             menuButton.onclick = (e) => {
                 e.stopPropagation();
-                togglePostActionMenu(post.id);
+                toggleActionMenu('post', post.id);
             };
             postActionsMenu.appendChild(menuButton);
 

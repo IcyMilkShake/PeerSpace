@@ -2970,29 +2970,25 @@
         function toggleActionMenu(type, id) {
             const singlePostContainer = document.getElementById('single-post-container');
             const isSinglePostView = singlePostContainer.style.display === 'block';
-            let menuId;
-            menuId = `post-action-menu-${id}`;
-            console.log(document.getElementById(menuId))
-            if (type === 'post' && isSinglePostView) {
-                console.log("here")
-                menuId = `post-action-menu-${id}`;
-            } else {
-                menuId = `${type}-action-menu-${id}`;
+            
+            let context = document;
+            if (isSinglePostView) {
+                context = singlePostContainer;
             }
-            console.log(menuId)
-            const menu = document.getElementById(menuId);
-            console.log(menu)
+            
+            const menuId = `${type}-action-menu-${id}`;
+            const menu = context.querySelector(`#${menuId}`);
+            
             if (menu) {
-                console.log("is")
                 const isHidden = menu.classList.contains('hidden');
                 
-                // Close all other menus first, but only if a new one is being opened.
+                // Close all menus first if we are about to open a new one.
                 if (isHidden) {
                     closeAllActionMenus();
                 }
-        
-                // Toggle the state.
-                menu.classList.remove('hidden');
+
+                // Now, toggle the specific menu.
+                menu.classList.toggle('hidden');
             }
         }
 
