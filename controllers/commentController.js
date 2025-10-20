@@ -435,7 +435,7 @@ exports.deleteVoiceChannel = async (req, res) => {
         await VoiceChannel.findByIdAndDelete(comment.voiceChannel);
         comment.voiceChannel = null;
         await comment.save();
-
+        console.log("del comment")
         const io = req.app.get('socketio');
         io.emit('voice-channel-deleted', {
             itemType: 'comment',

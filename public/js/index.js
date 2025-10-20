@@ -523,6 +523,7 @@ socket.on('voice-channel-created', async ({ itemType, itemId, voiceChannel, post
 });
 
 socket.on('voice-channel-deleted', ({ channelId, postId, commentId }) => {
+    console.log("leave")
     let updatedPostId = null;
 
     // 1. Update local state
@@ -545,12 +546,17 @@ socket.on('voice-channel-deleted', ({ channelId, postId, commentId }) => {
 
     // 2. Update UI
     const singlePostContainer = document.getElementById('single-post-container');
-    const isSinglePostView = !singlePostContainer.classList.contains('hidden');
+    const isSinglePostView = singlePostContainer.style.display == 'block';
     const currentSinglePostId = isSinglePostView ? singlePostContainer.querySelector('article')?.id.replace('post-card-', '') : null;
-
+    console.log(isSinglePostView)
     if (isSinglePostView && updatedPostId === currentSinglePostId) {
+        console.log("rendersss")
         renderSinglePost(updatedPostId);
     } else {
+        console.log("???")
+        const vcElements = document.querySelector(`.voice-channel-container`)
+        console.log(vcElements)
+        console.log(channelId)
         // For feeds or profile pages, directly manipulate the DOM.
         const vcElement = document.querySelector(`.voice-channel-container #voice-participants-${channelId}`);
         if (vcElement) {

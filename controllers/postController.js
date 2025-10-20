@@ -437,7 +437,7 @@ exports.deleteVoiceChannel = async (req, res) => {
         await VoiceChannel.findByIdAndDelete(post.voiceChannel);
         post.voiceChannel = null;
         await post.save();
-console.log("Awwww")
+console.log("del post")
         const io = req.app.get('socketio');
         io.emit('voice-channel-deleted', {
             itemType: 'post',
