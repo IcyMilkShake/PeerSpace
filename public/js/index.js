@@ -896,10 +896,14 @@ function createVoiceChannelElement(item) {
         buttonsContainer.appendChild(deleteButton);
     }
 
-    fetch(`/posts/${postId}/voice-channel`, {method: 'GET'})
+    const fetchUrl = isPost
+        ? `/posts/${item.id}/voice-channel`
+        : `/comments/${item.id}/voice-channel`;
+
+    fetch(fetchUrl, { method: 'GET' })
         .then(res => {
             if (!res.ok) {
-                console.log(res.status)
+                console.log(res.status);
                 throw new Error('Network response was not ok');
             }
             return res.json();
@@ -1073,7 +1077,10 @@ async function deleteVoiceChannel(postId, channelId, itemType, itemId) {
         "Are you sure you want to delete this voice channel? This action cannot be undone.",
         async () => {
             try {
-                const response = await fetch(`posts/${postId}/voice-channel`, {
+                const url = itemType === 'post'
+                    ? `/posts/${itemId}/voice-channel`
+                    : `/comments/${itemId}/voice-channel`;
+                const response = await fetch(url, {
                     method: 'DELETE',
                 });
                 if (response.ok) {
@@ -2358,14 +2365,7 @@ async function createVoiceChannel(type, id) {
             return;
         }
 
-        let url;
-        if (type === 'post') {
-            url = `/posts/${id}/voice-channel`;
-        } else if (type === 'comment') {
-            url = `/comments/${id}/voice-channel`;
-        } else {
-            return;
-        }
+        const url = type === 'post' ? `/posts/${id}/voice-channel` : `/comments/${id}/voice-channel`;
 
         try {
             const response = await fetch(url, {

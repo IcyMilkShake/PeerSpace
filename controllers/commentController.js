@@ -390,3 +390,97 @@ exports.createVoiceChannel = async (req, res) => {
         res.status(500).json({ error: 'Failed to create voice channel.' });
     }
 };
+
+exports.getVoiceChannelParticipants = async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        const comment = await Comment.findById(commentId).populate({
+            path: 'voiceChannel',
+            populate: {
+                path: 'participants',
+                select: 'displayName profilePicture.path'
+            }
+        });
+
+        if (!comment || !comment.voiceChannel) {
+            return res.status(404).json({ error: 'Voice channel not found for this comment.' });
+        }
+
+        res.json(comment.voiceChannel.participants);
+
+    } catch (error) {
+        console.error('Error fetching voice channel participants for comment:', error);
+        res.status(500).json({ error: 'Failed to fetch participants.' });
+    }
+};
+
+exports.deleteVoiceChannel = async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        const userId = req.user._id;
+
+        const comment = await Comment.findById(commentId);
+        if (!comment) {
+            return res.status(404).json({ error: 'Comment not found.' });
+        }
+
+        if (comment.author.toString() !== userId.toString()) {
+            return res.status(403).json({ error: 'You are not authorized to delete this voice channel.' });
+        }
+
+        if (!comment.voiceChannel) {
+            return res.status(404).json({ error: 'This comment does not have a voice channel.' });
+        }
+
+        await VoiceChannel.findByIdAndDelete(comment.voiceChannel);
+        comment.voiceChannel = null;
+        await comment.save();
+
+        const io = req.app.get('socketio');
+        io.emit('voice-channel-deleted', {
+            itemType: 'comment',
+            itemId: commentId,
+            postId: comment.post
+        });
+
+        res.json({ success: true, message: 'Voice channel deleted successfully.' });
+
+    } catch (error) {
+        console.error('Error deleting voice channel for comment:', error);
+        res.status(500).json({ error: 'Failed to delete voice channel.' });
+    }
+};
+
+exports.reportComment = async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        const { reasonType, reasonDetails } = req.body;
+        const reporterId = req.user._id;
+
+        if (!reasonType) {
+            return res.status(400).json({ error: 'Report reason type is required.' });
+        }
+        if (reasonType.length > 200 || (reasonDetails && reasonDetails.length > 1000)) {
+            return res.status(400).json({ error: 'Report reason or details too long.' });
+        }
+
+        const comment = await Comment.findById(commentId);
+        if (!comment) {
+            return res.status(404).json({ error: 'Comment not found.' });
+        }
+
+        comment.reports.push({
+            reporter: reporterId,
+            reasonType,
+            reasonDetails: reasonDetails || '',
+            reportedAt: new Date()
+        });
+
+        await comment.save();
+        res.json({ success: true, message: 'Comment reported successfully.' });
+
+    } catch (error) {
+        console.error('Error reporting comment:', error);
+        res.status(500).json({ error: 'Failed to report comment.' });
+    }
+};
