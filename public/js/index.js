@@ -1075,7 +1075,7 @@ async function deleteVoiceChannel(channelId, itemType, itemId) {
         "Are you sure you want to delete this voice channel? This action cannot be undone.",
         async () => {
             try {
-                const response = await fetch(`/${channelId}/voice-channel`, {
+                const response = await fetch(`posts/${channelId}/voice-channel`, {
                     method: 'DELETE',
                 });
                 if (response.ok) {
