@@ -445,7 +445,7 @@ socket.on('channel-full', () => {
     leaveVoiceChannel();
 });
 
-socket.on('voice-channel-created', async ({ itemType, itemId, voiceChannel }) => {
+socket.on('voice-channel-created', async ({ itemType, itemId, voiceChannel, postId: eventPostId }) => {
     // Update local data store first
     let postToUpdate;
     if (itemType === 'post') {
@@ -455,12 +455,16 @@ socket.on('voice-channel-created', async ({ itemType, itemId, voiceChannel }) =>
             postToUpdate = posts[postIndex];
         }
     } else if (itemType === 'comment') {
-        for (const p of posts) {
-            const found = findComment(p.comments, itemId);
-            if (found) {
-                found.voiceChannel = voiceChannel;
-                postToUpdate = p;
-                break;
+        // Use the postId from the event if available, otherwise fall back to searching.
+        const postIdToFind = eventPostId || (posts.find(p => findComment(p.comments, itemId)))?.id;
+        if (postIdToFind) {
+            const postIndex = posts.findIndex(p => p.id === postIdToFind || p._id === postIdToFind);
+            if (postIndex !== -1) {
+                const found = findComment(posts[postIndex].comments, itemId);
+                if (found) {
+                    found.voiceChannel = voiceChannel;
+                    postToUpdate = posts[postIndex];
+                }
             }
         }
     }
@@ -836,8 +840,29 @@ function getInitials(displayName) {
 function createVoiceChannelElement(item) {
     const voiceChannel = item.voiceChannel;
     if (!voiceChannel) return null;
-    const channelId = voiceChannel._id;
 
+    // Determine the postId based on the item type.
+    let postId;
+    // A post object will have a `title` property, whereas a comment object will not.
+    // This provides a reliable way to differentiate them.
+    const isPost = typeof item.title !== 'undefined';
+
+    if (isPost) {
+        postId = item.id;
+    } else {
+        // For comments, we need to traverse the local `posts` array to find the parent post.
+        const post = posts.find(p => findComment(p.comments, item.id));
+        if (post) {
+            postId = post.id;
+        }
+    }
+    
+    if (!postId) {
+        console.error("Could not determine postId for voice channel item:", item);
+        return null; // Can't proceed without a postId
+    }
+
+    const channelId = voiceChannel._id;
     const container = document.createElement('div');
     container.className = 'voice-channel-container border rounded-lg p-4 flex items-center justify-between';
     container.innerHTML = `
@@ -862,7 +887,7 @@ function createVoiceChannelElement(item) {
         const deleteButton = document.createElement('button');
         deleteButton.onclick = (e) => {
             e.stopPropagation();
-            const itemType = item.title ? 'post' : 'comment'; // Heuristic to determine item type
+            const itemType = isPost ? 'post' : 'comment';
             deleteVoiceChannel(channelId, itemType, item.id);
         };
         deleteButton.className = 'bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors';
@@ -871,8 +896,14 @@ function createVoiceChannelElement(item) {
         buttonsContainer.appendChild(deleteButton);
     }
 
-    fetch(`/posts/${channelId}/voice-channel`)
-        .then(res => res.json())
+    fetch(`/posts/${postId}/voice-channel`, {method: 'GET'})
+        .then(res => {
+            if (!res.ok) {
+                console.log(res.status)
+                throw new Error('Network response was not ok');
+            }
+            return res.json();
+        })
         .then(participants => {
             if (participantsDiv) {
                 participantsDiv.innerHTML = '';

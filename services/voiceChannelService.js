@@ -51,7 +51,7 @@ function scheduleVoiceChannelDeletion(channelId, io) {
     } finally {
       delete channelTimeouts[channelId.toString()];
     }
-  }, 18); // 3 minutes
+  }, 180000); // 3 minutes
 
   channelTimeouts[channelId.toString()] = timeoutId;
 }

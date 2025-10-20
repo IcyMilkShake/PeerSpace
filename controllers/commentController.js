@@ -358,7 +358,6 @@ exports.createVoiceChannel = async (req, res) => {
         }
 
         if (comment.voiceChannel) {
-            console.log("didnt work")
             return res.status(409).json({ error: 'This comment already has a voice channel.' });
         }
 
@@ -380,6 +379,7 @@ exports.createVoiceChannel = async (req, res) => {
         io.emit('voice-channel-created', {
             itemType: 'comment',
             itemId: commentId,
+            postId: comment.post,
             voiceChannel: voiceChannel
         });
 

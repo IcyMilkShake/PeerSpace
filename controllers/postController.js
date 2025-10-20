@@ -281,7 +281,6 @@ exports.createVoiceChannel = async (req, res) => {
 
         post.voiceChannel = voiceChannel._id;
         await post.save();
-
         const io = req.app.get('socketio');
         scheduleVoiceChannelDeletion(voiceChannel._id, io);
 
@@ -389,5 +388,29 @@ exports.deletePost = async (req, res) => {
             return res.status(400).json({ error: 'Invalid Post ID format.' });
         }
         res.status(500).json({ error: 'Failed to delete post.' });
+    }
+};
+
+exports.getVoiceChannelParticipants = async (req, res) => {
+    console.log("Connected")
+    try {
+        const { postId } = req.params;
+        const post = await Post.findById(postId).populate({
+            path: 'voiceChannel',
+            populate: {
+                path: 'participants',
+                select: 'displayName profilePicture.path'
+            }
+        });
+        console.log(post)
+        if (!post || !post.voiceChannel) {
+            return res.status(404).json({ error: 'Voice channel not found for this post.' });
+        }
+        
+        res.json(post.voiceChannel.participants);
+
+    } catch (error) {
+        console.error('Error fetching voice channel participants:', error);
+        res.status(500).json({ error: 'Failed to fetch participants.' });
     }
 };
