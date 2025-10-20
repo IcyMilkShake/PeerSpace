@@ -1,6 +1,5 @@
 const express = require('express');
 const session = require('express-session');
-const passport = require('passport');
 const mongoose = require('mongoose');
 const MongoStore = require('connect-mongo');
 const path = require('path');
@@ -8,9 +7,9 @@ const fs = require('fs');
 const http = require('http');
 const { Server } = require("socket.io");
 require('dotenv').config();
+const passport = require('./config/passport')
 
 const connectDB = require('./config/db');
-const configurePassport = require('./config/passport');
 const allRoutes = require('./routes');
 const configureSocket = require('./socket');
 
@@ -31,9 +30,6 @@ const development = process.env.NODE_ENV !== 'production';
 
 // Connect to MongoDB
 connectDB();
-
-// Passport configuration
-configurePassport(passport);
 
 // Middleware
 app.set('trust proxy', true);
@@ -113,22 +109,9 @@ app.get('/inbox', (req, res) => {
     res.sendFile(path.join(__dirname, 'inbox.html'));
 });
 
-
 // Catches and handles any errors that occur in the application.
 app.use((error, req, res, next) => {
   console.error('Unhandled error:', error);
-  
-  if (error instanceof multer.MulterError) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
-    }
-    return res.status(400).json({ error: 'File upload error: ' + error.message });
-  }
-  
-  if (error.message === 'Not an image! Please upload only images.') {
-    return res.status(400).json({ error: 'Please upload only image files.' });
-  }
-  
   res.status(500).json({ error: 'Internal server error' });
 });
 

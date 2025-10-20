@@ -746,7 +746,7 @@ function renderSearchResults(results) {
 
 async function performUserSearch(usernameQuery) {
     try {
-        const response = await fetch(`/users/search?query=${encodeURIComponent(usernameQuery)}`);
+        const response = await fetch(`/user/search?query=${encodeURIComponent(usernameQuery)}`);
         if (!response.ok) {
             throw new Error('Failed to fetch users');
         }
@@ -871,7 +871,7 @@ function createVoiceChannelElement(item) {
         buttonsContainer.appendChild(deleteButton);
     }
 
-    fetch(`/voice-channel/${channelId}`)
+    fetch(`/posts/${channelId}/voice-channel`)
         .then(res => res.json())
         .then(participants => {
             if (participantsDiv) {
@@ -1013,7 +1013,7 @@ function leaveVoiceChannel() {
         remoteAudioContainer.innerHTML = '';
     }
 
-    fetch(`/voice-channel/${channelId}`)
+    fetch(`/${channelId}/voice-channel`)
         .then(res => res.json())
         .then(participants => {
             const participantsDiv = document.getElementById(`voice-participants-${channelId}`);
@@ -1044,7 +1044,7 @@ async function deleteVoiceChannel(channelId, itemType, itemId) {
         "Are you sure you want to delete this voice channel? This action cannot be undone.",
         async () => {
             try {
-                const response = await fetch(`/voice-channel/${channelId}`, {
+                const response = await fetch(`/${channelId}/voice-channel`, {
                     method: 'DELETE',
                 });
                 if (response.ok) {
@@ -2151,7 +2151,7 @@ async function createPost(title, content, postType, pollOptions, files, communit
             formData.append('attachments', file);
         });
 
-        const fetchPromise = fetch('/api/posts', {
+        const fetchPromise = fetch('/posts', {
             method: 'POST',
             body: formData
         });
@@ -2206,10 +2206,10 @@ async function addCommentOrReply(postId, parentCommentId = null) {
 
         let url, body;
         if (parentCommentId) {
-            url = `/api/comments/${parentCommentId}/replies`;
+            url = `/comments/${parentCommentId}/replies`;
             body = JSON.stringify({ content: processedContent });
         } else {
-            url = `/api/posts/${postId}/comments`;
+            url = `/posts/${postId}/comments`;
             body = JSON.stringify({ content: processedContent });
         }
 
@@ -2791,7 +2791,7 @@ function handleMention(textarea) {
 // Fetches a list of users that match the mention query.
 async function fetchUsers(query) {
     try {
-        const response = await fetch(`/users/search?query=${query}`);
+        const response = await fetch(`/user/search?query=${query}`);
         mentionSuggestions = await response.json();
         showSuggestions();
     } catch (error) {
@@ -3237,7 +3237,7 @@ async function fetchNotificationCounts() {
     if (!currentUser) return;
 
     try {
-        const response = await fetch('/notification-counts');
+        const response = await fetch('/notifications/notification-counts');
         if (response.ok) {
             const data = await response.json();
             updateNotificationBadges(data.unreadNotifications, data.pendingFriendRequests);
@@ -3562,7 +3562,7 @@ pendingTab.addEventListener('click', () => {
 
 async function loadFriendRequests() {
     try {
-        const response = await fetch('/friend-requests');
+        const response = await fetch('/friend-request');
         const requests = await response.json();
         requestsList.innerHTML = '';
         if (requests.length === 0) {
@@ -3594,7 +3594,7 @@ async function loadFriendRequests() {
 
 async function loadFriendsList() {
     try {
-        const response = await fetch('/friends');
+        const response = await fetch('/friend-request/friends');
         const friends = await response.json();
         friendsList.innerHTML = '';
         if (friends.length === 0) {
@@ -3637,7 +3637,7 @@ function toggleFriendMenu(friendId) {
 
 async function loadSentFriendRequests() {
     try {
-        const response = await fetch('/friend-requests/sent');
+        const response = await fetch('/friend-request/sent');
         const requests = await response.json();
         pendingList.innerHTML = '';
         if (requests.length === 0) {

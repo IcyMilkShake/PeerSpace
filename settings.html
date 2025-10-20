@@ -190,7 +190,7 @@
 
             if (fromEvent) {
                 try {
-                    await fetch('/api/user/theme', {
+                    await fetch('/user/theme', {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ theme }),
@@ -271,7 +271,7 @@
         // Checks if a user is logged in on the settings page.
         async function checkAuthStatusForSettingsPage() {
             try {
-                const response = await fetch('/api/user', { credentials: 'include' });
+                const response = await fetch('/user', { credentials: 'include' });
                 if (response.ok) {
                     currentLoggedInUserConfig = await response.json();
                 } else {
@@ -421,7 +421,7 @@
                         micVolume: micVolumeSlider.value
                     };
                     try {
-                        await fetch('/api/user/audio-settings', {
+                        await fetch('/user/audio-settings', {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(settings),

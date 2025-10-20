@@ -4,6 +4,7 @@ const postController = require('../controllers/postController');
 const commentController = require('../controllers/commentController');
 const { isAuthenticated } = require('../middleware/auth');
 const { postAttachmentUpload } = require('../config/multer');
+const { Post } = require('../models');
 
 router.get('/', postController.getAllPosts);
 router.post('/', isAuthenticated, postAttachmentUpload.array('attachments', 15), postController.createPost);

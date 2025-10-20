@@ -1,9 +1,9 @@
-const { Post, Comment, User } = require('../models');
+const { Post, Comment, User, VoiceChannel } = require('../models');
 const { generateLinkPreview } = require('../services/linkPreviewService');
 const { createNotificationsForMentions } = require('../services/notificationService');
 const { awardCredibility, revokeCredibility } = require('../services/credibilityService');
 const { deleteCommentAndChildren } = require('../services/fileUploadService');
-
+const { scheduleVoiceChannelDeletion } = require('../services/voiceChannelService');
 exports.createComment = async (req, res) => {
     try {
         const { postId } = req.params;

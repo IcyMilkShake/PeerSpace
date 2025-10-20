@@ -595,7 +595,7 @@ function leaveVoiceChannel() {
         remoteAudioContainer.innerHTML = '';
     }
 
-    fetch(`/voice-channel/${channelId}`)
+    fetch(`/${channelId}/voice-channel`)
         .then(res => res.json())
         .then(participants => {
             const participantsDiv = document.getElementById(`voice-participants-${channelId}`);
@@ -626,7 +626,7 @@ async function deleteVoiceChannel(channelId, itemType, itemId) {
         "Are you sure you want to delete this voice channel? This action cannot be undone.",
         async () => {
             try {
-                const response = await fetch(`/voice-channel/${channelId}`, {
+                const response = await fetch(`/${channelId}/voice-channel`, {
                     method: 'DELETE',
                 });
                 if (response.ok) {
@@ -925,7 +925,7 @@ function createVoiceChannelElement(item) {
         buttonsContainer.appendChild(deleteButton);
     }
 
-    fetch(`/voice-channel/${channelId}`)
+    fetch(`/${channelId}/voice-channel`)
         .then(res => res.json())
         .then(participants => {
             if (participantsDiv) {
@@ -1130,7 +1130,7 @@ function handleMention(textarea) {
 // Fetches a list of users that match the mention query.
 async function fetchUsers(query) {
     try {
-        const response = await fetch(`/users/search?query=${query}`);
+        const response = await fetch(`/user/search?query=${query}`);
         mentionSuggestions = await response.json();
         showSuggestions();
     } catch (error) {
@@ -1290,7 +1290,7 @@ async function loadProfileData() {
 
     try {
         const params = new URLSearchParams(window.location.search);
-        const url = params.has('id') ? `/users/${profileIdentifier}` : `/users/by-username/${profileIdentifier}`;
+        const url = params.has('id') ? `/user/${profileIdentifier}` : `/user/by-username/${profileIdentifier}`;
         const response = await fetch(url);
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: `Error ${response.status}` }));
@@ -1646,6 +1646,9 @@ document.getElementById('save-username').addEventListener('click', async () => {
             }
             showNotification('Username updated successfully!', 'success');
             document.getElementById('edit-username-form').classList.add('hidden');
+        }else if (response.status == 409){
+            showNotification('Username already taken', 'error')
+            return
         } else {
             alert('Failed to save username: ' + (result.error || 'Unknown error'));
         }
@@ -3354,7 +3357,7 @@ async function loadProfileContent() {
     emptyState.classList.add('hidden');
 
     try {
-        const response = await fetch(`/users/${userId}/content?contentType=${contentType}&sortBy=${sortBy}`);
+        const response = await fetch(`/user/${userId}/content?contentType=${contentType}&sortBy=${sortBy}`);
         if (!response.ok) {
             throw new Error('Failed to load content');
         }

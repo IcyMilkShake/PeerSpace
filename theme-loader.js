@@ -10,7 +10,7 @@
 
     // After the page loads, it checks the server for the user's most recent theme settings.
     document.addEventListener('DOMContentLoaded', () => {
-        fetch('/api/user', { credentials: 'include' })
+        fetch('/user', { credentials: 'include' })
             .then(response => {
                 if (response.ok) {
                     return response.json();

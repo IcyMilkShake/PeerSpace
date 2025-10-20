@@ -1,14 +1,23 @@
-const passport = require('passport');
+const passport = require('../config/passport'); // Import directly
 
-exports.googleAuth = passport.authenticate('google', { scope: ['profile', 'email'], prompt: 'select_account' });
+exports.googleAuth = (req, res, next) => {
+    passport.authenticate('google', { 
+        scope: ['profile', 'email'], 
+        prompt: 'select_account' 
+    })(req, res, next);
+};
 
-exports.googleCallback = (req, res) => {
-    req.session.save((err) => {
-        if (err) {
-            console.error('Error saving session:', err);
-            return res.redirect('/?error=session_save_failed');
-        }
-        res.redirect('/');
+exports.googleCallback = (req, res, next) => {
+    passport.authenticate('google', { 
+        failureRedirect: '/?error=auth_failed' 
+    })(req, res, () => {
+        req.session.save((err) => {
+            if (err) {
+                console.error('Error saving session:', err);
+                return res.redirect('/?error=session_save_failed');
+            }
+            res.redirect('/');
+        });
     });
 };
 

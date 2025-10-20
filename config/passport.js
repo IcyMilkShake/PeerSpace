@@ -8,7 +8,7 @@ const { s3, BUCKET_NAME } = require('./s3');
 
 const development = process.env.NODE_ENV !== 'production';
 
-// Downloads a user's profile picture from Google and saves it to S3.
+// Helper functions
 async function downloadProfilePicture(url, filename) {
     return new Promise((resolve, reject) => {
         https.get(url, (response) => {
@@ -38,7 +38,6 @@ async function downloadProfilePicture(url, filename) {
     });
 }
 
-// Generates a unique username for a new user based on their email.
 async function generateUniqueUsername(email) {
     let username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_.]/g, '');
     if (username.length < 3) {
@@ -55,82 +54,85 @@ async function generateUniqueUsername(email) {
     return username;
 }
 
+// Configure passport directly
 const CALLBACK_URL = development
     ? 'http://localhost:8082/auth/google/callback'
     : 'https://peerspace.ipo-servers.net/auth/google/callback';
 
-module.exports = function (passport) {
-    if (process.env.VERIFICATION !== 'true') {
-        passport.use(new GoogleStrategy({
-            clientID: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-            callbackURL: CALLBACK_URL
-        }, async (accessToken, refreshToken, profile, done) => {
-            try {
-                let user = await User.findOne({ googleId: profile.id });
-                const profilePictureUrl = profile.photos && profile.photos[0] ? profile.photos[0].value : null;
-
-                if (user) {
-                    user.lastLogin = new Date();
-                    if (!user.displayName) {
-                        user.displayName = profile.displayName;
-                    }
-                    const hasCustomProfilePic = user.profilePicture.path && !user.profilePicture.path.includes('googleusercontent.com');
-
-                    if (!hasCustomProfilePic && profilePictureUrl) {
-                        try {
-                            const filename = `google_${uuidv4()}`;
-                            const s3Url = await downloadProfilePicture(profilePictureUrl, filename);
-                            user.profilePicture = { path: s3Url, contentType: 'image/png' };
-                        } catch (error) {
-                            console.error('Error downloading profile picture:', error);
-                        }
-                    }
-                    await user.save();
-                    return done(null, user);
-                } else {
-                    let profilePicturePath = null;
-                    if (profilePictureUrl) {
-                        try {
-                            const filename = `google_${uuidv4()}`;
-                            profilePicturePath = await downloadProfilePicture(profilePictureUrl, filename);
-                        } catch (error) {
-                            console.error('Error downloading profile picture for new user:', error);
-                        }
-                    }
-
-                    const email = profile.emails && profile.emails[0] ? profile.emails[0].value : '';
-                    const username = await generateUniqueUsername(email);
-
-                    const newUser = new User({
-                        googleId: profile.id,
-                        username: username,
-                        displayName: profile.displayName,
-                        email: email,
-                        profilePicture: { path: profilePicturePath, contentType: 'image/png' }
-                    });
-
-                    await newUser.save();
-                    return done(null, newUser);
-                }
-            } catch (error) {
-                console.error('Error in Google Strategy:', error);
-                return done(error, null);
-            }
-        }));
-    }
-
-    passport.serializeUser((user, done) => {
-        done(null, user._id);
-    });
-
-    passport.deserializeUser(async (id, done) => {
+if (process.env.VERIFICATION !== 'true') {
+    passport.use(new GoogleStrategy({
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: CALLBACK_URL
+    }, async (accessToken, refreshToken, profile, done) => {
         try {
-            const user = await User.findById(id);
-            done(null, user);
-        } catch (err) {
-            console.error('>>> DESERIALIZE ERROR:', err);
-            done(err, null);
+            let user = await User.findOne({ googleId: profile.id });
+            const profilePictureUrl = profile.photos && profile.photos[0] ? profile.photos[0].value : null;
+
+            if (user) {
+                user.lastLogin = new Date();
+                if (!user.displayName) {
+                    user.displayName = profile.displayName;
+                }
+                const hasCustomProfilePic = user.profilePicture.path && !user.profilePicture.path.includes('googleusercontent.com');
+
+                if (!hasCustomProfilePic && profilePictureUrl) {
+                    try {
+                        const filename = `google_${uuidv4()}`;
+                        const s3Url = await downloadProfilePicture(profilePictureUrl, filename);
+                        user.profilePicture = { path: s3Url, contentType: 'image/png' };
+                    } catch (error) {
+                        console.error('Error downloading profile picture:', error);
+                    }
+                }
+                await user.save();
+                return done(null, user);
+            } else {
+                let profilePicturePath = null;
+                if (profilePictureUrl) {
+                    try {
+                        const filename = `google_${uuidv4()}`;
+                        profilePicturePath = await downloadProfilePicture(profilePictureUrl, filename);
+                    } catch (error) {
+                        console.error('Error downloading profile picture for new user:', error);
+                    }
+                }
+
+                const email = profile.emails && profile.emails[0] ? profile.emails[0].value : '';
+                const username = await generateUniqueUsername(email);
+
+                const newUser = new User({
+                    googleId: profile.id,
+                    username: username,
+                    displayName: profile.displayName,
+                    email: email,
+                    profilePicture: { path: profilePicturePath, contentType: 'image/png' }
+                });
+
+                await newUser.save();
+                return done(null, newUser);
+            }
+        } catch (error) {
+            console.error('Error in Google Strategy:', error);
+            return done(error, null);
         }
-    });
-};
+    }));
+}
+
+passport.serializeUser((user, done) => {
+    done(null, user._id);
+});
+
+passport.deserializeUser(async (id, done) => {
+    try {
+        const user = await User.findById(id);
+        console.log('deserializeUser for', id);
+        done(null, user);
+    } catch (err) {
+        console.error('>>> DESERIALIZE ERROR:', err);
+        done(err, null);
+    }
+});
+
+// Export the configured passport instance
+module.exports = passport;

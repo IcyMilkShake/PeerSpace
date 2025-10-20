@@ -3,7 +3,7 @@ const { processAndUploadFile, deleteCommentAndChildren } = require('../services/
 const { generateLinkPreview } = require('../services/linkPreviewService');
 const { createNotificationsForMentions } = require('../services/notificationService');
 const { populatePostDetails } = require('../services/utils');
-
+const { scheduleVoiceChannelDeletion } = require('../services/voiceChannelService');
 exports.getRecentFriendPosts = async (req, res) => {
     try {
         const currentUserId = req.user._id;
@@ -248,7 +248,7 @@ exports.createVoiceChannel = async (req, res) => {
         const { postId } = req.params;
         const { name } = req.body;
         const userId = req.user._id;
-
+        console.log(req.body)
         // Check if user already has an active voice channel
         const existingChannel = await VoiceChannel.findOne({ creator: userId });
         if (existingChannel) {
@@ -259,7 +259,7 @@ exports.createVoiceChannel = async (req, res) => {
                 commentId: existingChannel.comment
             });
         }
-
+        console.log(postId, name, userId)
         const post = await Post.findById(postId);
         if (!post) {
             return res.status(404).json({ error: 'Post not found.' });
