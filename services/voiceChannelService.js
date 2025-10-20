@@ -34,7 +34,6 @@ function scheduleVoiceChannelDeletion(channelId, io) {
 
         // Emit a notification count update to the creator
         await emitNotificationCountUpdate(creatorId, io);
-        console.log(postId,commentId)
         if (postId && !commentId) {
           await Post.findByIdAndUpdate(postId, { $unset: { voiceChannel: "" } });
           io.emit('voice-channel-deleted', { channelId: channelId, postId: postId, commentId: commentId });

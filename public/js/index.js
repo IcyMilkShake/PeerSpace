@@ -888,7 +888,7 @@ function createVoiceChannelElement(item) {
         deleteButton.onclick = (e) => {
             e.stopPropagation();
             const itemType = isPost ? 'post' : 'comment';
-            deleteVoiceChannel(channelId, itemType, item.id);
+            deleteVoiceChannel(postId, channelId, itemType, item.id);
         };
         deleteButton.className = 'bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors';
         deleteButton.innerHTML = `<i class="fas fa-trash-alt"></i>`;
@@ -1044,38 +1044,36 @@ function leaveVoiceChannel() {
         remoteAudioContainer.innerHTML = '';
     }
 
-    fetch(`/${channelId}/voice-channel`)
-        .then(res => res.json())
-        .then(participants => {
-            const participantsDiv = document.getElementById(`voice-participants-${channelId}`);
-            if (participantsDiv) {
-                participantsDiv.innerHTML = '';
-                if (participants.length === 0) {
-                    participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">No one is here yet.</span>';
-                } else {
-                    participants.forEach(p => {
-                        const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-white dark:border-gray-800');
-                        pfp.title = p.displayName;
-                        pfp.dataset.socketId = p.socketId;
-                        participantsDiv.appendChild(pfp);
-                    });
-                }
-            }
-        });
+    const participants = currentVoiceChannel.participants 
+    console.log(participants)
+    const participantsDiv = document.getElementById(`voice-participants-${channelId}`);
+    if (participantsDiv) {
+        participantsDiv.innerHTML = '';
+        if (participants.length === 0) {
+            participantsDiv.innerHTML = '<span class="text-sm text-gray-500 pl-2">No one is here yet.</span>';
+        } else {
+            participants.forEach(p => {
+                const pfp = createProfileImage(p.profilePicture ? p.profilePicture.path : null, p.displayName, 'w-8 h-8', 'text-xs', 'border-2 border-white dark:border-gray-800');
+                pfp.title = p.displayName;
+                pfp.dataset.socketId = p.socketId;
+                participantsDiv.appendChild(pfp);
+            });
+        }
+    }
 
     currentVoiceChannel = null;
     sessionStorage.removeItem('inVoiceChannel');
     sessionStorage.removeItem('voiceChannelRefresh');
 }
 
-async function deleteVoiceChannel(channelId, itemType, itemId) {
+async function deleteVoiceChannel(postId, channelId, itemType, itemId) {
     if (!currentUser) return;
 
     showConfirmationDialog(
         "Are you sure you want to delete this voice channel? This action cannot be undone.",
         async () => {
             try {
-                const response = await fetch(`posts/${channelId}/voice-channel`, {
+                const response = await fetch(`posts/${postId}/voice-channel`, {
                     method: 'DELETE',
                 });
                 if (response.ok) {

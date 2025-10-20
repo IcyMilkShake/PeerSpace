@@ -14,6 +14,7 @@ router.get('/search', postController.searchPosts);
 router.get('/:postId/voice-channel', postController.getVoiceChannelParticipants);
 router.get('/:postId', postController.getPostById);
 router.delete('/:postId', isAuthenticated, postController.deletePost);
+router.delete('/:postId/voice-channel', isAuthenticated, postController.deleteVoiceChannel);
 router.post('/:postId/like', isAuthenticated, postController.likePost);
 router.post('/:postId/voice-channel', isAuthenticated, postController.createVoiceChannel);
 router.post('/:postId/report', isAuthenticated, async (req, res) => {

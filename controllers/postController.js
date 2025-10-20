@@ -259,7 +259,6 @@ exports.createVoiceChannel = async (req, res) => {
                 commentId: existingChannel.comment
             });
         }
-        console.log(postId, name, userId)
         const post = await Post.findById(postId);
         if (!post) {
             return res.status(404).json({ error: 'Post not found.' });
@@ -402,7 +401,6 @@ exports.getVoiceChannelParticipants = async (req, res) => {
                 select: 'displayName profilePicture.path'
             }
         });
-        console.log(post)
         if (!post || !post.voiceChannel) {
             return res.status(404).json({ error: 'Voice channel not found for this post.' });
         }
@@ -412,5 +410,44 @@ exports.getVoiceChannelParticipants = async (req, res) => {
     } catch (error) {
         console.error('Error fetching voice channel participants:', error);
         res.status(500).json({ error: 'Failed to fetch participants.' });
+    }
+};
+
+exports.deleteVoiceChannel = async (req, res) => {
+    console.log("ass")
+    try {
+        const { postId } = req.params;
+        const userId = req.user._id;
+        console.log(postId)
+        const post = await Post.findById(postId);
+        if (!post) {
+            console.log("Aes")
+            return res.status(404).json({ error: 'Post not found.' });
+        }
+
+        if (post.author.toString() !== userId.toString()) {
+            return res.status(403).json({ error: 'You are not authorized to delete this voice channel.' });
+        }
+
+        if (!post.voiceChannel) {
+            console.log("Ae")
+            return res.status(404).json({ error: 'This post does not have a voice channel.' });
+        }
+
+        await VoiceChannel.findByIdAndDelete(post.voiceChannel);
+        post.voiceChannel = null;
+        await post.save();
+console.log("Awwww")
+        const io = req.app.get('socketio');
+        io.emit('voice-channel-deleted', {
+            itemType: 'post',
+            itemId: postId
+        });
+
+        res.json({ success: true, message: 'Voice channel deleted successfully.' });
+
+    } catch (error) {
+        console.error('Error deleting voice channel for post:', error);
+        res.status(500).json({ error: 'Failed to delete voice channel.' });
     }
 };
