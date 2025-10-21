@@ -441,7 +441,7 @@ console.log("del post")
         const io = req.app.get('socketio');
         io.emit('voice-channel-deleted', {
             itemType: 'post',
-            itemId: postId
+            postId: postId
         });
 
         res.json({ success: true, message: 'Voice channel deleted successfully.' });

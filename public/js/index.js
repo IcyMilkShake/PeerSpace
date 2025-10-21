@@ -525,7 +525,7 @@ socket.on('voice-channel-created', async ({ itemType, itemId, voiceChannel, post
 socket.on('voice-channel-deleted', ({ channelId, postId, commentId }) => {
     console.log("leave")
     let updatedPostId = null;
-
+    console.log(postId, commentId)
     // 1. Update local state
     if (postId && !commentId) {
         const postIndex = posts.findIndex(p => p.id === postId || p._id === postId);
@@ -937,6 +937,7 @@ function createVoiceChannelElement(item) {
         });
 
     return container;
+    
 }
 
 // --- Voice Channel Functions ---
