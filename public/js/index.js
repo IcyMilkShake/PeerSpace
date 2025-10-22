@@ -626,23 +626,44 @@ function getActiveVoiceChannelInfo() {
     return null;
 }
 
-async function createAudioMeter(stream, onVolumeChange) {
+function createAudioMeter(stream, onVolumeChange) {
+    console.log('[AUDIO DEBUG] createAudioMeter called.');
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     audioContext.resume();
+    console.log(`[AUDIO DEBUG] AudioContext state: ${audioContext.state}`);
     const source = audioContext.createMediaStreamSource(stream);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 512;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    source.connect(analyser);
+    console.log('[AUDIO DEBUG] AnalyserNode created and connected.');
 
-    try {
-        await audioContext.audioWorklet.addModule('volume-meter.js');
-        const meterNode = new AudioWorkletNode(audioContext, 'volume-meter-processor');
-        meterNode.port.onmessage = event => {
-            if (event.data.volume) {
-                onVolumeChange(event.data.volume);
-            }
+    let frameCount = 0;
+    const checkVolume = () => {
+        if (audioContext.state === 'closed') {
+            console.log('[AUDIO DEBUG] AudioContext closed, stopping volume check.');
+            return;
         }
-        source.connect(meterNode).connect(audioContext.destination);
-    } catch (e) {
-        console.error('Error setting up audio worklet.', e);
-    }
+        analyser.getByteTimeDomainData(dataArray);
+        let sumSquares = 0.0;
+        for (const amplitude of dataArray) {
+            const normalizedAmplitude = (amplitude / 128.0) - 1;
+            sumSquares += normalizedAmplitude * normalizedAmplitude;
+        }
+        const rms = Math.sqrt(sumSquares / dataArray.length);
+
+        // Log RMS value periodically to avoid flooding the console
+        if (frameCount % 60 === 0) { // Log roughly once per second
+            console.log(`[AUDIO DEBUG] RMS Volume: ${rms.toFixed(4)}`);
+        }
+        frameCount++;
+
+        onVolumeChange(rms);
+        requestAnimationFrame(checkVolume);
+    };
+    console.log('[AUDIO DEBUG] Starting volume check loop.');
+    checkVolume();
 }
 
 async function markCommentAsAnswer(commentId) {
@@ -968,42 +989,45 @@ async function joinVoiceChannel(channelId) {
         const audioConstraints = { audio: true, video: false };
         if (currentUser.audioSettings && currentUser.audioSettings.inputDevice) {
             audioConstraints.audio = { deviceId: { ideal: currentUser.audioSettings.inputDevice } };
-            console.log(audioConstraints.audio)
         }
+        console.log('[AUDIO DEBUG] Requesting microphone with constraints:', audioConstraints);
         localStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
-    } catch (error) {
-        console.error('Error accessing microphone:', error);
-        return showNotification(error);
-        //return showNotification('Could not access microphone. Please grant permission.', 'error');
+        console.log('[AUDIO DEBUG] Microphone access granted.');
+    } catch (err) {
+        console.error('[AUDIO DEBUG] Error accessing microphone:', err);
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            return showNotification('Microphone access denied. Please enable it in your browser settings to join voice channels.', 'error');
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            return showNotification('No microphone found. Please connect a microphone and try again.', 'error');
+        } else {
+            return showNotification('Could not access microphone. Please grant permission and ensure a device is connected.', 'error');
+        }
     }
 
     await createAudioMeter(localStream, (volume) => {
-        console.log("1")
         const speakingThreshold = 0.02;
         if (volume > speakingThreshold) {
-            console.log("2")
-            clearTimeout(speakingTimer);
-            speakingTimer = null;
             if (!isSpeaking) {
+                console.log('[AUDIO DEBUG] Speaking detected.');
                 isSpeaking = true;
                 socket.emit('speaking');
-                console.log("spoke")
                 document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socket.id}"], #mobile-voice-panel [data-socket-id="${socket.id}"]`).forEach(el => {
                     el.classList.add('speaking');
                 });
             }
+            clearTimeout(speakingTimer);
+            speakingTimer = null;
         } else { // volume <= threshold
             if (isSpeaking && !speakingTimer) {
-                console.log("3")
                 speakingTimer = setTimeout(() => {
+                    console.log('[AUDIO DEBUG] Stopped speaking.');
                     isSpeaking = false;
                     socket.emit('stopped-speaking');
-                    console.log("aint spokeing")
                     document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socket.id}"], #mobile-voice-panel [data-socket-id="${socket.id}"]`).forEach(el => {
                         el.classList.remove('speaking');
                     });
                     speakingTimer = null;
-                }, 500);
+                }, 500); // 500ms delay before marking as stopped
             }
         }
     });
