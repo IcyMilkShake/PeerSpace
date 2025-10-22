@@ -968,6 +968,7 @@ async function joinVoiceChannel(channelId) {
         const audioConstraints = { audio: true, video: false };
         if (currentUser.audioSettings && currentUser.audioSettings.inputDevice) {
             audioConstraints.audio = { deviceId: { ideal: currentUser.audioSettings.inputDevice } };
+            console.log(audioConstraints.audio)
         }
         localStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
     } catch (error) {
@@ -977,22 +978,27 @@ async function joinVoiceChannel(channelId) {
     }
 
     await createAudioMeter(localStream, (volume) => {
+        console.log("1")
         const speakingThreshold = 0.02;
         if (volume > speakingThreshold) {
+            console.log("2")
             clearTimeout(speakingTimer);
             speakingTimer = null;
             if (!isSpeaking) {
                 isSpeaking = true;
                 socket.emit('speaking');
+                console.log("spoke")
                 document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socket.id}"], #mobile-voice-panel [data-socket-id="${socket.id}"]`).forEach(el => {
                     el.classList.add('speaking');
                 });
             }
         } else { // volume <= threshold
             if (isSpeaking && !speakingTimer) {
+                console.log("3")
                 speakingTimer = setTimeout(() => {
                     isSpeaking = false;
                     socket.emit('stopped-speaking');
+                    console.log("aint spokeing")
                     document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socket.id}"], #mobile-voice-panel [data-socket-id="${socket.id}"]`).forEach(el => {
                         el.classList.remove('speaking');
                     });
