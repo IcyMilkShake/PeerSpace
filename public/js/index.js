@@ -4565,14 +4565,17 @@ async function renderInbox() {
     emptyEl.classList.add('hidden');
     errorEl.classList.add('hidden');
     containerEl.innerHTML = '';
-    notificationBin.classList.remove('hidden');
+    notificationBin.classList.add('hidden'); // Hide the bin
 
     try {
+        // Delete old read notifications before fetching
+        await fetch('/notifications/delete-old', { method: 'POST' });
+
         const response = await fetch('/notifications');
         if (!response.ok) {
             if (response.statusText == "Unauthorized") {
                 throw new Error('Unauthorized');
-            }else{
+            } else {
                 throw new Error('Failed to fetch notifications');
             }
         }
@@ -4593,15 +4596,38 @@ async function renderInbox() {
 
             const notificationEl = document.createElement('div');
             notificationEl.id = `notification-${notification._id}`;
-            notificationEl.className = 'notification-item p-4 border rounded-lg cursor-pointer';
+            notificationEl.className = 'notification-item p-4 border rounded-lg flex justify-between items-center';
             if (!notification.read) {
                 notificationEl.classList.add('font-bold');
             }
-            notificationEl.innerHTML = `
+
+            const contentEl = document.createElement('div');
+            contentEl.className = 'cursor-pointer flex-grow';
+            contentEl.innerHTML = `
                 <p>${notification.message}</p>
                 <span class="text-sm text-gray-500">${new Date(notification.createdAt).toLocaleString()}</span>
             `;
-            notificationEl.addEventListener('click', async () => {
+
+            if (notification.read) {
+                const timeLeftEl = document.createElement('span');
+                timeLeftEl.className = 'text-xs text-gray-400 ml-2';
+                const deletionTime = new Date(notification.createdAt).getTime() + 3 * 24 * 60 * 60 * 1000;
+                const now = new Date().getTime();
+                const diff = deletionTime - now;
+
+                if (diff > 0) {
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    if (days > 0) {
+                        timeLeftEl.textContent = `${days}d left`;
+                    } else {
+                        timeLeftEl.textContent = `${hours}h left`;
+                    }
+                    contentEl.querySelector('span').appendChild(timeLeftEl);
+                }
+            }
+
+            contentEl.addEventListener('click', async () => {
                 if (!notification.read) {
                     const readResponse = await fetch('/notifications/' + notification._id + '/read', { method: 'POST' });
                     if (readResponse.ok) {
@@ -4609,6 +4635,7 @@ async function renderInbox() {
                         updateNotificationBadges(data.unreadNotifications, data.pendingFriendRequests);
                         notificationEl.classList.remove('font-bold');
                         notification.read = true;
+                        renderInbox(); // Re-render to show time left
                     }
                 }
 
@@ -4623,57 +4650,53 @@ async function renderInbox() {
                     }
                 }
             });
-            containerEl.appendChild(notificationEl);
 
-            Draggable.create(notificationEl, {
-                type: "x,y",
-                onPress: function() {
-                    gsap.to(this.target, { scale: 1.05, duration: 0.2, rotation: 'random(-3, 3)' });
-                },
-                onRelease: function() {
-                    const bin = document.getElementById('notification-bin');
-                    const binBounds = bin.getBoundingClientRect();
-                    const pointerX = this.pointerX;
-                    const pointerY = this.pointerY;
+            const menuContainer = document.createElement('div');
+            menuContainer.className = 'relative';
 
-                    const isOverBin = (
-                        pointerX >= binBounds.left &&
-                        pointerX <= binBounds.right &&
-                        pointerY >= binBounds.top &&
-                        pointerY <= binBounds.bottom
-                    );
+            const menuButton = document.createElement('button');
+            menuButton.className = 'text-gray-500 hover:text-gray-700 p-1 rounded-md';
+            menuButton.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>`;
+            menuButton.onclick = (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('hidden');
+            };
 
-                    if (isOverBin) {
-                        gsap.to(this.target, {
-                            duration: 0.5,
-                            scale: 0,
-                            rotation: 720,
-                            opacity: 0,
-                            ease: "power1.in",
-                            onComplete: () => {
-                                notificationEl.remove();
-                                fetch(`/notifications/${notification._id}`, { method: 'DELETE' })
-                                    .then(response => {
-                                        if (!response.ok) {
-                                            console.error('Failed to delete notification');
-                                        }
-                                    });
-                            }
-                        });
-                    } else {
-                        gsap.to(this.target, { x: 0, y: 0, scale: 1, duration: 0.5, ease: "elastic.out(1, 0.5)", rotation: 0 });
+            const dropdown = document.createElement('div');
+            dropdown.className = 'hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-20 post-action-menu';
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'block w-full text-left px-4 py-2 text-sm profile-menu-item profile-menu-item-danger'
+            deleteButton.textContent = 'Delete';
+            deleteButton.onclick = async (e) => {
+                e.stopPropagation();
+                try {
+                    const response = await fetch(`/notifications/${notification._id}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        notificationEl.remove();
+                        showNotification('Notification deleted.', 'success');
+                        renderInbox()
                     }
+                } catch (err) {
+                    showNotification('Failed to delete notification.', 'error');
                 }
-            });
-        });
+            };
 
+            dropdown.appendChild(deleteButton);
+            menuContainer.appendChild(menuButton);
+            menuContainer.appendChild(dropdown);
+
+            notificationEl.appendChild(contentEl);
+            notificationEl.appendChild(menuContainer);
+            containerEl.appendChild(notificationEl);
+        });
+        
     } catch (error) {
         console.error('Failed to load notifications:', error);
         loadingEl.classList.add('hidden');
-        if (error == "Error: Unauthorized") {
+        if (error.message === "Unauthorized") {
             errorEl.textContent = "Please login to view notifications."
             errorEl.classList.remove('hidden');
-        }else{
+        } else {
             errorEl.textContent = "Could not load notifications. Please try again later."
             errorEl.classList.remove('hidden');
         }

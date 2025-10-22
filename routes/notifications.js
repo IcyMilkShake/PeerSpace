@@ -8,5 +8,6 @@ router.get('/notification-counts', isAuthenticated, notificationController.getNo
 router.get('/unread-count', isAuthenticated, notificationController.getUnreadNotificationCount);
 router.post('/:notificationId/read', isAuthenticated, notificationController.markNotificationAsRead);
 router.delete('/:notificationId', isAuthenticated, notificationController.deleteNotification);
+router.post('/delete-old', isAuthenticated, notificationController.deleteOldReadNotifications);
 
 module.exports = router;

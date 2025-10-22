@@ -240,8 +240,8 @@ exports.sendVerificationEmail = async (req, res) => {
         await user.save();
 
         const verificationUrl = development
-            ? `http://localhost:8082/api/user/verify-email/${verificationToken}`
-            : `https://peerspace.ipo-servers.net/api/user/verify-email/${verificationToken}`;
+            ? `http://localhost:8082/user/verify-email/${verificationToken}`
+            : `https://peerspace.ipo-servers.net/user/verify-email/${verificationToken}`;
 
         const mailOptions = {
             from: "Peerspace <noreply@ipo-servers.net>", // replace with your "from" email address

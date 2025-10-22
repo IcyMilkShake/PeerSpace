@@ -120,3 +120,21 @@ exports.deleteNotification = async (req, res) => {
         res.status(500).json({ error: 'Failed to delete notification.' });
     }
 };
+
+exports.deleteOldReadNotifications = async (req, res) => {
+    try {
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+        await Notification.deleteMany({
+            user: req.user._id,
+            read: true,
+            createdAt: { $lt: threeDaysAgo }
+        });
+
+        res.status(200).json({ success: true, message: 'Old read notifications deleted.' });
+    } catch (error) {
+        console.error('Error deleting old read notifications:', error);
+        res.status(500).json({ error: 'Failed to delete old read notifications.' });
+    }
+};
