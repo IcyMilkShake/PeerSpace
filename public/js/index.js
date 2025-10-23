@@ -1383,7 +1383,7 @@ function login() {
 // Logs the user out.
 async function logout() {
     try {
-        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
         if (socket.connected) {
             socket.disconnect();
         }
@@ -3494,7 +3494,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 formData.append('bannerPicture', croppedBannerBlob, 'banner.png');
             }
 
-            const url = isEditMode ? `/communities/${communityId}` : '/api/communities';
+            const url = isEditMode ? `/communities/${communityId}` : '/communities';
             const method = isEditMode ? 'PUT' : 'POST';
 
             try {
@@ -3751,7 +3751,7 @@ friendsList.addEventListener('click', async (e) => {
             'Are you sure you want to unfriend this user?',
             async () => {
                 try {
-                    const response = await fetch(`/friends/${friendId}`, {
+                    const response = await fetch(`/friend-request/friends/${friendId}`, {
                         method: 'DELETE'
                     });
                     if (response.ok) {
@@ -3769,7 +3769,7 @@ requestsList.addEventListener('click', async (e) => {
     if (e.target.classList.contains('accept-btn')) {
         const requestId = e.target.dataset.id;
         try {
-            const response = await fetch(`/friend-requests/${requestId}/accept`, {
+            const response = await fetch(`/friend-request/${requestId}/accept`, {
                 method: 'PUT'
             });
             if (response.ok) {
@@ -3783,7 +3783,7 @@ requestsList.addEventListener('click', async (e) => {
     if (e.target.classList.contains('decline-btn')) {
         const requestId = e.target.dataset.id;
         try {
-            const response = await fetch(`/friend-requests/${requestId}/decline`, {
+            const response = await fetch(`/friend-request/${requestId}/decline`, {
                 method: 'PUT'
             });
             if (response.ok) {

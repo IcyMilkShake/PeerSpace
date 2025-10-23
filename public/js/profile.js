@@ -848,7 +848,7 @@ function toggleProfileDropdown() {
 // Logs the user out from the profile page.
 async function logoutFromProfilePage() {
     try {
-        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
         currentUser = null;
         updateProfilePageNav();
         window.location.href = '/';
@@ -1369,10 +1369,8 @@ function renderProfileData(profile) {
         editControlsContainer.classList.add('hidden');
 
         const friendRequestContainer = document.getElementById('friend-request-container');
-        console.log(currentUser)
         if (currentUser && currentUser.id !== profile.id) {
-            console.log("hi")
-            fetch(`/friend-status/${profile.id}`)
+            fetch(`/friend-request/status/${profile.id}`)
                 .then(response => response.json())
                 .then(data => {
                     friendRequestContainer.innerHTML = '';
@@ -1383,13 +1381,13 @@ function renderProfileData(profile) {
                         addFriendBtn.textContent = 'Add Friend';
                         addFriendBtn.onclick = async () => {
                             try {
-                                        const response = await fetch('/friend-request', {
+                                const response = await fetch('/friend-request', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ recipientId: profile.id })
                                 });
                                 if (response.ok) {
-                                    renderProfileData(profile); // Re-render to update button
+                                    loadProfileData();
                                 } else {
                                     const errorData = await response.json();
                                     alert(errorData.error);
@@ -1405,11 +1403,11 @@ function renderProfileData(profile) {
                         sentRequestBtn.textContent = 'Request Sent';
                         sentRequestBtn.onclick = async () => {
                             try {
-                                        const response = await fetch(`/friend-request/${profile.id}`, {
+                                const response = await fetch(`/friend-request/${profile.id}`, {
                                     method: 'DELETE'
                                 });
                                 if (response.ok) {
-                                    renderProfileData(profile); // Re-render to update button
+                                    loadProfileData();
                                 } else {
                                     const errorData = await response.json();
                                     alert(errorData.error);
@@ -1423,10 +1421,22 @@ function renderProfileData(profile) {
                          const acceptRequestBtn = document.createElement('button');
                          acceptRequestBtn.className = 'button-primary w-full';
                          acceptRequestBtn.textContent = 'Accept Friend Request';
-                         acceptRequestBtn.onclick = () => {
-                             window.location.href = '/friends.html';
-                         };
+                         acceptRequestBtn.addEventListener('click', async (e) => {
+                            const requestId = e.target.dataset.id;
+                            const response = fetch(`/friend-request/${requestId}/accept`, {
+                                method: 'PUT'
+                            });
+                            if (response.ok) {
+                                window.location.href = '/profile.html'
+                            }
+                         })
                          friendRequestContainer.appendChild(acceptRequestBtn);
+                    } else if (data.status === 'friends') {
+                        const friendsBtn = document.createElement('button');
+                        friendsBtn.className = 'button-secondary w-full';
+                        friendsBtn.textContent = 'Friends';
+                        friendsBtn.disabled = true;
+                        friendRequestContainer.appendChild(friendsBtn);
                     }
                 });
         }
