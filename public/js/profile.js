@@ -1369,7 +1369,9 @@ function renderProfileData(profile) {
         editControlsContainer.classList.add('hidden');
 
         const friendRequestContainer = document.getElementById('friend-request-container');
+        console.log(currentUser)
         if (currentUser && currentUser.id !== profile.id) {
+            console.log("hi")
             fetch(`/friend-status/${profile.id}`)
                 .then(response => response.json())
                 .then(data => {

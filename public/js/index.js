@@ -627,22 +627,25 @@ function getActiveVoiceChannelInfo() {
 }
 
 function createAudioMeter(stream, onVolumeChange) {
-    console.log('[AUDIO DEBUG] createAudioMeter called.');
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     audioContext.resume();
-    console.log(`[AUDIO DEBUG] AudioContext state: ${audioContext.state}`);
     const source = audioContext.createMediaStreamSource(stream);
+    
+    // Create a GainNode to boost the signal
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = 2.5; // Amplify the signal by 2.5x
+
     const analyser = audioContext.createAnalyser();
     analyser.fftSize = 512;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
-    source.connect(analyser);
-    console.log('[AUDIO DEBUG] AnalyserNode created and connected.');
+    
+    // Connect the nodes: source -> gain -> analyser
+    source.connect(gainNode);
+    gainNode.connect(analyser);
 
-    let frameCount = 0;
     const checkVolume = () => {
         if (audioContext.state === 'closed') {
-            console.log('[AUDIO DEBUG] AudioContext closed, stopping volume check.');
             return;
         }
         analyser.getByteTimeDomainData(dataArray);
@@ -652,17 +655,9 @@ function createAudioMeter(stream, onVolumeChange) {
             sumSquares += normalizedAmplitude * normalizedAmplitude;
         }
         const rms = Math.sqrt(sumSquares / dataArray.length);
-
-        // Log RMS value periodically to avoid flooding the console
-        if (frameCount % 60 === 0) { // Log roughly once per second
-            console.log(`[AUDIO DEBUG] RMS Volume: ${rms.toFixed(4)}`);
-        }
-        frameCount++;
-
         onVolumeChange(rms);
         requestAnimationFrame(checkVolume);
     };
-    console.log('[AUDIO DEBUG] Starting volume check loop.');
     checkVolume();
 }
 
@@ -990,11 +985,9 @@ async function joinVoiceChannel(channelId) {
         if (currentUser.audioSettings && currentUser.audioSettings.inputDevice) {
             audioConstraints.audio = { deviceId: { ideal: currentUser.audioSettings.inputDevice } };
         }
-        console.log('[AUDIO DEBUG] Requesting microphone with constraints:', audioConstraints);
         localStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
-        console.log('[AUDIO DEBUG] Microphone access granted.');
     } catch (err) {
-        console.error('[AUDIO DEBUG] Error accessing microphone:', err);
+        console.error('Error accessing microphone:', err);
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
             return showNotification('Microphone access denied. Please enable it in your browser settings to join voice channels.', 'error');
         } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
@@ -1004,11 +997,10 @@ async function joinVoiceChannel(channelId) {
         }
     }
 
-    await createAudioMeter(localStream, (volume) => {
+    createAudioMeter(localStream, (volume) => {
         const speakingThreshold = 0.02;
         if (volume > speakingThreshold) {
             if (!isSpeaking) {
-                console.log('[AUDIO DEBUG] Speaking detected.');
                 isSpeaking = true;
                 socket.emit('speaking');
                 document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socket.id}"], #mobile-voice-panel [data-socket-id="${socket.id}"]`).forEach(el => {
@@ -1020,7 +1012,6 @@ async function joinVoiceChannel(channelId) {
         } else { // volume <= threshold
             if (isSpeaking && !speakingTimer) {
                 speakingTimer = setTimeout(() => {
-                    console.log('[AUDIO DEBUG] Stopped speaking.');
                     isSpeaking = false;
                     socket.emit('stopped-speaking');
                     document.querySelectorAll(`#desktop-voice-panel [data-socket-id="${socket.id}"], #mobile-voice-panel [data-socket-id="${socket.id}"]`).forEach(el => {
