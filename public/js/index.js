@@ -1663,6 +1663,12 @@ function createPostElement(post, scrollPositionKey = 'scrollPosition') {
                     source.type = 'video/mp4';
                     video.appendChild(source);
                     video.innerHTML += 'Your browser does not support the video tag.';
+
+                    // Add event listener to check for collapse after video metadata is loaded
+                    video.addEventListener('loadedmetadata', () => {
+                        checkAndCollapsePost(article);
+                    });
+                    
                     videoWrapper.appendChild(video);
                     attachmentWrapper.appendChild(videoWrapper);
                     videoSlideshowContainer.appendChild(attachmentWrapper);
@@ -1857,7 +1863,12 @@ function checkAndCollapsePost(articleElement) {
     const contentContainer = articleElement.querySelector('.post-content-container');
     if (!contentContainer) return;
 
-    const threshold = 400;
+    // Check if a 'See More' button already exists to prevent duplicates.
+    if (articleElement.querySelector('.see-more-btn')) {
+        return;
+    }
+
+    const threshold = 600;
     // Use a timeout to allow the browser to render the content and get the correct scrollHeight
     setTimeout(() => {
         if (contentContainer.scrollHeight > threshold) {
