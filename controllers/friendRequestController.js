@@ -191,7 +191,7 @@ exports.getFriendStatus = async (req, res) => {
             if (pendingRequest.requester.equals(currentUserId)) {
                 return res.json({ status: 'sent' });
             } else {
-                return res.json({ status: 'received' });
+                return res.json({ status: 'received', requestId: pendingRequest._id });
             }
         }
 

@@ -1418,19 +1418,28 @@ function renderProfileData(profile) {
                         };
                         friendRequestContainer.appendChild(sentRequestBtn);
                     } else if (data.status === 'received') {
-                         const acceptRequestBtn = document.createElement('button');
-                         acceptRequestBtn.className = 'button-primary w-full';
-                         acceptRequestBtn.textContent = 'Accept Friend Request';
-                         acceptRequestBtn.addEventListener('click', async (e) => {
+                        const acceptRequestBtn = document.createElement('button');
+                        acceptRequestBtn.className = 'button-primary w-full';
+                        acceptRequestBtn.textContent = 'Accept Friend Request';
+                        acceptRequestBtn.dataset.id = data.requestId;
+                        acceptRequestBtn.addEventListener('click', async (e) => {
                             const requestId = e.target.dataset.id;
-                            const response = fetch(`/friend-request/${requestId}/accept`, {
-                                method: 'PUT'
-                            });
-                            if (response.ok) {
-                                window.location.href = '/profile.html'
+                            try {
+                                const response = await fetch(`/friend-request/${requestId}/accept`, {
+                                    method: 'PUT'
+                                });
+                                if (response.ok) {
+                                    loadProfileData();
+                                } else {
+                                    const errorData = await response.json();
+                                    alert(errorData.error || 'Failed to accept friend request.');
+                                }
+                            } catch (error) {
+                                console.error('Error accepting friend request:', error);
+                                alert('An error occurred while accepting the friend request.');
                             }
-                         })
-                         friendRequestContainer.appendChild(acceptRequestBtn);
+                        });
+                        friendRequestContainer.appendChild(acceptRequestBtn);
                     } else if (data.status === 'friends') {
                         const friendsBtn = document.createElement('button');
                         friendsBtn.className = 'button-secondary w-full';

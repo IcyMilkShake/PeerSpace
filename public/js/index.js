@@ -2738,6 +2738,9 @@ async function confirmDeletePost(postId) {
 
                 if (response.ok) {
                     showNotification("Post deleted successfully.", "success");
+                    if (document.getElementById("single-post-container").style.display == 'block') {
+                        history.back()
+                    }
                     // The UI update will be handled by the 'post:delete' socket event.
                 } else {
                     const errorData = await response.json().catch(() => ({error: "Server error"}));
