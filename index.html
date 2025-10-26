@@ -172,10 +172,13 @@
             height: 100px;
             background: linear-gradient(to bottom, transparent, var(--post-card-bg));
             pointer-events: none;
+            transition: transform 0.3s ease-out;
+        }
+        article.post-collapsed:hover .post-content-container::after {
+            transform: translateY(2px);
         }
         .see-more-btn-container {
             position: relative;
-            margin-top: -2rem;
         }
         .muted-pfp {
             opacity: 0.5;

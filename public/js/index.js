@@ -1468,8 +1468,12 @@ async function loadMorePosts() {
 function createPostElement(post, scrollPositionKey = 'scrollPosition') {
     const article = document.createElement('article');
     article.id = `post-card-${post.id}`;
-    article.className = 'rounded-lg shadow-md p-6 hover-lift fade-in';
+    article.className = 'rounded-lg shadow-md p-6 fade-in';
     article.classList.add("cursor-pointer");
+
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'hover-lift';
+
     article.onclick = () => {
         if (document.getElementById('single-post-container').style.display != 'block') {
             sessionStorage.setItem(scrollPositionKey, window.scrollY);
@@ -1804,7 +1808,24 @@ function createPostElement(post, scrollPositionKey = 'scrollPosition') {
     `;
     postActionsDiv.appendChild(commentCountSpan);
 
-    article.appendChild(postActionsDiv);
+    contentWrapper.appendChild(postHeader);
+    if (postTagsContainer.hasChildNodes()) {
+        contentWrapper.appendChild(postTagsContainer);
+    }
+    contentWrapper.appendChild(postContentElement);
+
+    if (post.linkPreview && post.linkPreview.url) {
+        const previewContainer = article.querySelector('a[target="_blank"]');
+        if (previewContainer) contentWrapper.appendChild(previewContainer);
+    }
+
+    if (post.voiceChannel) {
+        const voiceChannelElement = article.querySelector('.voice-channel-container');
+        if (voiceChannelElement) contentWrapper.appendChild(voiceChannelElement);
+    }
+    
+    contentWrapper.appendChild(postActionsDiv);
+    article.appendChild(contentWrapper);
 
     return article;
 }
@@ -1885,22 +1906,21 @@ function checkAndCollapsePost(articleElement) {
                 if (articleElement.classList.contains('post-collapsed')) {
                     articleElement.classList.remove('post-collapsed');
                     seeMoreBtn.textContent = 'See Less';
-                    seeMoreContainer.style.marginTop = '0';
                     seeMoreContainer.style.marginBottom = '1rem';
                 } else {
                     articleElement.classList.add('post-collapsed');
                     seeMoreBtn.textContent = 'See More';
-                    seeMoreContainer.style.marginTop = '-2rem';
                     seeMoreContainer.style.marginBottom = '0';
                 }
             };
 
             seeMoreContainer.appendChild(seeMoreBtn);
-            const postActionsDiv = articleElement.querySelector('.post-actions');
+            const contentWrapper = articleElement.querySelector('.hover-lift');
+            const postActionsDiv = contentWrapper.querySelector('.post-actions');
             if (postActionsDiv) {
-                articleElement.insertBefore(seeMoreContainer, postActionsDiv);
+                contentWrapper.insertBefore(seeMoreContainer, postActionsDiv);
             } else {
-                articleElement.appendChild(seeMoreContainer);
+                contentWrapper.appendChild(seeMoreContainer);
             }
         }
     }, 0);
