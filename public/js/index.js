@@ -1894,6 +1894,12 @@ function checkAndCollapsePost(articleElement) {
     setTimeout(() => {
         if (contentContainer.scrollHeight > threshold) {
             articleElement.classList.add('post-collapsed');
+            const contentWrapper = articleElement.querySelector('.hover-lift');
+            const hasMedia = articleElement.querySelector('img, video');
+
+            if (hasMedia && contentWrapper) {
+                contentWrapper.classList.remove('hover-lift');
+            }
 
             const seeMoreContainer = document.createElement('div');
             seeMoreContainer.className = 'see-more-btn-container';
@@ -1915,7 +1921,6 @@ function checkAndCollapsePost(articleElement) {
             };
 
             seeMoreContainer.appendChild(seeMoreBtn);
-            const contentWrapper = articleElement.querySelector('.hover-lift');
             const postActionsDiv = contentWrapper.querySelector('.post-actions');
             if (postActionsDiv) {
                 contentWrapper.insertBefore(seeMoreContainer, postActionsDiv);
@@ -4547,19 +4552,18 @@ window.onpopstate = function(event) {
     else {
         history.replaceState({}, "", "/");
         showMainFeed();
-        if (posts.length > 0) {
-            const savedPosition = sessionStorage.getItem('scrollPosition');
-            if (savedPosition) {
-                requestAnimationFrame(() => {
-                    window.scrollTo({
-                        top: parseInt(savedPosition, 10),
+        // Always re-render posts from memory to ensure UI state is correct,
+        // especially for things like the 'See More' button.
+        renderPosts();
+        const savedPosition = sessionStorage.getItem('scrollPosition');
+        if (savedPosition) {
+            requestAnimationFrame(() => {
+                window.scrollTo({
+                    top: parseInt(savedPosition, 10),
                     behavior: 'auto'
-                    });
-                    sessionStorage.removeItem('scrollPosition');
                 });
-            }
-        } else {
-            loadPosts();
+                sessionStorage.removeItem('scrollPosition');
+            });
         }
     }
 };
