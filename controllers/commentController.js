@@ -200,6 +200,14 @@ exports.likeComment = async (req, res) => {
         if (!comment) {
             return res.status(404).json({ error: 'Comment not found.' });
         }
+        const post = await Post.findById(comment.post).populate('author');
+        if (!post) {
+            return res.status(404).json({ error: 'Associated post not found.' });
+        }
+
+        if (post.postType !== 'question') {
+            return res.status(400).json({ error: 'This feature is only available for question posts.' });
+        }
 
         const wasLiked = comment.likes.includes(userId);
         const originalLikeCount = comment.likes.length;
@@ -214,12 +222,13 @@ exports.likeComment = async (req, res) => {
         const newLikeCount = comment.likes.length;
 
         // Credibility logic for likes
-        if (newLikeCount >= 10 && !comment.credibilityAwardedForLikes) {
-            await awardCredibility(comment.author, 1, comment);
-        } else if (originalLikeCount >= 10 && newLikeCount < 10 && comment.credibilityAwardedForLikes) {
-            await revokeCredibility(comment.author, 1, comment);
+        if (comment.author._id.toString() !== post.author._id.toString()) {
+            if (newLikeCount >= 10 && !comment.credibilityAwardedForLikes) {
+                await awardCredibility(comment.author, 1, comment);
+            } else if (originalLikeCount >= 10 && newLikeCount < 10 && comment.credibilityAwardedForLikes) {
+                await revokeCredibility(comment.author, 1, comment);
+            }
         }
-
         const io = req.app.get('socketio');
         io.emit('comment:like', { commentId: comment._id, postId: comment.post, likesCount: newLikeCount });
 
