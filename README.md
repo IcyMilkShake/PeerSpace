@@ -44,7 +44,3 @@ Users can add friends and communicate with other members, making it easier to co
 ### Communities
 
 The platform is designed specifically for **peer-to-peer interaction**, allowing people with similar interests, studies, or expertise to help each other grow using widely known community feature like social media's.
-
-## Goal
-
-PeerSpace aims to create a space where **people can learn from each other, ask questions freely, and build credibility through meaningful contributions to the community**.
